@@ -10,7 +10,12 @@
 
 # another terminal
 cd apps/aarf-studio && npm run dev   # open Vite URL → Camera tab → Start webcam + runtime
+
+# desktop shell (Electron)
+cd apps/aarf-studio && npm run electron:dev
 ```
+
+See [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) and [docs/ELECTRON.md](docs/ELECTRON.md).
 
 ## Architecture
 
