@@ -1,5 +1,6 @@
 package dev.deepiri.aarflingo.ui.screens
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,6 +22,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -97,13 +99,13 @@ fun LiveScreen(vm: AppViewModel, modifier: Modifier = Modifier) {
             AarflingoCard {
                 Text("Live signals", fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.height(8.dp))
-                SignalBar("Vision", 0.88f)
+                SignalBar("Vision", 0.88f, AarflingoColors.Info)
                 Spacer(Modifier.height(4.dp))
-                SignalBar("Audio", 0.62f)
+                SignalBar("Audio", 0.62f, AarflingoColors.Warn)
                 Spacer(Modifier.height(4.dp))
-                SignalBar("Heart rate", 0.35f)
+                SignalBar("Heart rate", 0.35f, AarflingoColors.Danger)
                 Spacer(Modifier.height(4.dp))
-                SignalBar("Motion", 0.74f)
+                SignalBar("Motion", 0.74f, AarflingoColors.Accent)
             }
         }
 
