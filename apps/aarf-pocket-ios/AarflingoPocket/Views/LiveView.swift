@@ -36,6 +36,14 @@ struct LiveView: View {
                                     .foregroundStyle(AarflingoTheme.muted)
                                     .multilineTextAlignment(.center)
                                     .padding(.horizontal)
+                                if appState.connected {
+                                    HStack(spacing: 12) {
+                                        LiveMetric(value: "\(Int(appState.prediction.confidence * 100))%", label: "Confidence")
+                                        LiveMetric(value: "\(appState.history.count)", label: "Readings")
+                                        LiveMetric(value: appState.prediction.gate.uppercased(), label: "Gate")
+                                    }
+                                    .padding(.top, 4)
+                                }
                             }
                             .overlay(alignment: .center) {
                                 RoundedRectangle(cornerRadius: 10)
@@ -95,6 +103,26 @@ struct LiveView: View {
                 }
             }
         }
+    }
+}
+
+struct LiveMetric: View {
+    let value: String
+    let label: String
+
+    var body: some View {
+        VStack(spacing: 2) {
+            Text(value)
+                .font(.headline.weight(.bold))
+                .foregroundStyle(AarflingoTheme.text)
+            Text(label)
+                .font(.system(size: 9))
+                .foregroundStyle(AarflingoTheme.muted)
+        }
+        .frame(minWidth: 60)
+        .padding(8)
+        .background(AarflingoTheme.card.opacity(0.6))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 }
 
