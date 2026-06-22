@@ -1,0 +1,94 @@
+import Foundation
+
+@MainActor
+final class AppState: ObservableObject {
+    @Published var runtimeURL: String {
+        didSet { UserDefaults.standard.set(runtimeURL, forKey: "runtimeURL") }
+    }
+    @Published var connected = false
+    @Published var prediction: TriadPrediction = .demo
+    @Published var history: [HistoryItem] = HistoryItem.samples
+
+    init() {
+        runtimeURL = UserDefaults.standard.string(forKey: "runtimeURL") ?? "http://127.0.0.1:8765"
+    }
+
+    func refreshMock() {
+        connected = true
+        prediction = TriadPrediction.randomDemo()
+        history.insert(
+            HistoryItem(
+                id: UUID(),
+                intent: prediction.intent,
+                emotion: prediction.emotion,
+                behavior: prediction.behavior,
+                confidence: prediction.confidence,
+                timestamp: Date()
+            ),
+            at: 0
+        )
+        if history.count > 30 { history.removeLast() }
+    }
+}
+
+struct TriadPrediction: Identifiable, Equatable {
+    let id = UUID()
+    let intent: String
+    let emotion: String
+    let behavior: String
+    let confidence: Double
+    let gate: String
+    let dogPresent: Bool
+
+    static let demo = TriadPrediction(
+        intent: "play",
+        emotion: "excited",
+        behavior: "play_bow",
+        confidence: 0.91,
+        gate: "pass",
+        dogPresent: true
+    )
+
+    static func randomDemo() -> TriadPrediction {
+        let intents = [
+            ("play", "excited", "play_bow", 0.92),
+            ("food", "content", "sniff_ground", 0.84),
+            ("outside", "anxious", "freeze", 0.78),
+            ("rest", "calm", "yawning", 0.71),
+        ]
+        let pick = intents.randomElement()!
+        return TriadPrediction(
+            intent: pick.0,
+            emotion: pick.1,
+            behavior: pick.2,
+            confidence: pick.3,
+            gate: pick.3 > 0.8 ? "pass" : "review",
+            dogPresent: true
+        )
+    }
+
+    var intentLabel: String {
+        switch intent {
+        case "play": return "Wants to play"
+        case "food": return "Wants food"
+        case "outside": return "Wants outside"
+        case "rest": return "Resting"
+        case "avoid": return "Needs space"
+        default: return intent.capitalized
+        }
+    }
+}
+
+struct HistoryItem: Identifiable {
+    let id: UUID
+    let intent: String
+    let emotion: String
+    let behavior: String
+    let confidence: Double
+    let timestamp: Date
+
+    static let samples: [HistoryItem] = [
+        HistoryItem(id: UUID(), intent: "play", emotion: "excited", behavior: "play_bow", confidence: 0.89, timestamp: Date().addingTimeInterval(-120)),
+        HistoryItem(id: UUID(), intent: "food", emotion: "content", behavior: "sniff_ground", confidence: 0.76, timestamp: Date().addingTimeInterval(-600)),
+    ]
+}

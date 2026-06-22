@@ -1,0 +1,98 @@
+import SwiftUI
+
+struct StatusChip: View {
+    let label: String
+    let tone: ChipTone
+
+    enum ChipTone { case ok, warn, info, neutral }
+
+    var body: some View {
+        Text(label)
+            .font(.caption.weight(.semibold))
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(background.opacity(0.15))
+            .overlay(Capsule().stroke(background.opacity(0.45), lineWidth: 1))
+            .foregroundStyle(foreground)
+            .clipShape(Capsule())
+    }
+
+    private var background: Color {
+        switch tone {
+        case .ok: return AarflingoTheme.accent
+        case .warn: return AarflingoTheme.warn
+        case .info: return AarflingoTheme.info
+        case .neutral: return AarflingoTheme.muted
+        }
+    }
+
+    private var foreground: Color {
+        switch tone {
+        case .neutral: return AarflingoTheme.muted
+        default: return background
+        }
+    }
+}
+
+struct IntentHeroCard: View {
+    let prediction: TriadPrediction
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("CURRENT INTENT")
+                .font(.caption.weight(.bold))
+                .foregroundStyle(AarflingoTheme.muted)
+            Text(prediction.intentLabel)
+                .font(.title.bold())
+                .foregroundStyle(AarflingoTheme.text)
+            Text("\(prediction.emotion) · \(prediction.behavior)")
+                .font(.subheadline)
+                .foregroundStyle(AarflingoTheme.muted)
+            HStack(spacing: 16) {
+                ConfidenceRing(confidence: prediction.confidence, gate: prediction.gate)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Gate: \(prediction.gate)")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(gateColor)
+                    Text("Dog detected: \(prediction.dogPresent ? "yes" : "no")")
+                        .font(.caption)
+                        .foregroundStyle(AarflingoTheme.muted)
+                }
+                Spacer()
+            }
+        }
+        .aarflingoCard()
+    }
+
+    private var gateColor: Color {
+        switch prediction.gate {
+        case "pass": return AarflingoTheme.accent
+        case "reject": return AarflingoTheme.danger
+        default: return AarflingoTheme.warn
+        }
+    }
+}
+
+struct ConfidenceRing: View {
+    let confidence: Double
+    let gate: String
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .stroke(AarflingoTheme.border, lineWidth: 6)
+            Circle()
+                .trim(from: 0, to: confidence)
+                .stroke(ringColor, style: StrokeStyle(lineWidth: 6, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+            Text("\(Int(confidence * 100))%")
+                .font(.headline.bold())
+                .foregroundStyle(AarflingoTheme.text)
+        }
+        .frame(width: 72, height: 72)
+    }
+
+    private var ringColor: Color {
+        gate == "pass" ? AarflingoTheme.accent : AarflingoTheme.warn
+    }
+}

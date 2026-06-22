@@ -1,4 +1,4 @@
-.PHONY: setup test smoke dev runtime studio electron train verify
+.PHONY: setup test smoke dev runtime studio electron train verify mobile-android mobile-verify
 
 setup:
 	./setup.sh
@@ -39,3 +39,9 @@ studio:
 
 electron:
 	cd apps/aarf-studio && npm run electron:dev
+
+mobile-android:
+	./scripts/mobile/setup-android-wsl.sh
+
+mobile-verify:
+	./scripts/mobile/verify-mobile.sh

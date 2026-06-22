@@ -1,0 +1,79 @@
+name: Mobile
+
+on:
+  push:
+    branches: [main, dev]
+    paths:
+      - "apps/aarf-pocket-android/**"
+      - "apps/aarf-pocket-ios/**"
+      - "scripts/mobile/**"
+      - ".github/workflows/mobile.yml"
+  pull_request:
+    paths:
+      - "apps/aarf-pocket-android/**"
+      - "apps/aarf-pocket-ios/**"
+      - "scripts/mobile/**"
+      - ".github/workflows/mobile.yml"
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Accept licenses & install SDK components
+        run: |
+          yes | sdkmanager --licenses || true
+          sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Gradle wrapper
+        working-directory: apps/aarf-pocket-android
+        run: |
+          curl -fsSL -o /tmp/gradle-8.7-bin.zip https://services.gradle.org/distributions/gradle-8.7-bin.zip
+          unzip -qo /tmp/gradle-8.7-bin.zip -d /tmp
+          /tmp/gradle-8.7/bin/gradle wrapper --gradle-version 8.7
+
+      - name: Assemble debug APK
+        working-directory: apps/aarf-pocket-android
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: aarflingo-pocket-android-debug
+          path: apps/aarf-pocket-android/app/build/outputs/apk/debug/app-debug.apk
+
+  ios:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sync branding
+        run: apps/aarf-pocket-ios/scripts/sync-branding.sh
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        working-directory: apps/aarf-pocket-ios
+        run: xcodegen generate
+
+      - name: Build for iOS Simulator
+        working-directory: apps/aarf-pocket-ios
+        run: |
+          xcodebuild \
+            -project AarflingoPocket.xcodeproj \
+            -scheme AarflingoPocket \
+            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            -configuration Debug \
+            build \
+            CODE_SIGNING_ALLOWED=NO
