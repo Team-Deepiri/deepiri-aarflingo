@@ -56,15 +56,27 @@ struct IntentHeroCard: View {
             Text(prediction.intentLabel)
                 .font(.title.bold())
                 .foregroundStyle(AarflingoTheme.text)
-            Text("\(prediction.emotion) · \(prediction.behavior)")
+            HStack(spacing: 16) {
+                Label(prediction.emotionEmoji, title: { Text(prediction.emotion) })
+                Label(prediction.emotionEmoji, title: { Text(prediction.emotion) })
+                    .hidden()
+            }
+            .font(.subheadline)
+            .foregroundStyle(AarflingoTheme.muted)
+            Text("\(prediction.emotion) · \(prediction.behavior.replacingOccurrences(of: "_", with: " "))")
                 .font(.subheadline)
                 .foregroundStyle(AarflingoTheme.muted)
             HStack(spacing: 16) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Gate: \(prediction.gate)")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(gateColor)
-                    Text("Dog detected: \(prediction.dogPresent ? "yes" : "no")")
+                    Label(
+                        title: { Text("Gate: \(prediction.gate.uppercased())") },
+                        icon: {
+                            Image(systemName: prediction.gate == "pass" ? "checkmark.shield.fill" : "exclamationmark.shield.fill")
+                        }
+                    )
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(gateColor)
+                    Label("Dog detected: \(prediction.dogPresent ? "yes" : "no")", systemImage: "pawprint.fill")
                         .font(.caption)
                         .foregroundStyle(AarflingoTheme.muted)
                 }
