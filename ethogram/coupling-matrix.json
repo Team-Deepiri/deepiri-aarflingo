@@ -15,7 +15,13 @@
     {"intent": "explore", "emotion": "content", "behavior": "sniff_ground", "weight": 0.8},
     {"intent": "alert", "emotion": "excited", "behavior": "hard_stare", "weight": 0.7},
     {"intent": "alert", "emotion": "anxious", "behavior": "freeze", "weight": 0.55},
-    {"intent": "solicit_play", "emotion": "content", "behavior": "bark", "weight": 0.3}
+    {"intent": "solicit_play", "emotion": "content", "behavior": "bark", "weight": 0.3},
+    {"intent": "outside", "emotion": "anxious", "behavior": "freeze", "weight": 0.85},
+    {"intent": "outside", "emotion": "excited", "behavior": "tail_wag_loose", "weight": 0.75},
+    {"intent": "play", "emotion": "excited", "behavior": "play_bow", "weight": 0.9},
+    {"intent": "play", "emotion": "excited", "behavior": "tail_wag_loose", "weight": 0.88},
+    {"intent": "food", "emotion": "content", "behavior": "sniff_ground", "weight": 0.8},
+    {"intent": "food", "emotion": "excited", "behavior": "lip_lick", "weight": 0.65}
   ],
   "forbidden_pairs": [
     {"intent": "rest", "behavior": "play_bow"},
