@@ -51,6 +51,8 @@ fun DashboardScreen(vm: AppViewModel, modifier: Modifier = Modifier) {
             Spacer(Modifier.height(4.dp))
             SignalBar("IMU activity", 0.74f, AarflingoColors.Accent)
         }
+
+        ConfidenceTrendSection(vm)
     }
 }
 
