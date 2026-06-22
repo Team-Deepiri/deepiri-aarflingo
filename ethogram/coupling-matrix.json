@@ -1,0 +1,25 @@
+{
+  "version": "1.0",
+  "description": "Allowed intent-emotion-behavior triples with prior weights",
+  "triples": [
+    {"intent": "solicit_play", "emotion": "excited", "behavior": "play_bow", "weight": 0.9},
+    {"intent": "solicit_play", "emotion": "excited", "behavior": "tail_wag_loose", "weight": 0.85},
+    {"intent": "approach", "emotion": "content", "behavior": "tail_wag_loose", "weight": 0.7},
+    {"intent": "approach", "emotion": "anxious", "behavior": "lip_lick", "weight": 0.6},
+    {"intent": "avoid", "emotion": "fearful", "behavior": "tail_tucked", "weight": 0.85},
+    {"intent": "avoid", "emotion": "anxious", "behavior": "whale_eye", "weight": 0.75},
+    {"intent": "rest", "emotion": "calm", "behavior": "yawning", "weight": 0.5},
+    {"intent": "rest", "emotion": "content", "behavior": "sniff_ground", "weight": 0.4},
+    {"intent": "guard_resource", "emotion": "frustrated", "behavior": "hard_stare", "weight": 0.8},
+    {"intent": "guard_resource", "emotion": "conflicted", "behavior": "freeze", "weight": 0.65},
+    {"intent": "explore", "emotion": "content", "behavior": "sniff_ground", "weight": 0.8},
+    {"intent": "alert", "emotion": "excited", "behavior": "hard_stare", "weight": 0.7},
+    {"intent": "alert", "emotion": "anxious", "behavior": "freeze", "weight": 0.55},
+    {"intent": "solicit_play", "emotion": "content", "behavior": "bark", "weight": 0.3}
+  ],
+  "forbidden_pairs": [
+    {"intent": "rest", "behavior": "play_bow"},
+    {"intent": "avoid", "behavior": "play_bow"},
+    {"intent": "rest", "emotion": "excited"}
+  ]
+}
