@@ -26,6 +26,8 @@ artifacts/manifests/*
 *.onnx
 *.mlmodel
 *.mlpackage
+artifacts/feedback/*.db
+artifacts/models/
 
 # Data
 data/raw/
@@ -36,6 +38,7 @@ data/clips/
 # Env
 .env
 .env.*
+!**/.env.example
 
 # OS
 .DS_Store
