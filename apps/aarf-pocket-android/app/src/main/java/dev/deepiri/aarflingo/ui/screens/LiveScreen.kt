@@ -72,6 +72,13 @@ fun LiveScreen(vm: AppViewModel, modifier: Modifier = Modifier) {
                         textAlign = TextAlign.Center,
                         modifier = Modifier.padding(horizontal = 24.dp),
                     )
+                    if (vm.connected) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            LiveMetric("${(vm.prediction.confidence * 100).toInt()}%", "Confidence")
+                            LiveMetric("${vm.history.size}", "Readings")
+                            LiveMetric(vm.prediction.gate.uppercase(), "Gate")
+                        }
+                    }
                 }
             } else {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -108,5 +115,13 @@ fun LiveScreen(vm: AppViewModel, modifier: Modifier = Modifier) {
             Text("TriadNet pipeline · v0.1 UI mock", color = AarflingoColors.Muted, style = MaterialTheme.typography.bodySmall)
             Text("Camera, CoreML, and runtime connect land in v0.2", color = AarflingoColors.Muted.copy(alpha = 0.6f), style = MaterialTheme.typography.labelSmall)
         }
+    }
+}
+
+@Composable
+fun LiveMetric(value: String, label: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(value, fontWeight = FontWeight.Bold, color = AarflingoColors.Text, style = MaterialTheme.typography.titleSmall)
+        Text(label, color = AarflingoColors.Muted, fontSize = MaterialTheme.typography.labelSmall.fontSize)
     }
 }
