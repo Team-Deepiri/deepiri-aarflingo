@@ -92,11 +92,24 @@ struct LiveView: View {
                             }
                         }
                         .buttonStyle(PrimaryButtonStyle(accent: true))
+
+                        Button("Simulate") {
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                appState.refreshMock()
+                            }
+                        }
+                        .buttonStyle(PrimaryButtonStyle(accent: false))
                     }
 
-                    Text("ML models (TriadNet, vocal, vitals) will run on-device via CoreML in a future release.")
-                        .font(.caption)
-                        .foregroundStyle(AarflingoTheme.muted)
+                    VStack(spacing: 4) {
+                        Text("TriadNet pipeline · v0.1 UI mock")
+                            .font(.caption)
+                            .foregroundStyle(AarflingoTheme.muted)
+                        Text("Camera, CoreML, and runtime connect land in v0.2")
+                            .font(.caption2)
+                            .foregroundStyle(AarflingoTheme.muted.opacity(0.6))
+                    }
+                    .frame(maxWidth: .infinity)
                 }
                 .padding()
             }
