@@ -1,0 +1,23 @@
+services:
+  aarf-edge:
+    build:
+      context: ../..
+      dockerfile: infra/docker/jetson.Dockerfile
+    devices:
+      - /dev/video0:/dev/video0
+    volumes:
+      - ../../artifacts/bundles:/opt/aarflingo/artifacts/bundles:ro
+    environment:
+      - AARF_CAMERA=0
+    network_mode: host
+
+  aarf-runtime:
+    build:
+      context: ../..
+      dockerfile: infra/docker/runtime.Dockerfile
+    ports:
+      - "8765:8765"
+    devices:
+      - /dev/video0:/dev/video0
+    volumes:
+      - ../../artifacts:/opt/aarflingo/artifacts
