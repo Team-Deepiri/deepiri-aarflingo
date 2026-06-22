@@ -7,26 +7,48 @@ struct HistoryView: View {
         NavigationStack {
             List {
                 ForEach(appState.history) { item in
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(item.intent.capitalized)
-                            .font(.headline)
-                        Text("\(item.emotion) · \(item.behavior)")
-                            .font(.subheadline)
-                            .foregroundStyle(AarflingoTheme.muted)
-                        HStack {
-                            Text(item.timestamp, style: .relative)
-                            Spacer()
-                            Text("\(Int(item.confidence * 100))%")
-                                .foregroundStyle(AarflingoTheme.accent)
-                        }
-                        .font(.caption)
-                    }
-                    .listRowBackground(AarflingoTheme.card)
+                    HistoryRow(item: item)
+                        .listRowBackground(AarflingoTheme.card)
                 }
             }
             .scrollContentBackground(.hidden)
             .background(AarflingoTheme.gradient.ignoresSafeArea())
             .navigationTitle("History")
         }
+    }
+}
+
+struct HistoryRow: View {
+    let item: HistoryItem
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Text(item.intentEmoji)
+                .font(.title2)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(item.intent.capitalized)
+                    .font(.headline)
+                Text("\(item.emotion) · \(item.behavior.replacingOccurrences(of: "_", with: " "))")
+                    .font(.subheadline)
+                    .foregroundStyle(AarflingoTheme.muted)
+                HStack(spacing: 8) {
+                    Text(item.timestamp, style: .relative)
+                        .font(.caption2)
+                        .foregroundStyle(AarflingoTheme.muted.opacity(0.7))
+                    if item.confidence >= 0.8 {
+                        Image(systemName: "star.fill")
+                            .font(.system(size: 8))
+                            .foregroundStyle(AarflingoTheme.warn)
+                    }
+                }
+            }
+            Spacer()
+            VStack(alignment: .trailing, spacing: 2) {
+                Text("\(Int(item.confidence * 100))%")
+                    .font(.headline.weight(.bold))
+                    .foregroundStyle(item.confidence >= 0.8 ? AarflingoTheme.accent : AarflingoTheme.warn)
+            }
+        }
+        .padding(.vertical, 4)
     }
 }
