@@ -58,6 +58,7 @@ step "  runtime infer + feedback (pytest integration)"
 (cd "$ROOT/services/runtime" && PYTHONPATH="$ROOT:$PWD" poetry run pytest -q tests/test_server.py)
 
 step "studio build"
+bash "$ROOT/scripts/sync-branding.sh"
 (cd apps/aarf-studio && npm run build -s)
 
 kill "$RUNTIME_PID" 2>/dev/null || true

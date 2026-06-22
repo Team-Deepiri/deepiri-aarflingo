@@ -9,13 +9,13 @@ if (process.env.AARF_ELECTRON_NO_SANDBOX === "1") {
   app.commandLine.appendSwitch("no-sandbox");
 }
 
-const iconPath = path.join(__dirname, "../public/logo.png");
+const iconPath = path.join(__dirname, "../../../assets/branding/Aarflingo-logo.png");
 
 function createWindow() {
   const win = new BrowserWindow({
     width: 1280,
     height: 840,
-    title: "Deepiri AARF Studio",
+    title: "Aarflingo Studio",
     icon: nativeImage.createFromPath(iconPath),
     webPreferences: {
       preload: path.join(__dirname, "preload.mjs"),

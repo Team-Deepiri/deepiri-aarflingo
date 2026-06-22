@@ -12,6 +12,9 @@ train:
 pipeline:
 	./scripts/full_pipeline.sh
 
+branding:
+	./scripts/sync-branding.sh
+
 test:
 	python3 core/metrics/test_anticipate.py
 	PYTHONPATH=. python3 -m pytest -q core/tests

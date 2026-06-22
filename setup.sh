@@ -174,6 +174,9 @@ train_and_export() {
 }
 
 install_js() {
+  info "Syncing branding assets..."
+  bash "$REPO_ROOT/scripts/sync-branding.sh"
+
   info "Installing aarf-gate..."
   (cd lib/aarf-gate && if [ -f package-lock.json ]; then npm ci; else npm install; fi)
   (cd lib/aarf-gate && npm test)

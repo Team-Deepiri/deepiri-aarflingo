@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import aarflingoLogo from "@brand/Aarflingo-logo.png";
 import { CameraView } from "./components/CameraView";
 import { HistoryView } from "./components/HistoryView";
 import { IntentDashboard } from "./components/IntentDashboard";
@@ -10,10 +11,10 @@ export function App() {
     <div className="app">
       <header>
         <div className="brand">
-          <img src="/logo.png" alt="Deepiri" className="brand-logo" />
+          <img src={aarflingoLogo} alt="Aarflingo" className="brand-logo" />
           <div className="brand-text">
-            <h1>AARF Studio</h1>
-            <p className="brand-sub">DeepIRI · Adaptive Animal Response Framework</p>
+            <h1>Aarflingo Studio</h1>
+            <p className="brand-sub">Deepiri · Adaptive Animal Response Framework</p>
           </div>
         </div>
         <nav>

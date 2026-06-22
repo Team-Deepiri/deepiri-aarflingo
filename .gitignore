@@ -31,6 +31,10 @@ artifacts/manifests/*
 artifacts/feedback/*.db
 artifacts/models/
 
+# Studio branding copies (source: assets/branding/)
+apps/aarf-studio/public/aarflingo-logo.png
+apps/aarf-studio/public/logo.png
+
 # Data
 data/raw/
 data/clips/

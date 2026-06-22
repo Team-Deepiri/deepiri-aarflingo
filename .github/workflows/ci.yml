@@ -108,6 +108,9 @@ jobs:
           cache: npm
           cache-dependency-path: apps/aarf-studio/package-lock.json
 
+      - name: Sync branding
+        run: bash scripts/sync-branding.sh
+
       - name: Install dependencies
         working-directory: apps/aarf-studio
         run: npm ci

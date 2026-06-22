@@ -1,5 +1,6 @@
 # Aarflingo
-<img width="1024" height="1024" alt="Aarflingo-logo" src="https://github.com/user-attachments/assets/10ea553c-3157-471f-8227-72cab66166a2" />
+
+<img src="assets/branding/Aarflingo-logo.png" alt="Aarflingo" width="420" />
 
 **Deepiri's Aarflingo** — proactive canine intent forecasting: webcam → perception → triad model → feedback → retrain → edge deploy.
 
