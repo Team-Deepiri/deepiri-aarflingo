@@ -1,0 +1,24 @@
+# Canonical dog intent taxonomy (AARF triad — intent axis)
+version: "1.0"
+intents:
+  - id: approach
+    label: Approach
+    description: Moving toward a person, object, or stimulus
+  - id: avoid
+    label: Avoid
+    description: Moving away or increasing distance from stimulus
+  - id: solicit_play
+    label: Solicit play
+    description: Play bow, bounce, or toy presentation
+  - id: rest
+    label: Rest
+    description: Settling, lying down, low arousal stillness
+  - id: guard_resource
+    label: Guard resource
+    description: Protecting food, toy, or space
+  - id: explore
+    label: Explore
+    description: Sniffing, scanning environment without fixation
+  - id: alert
+    label: Alert
+    description: Orienting to novel or salient stimulus
