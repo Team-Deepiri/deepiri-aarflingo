@@ -4,7 +4,6 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -23,6 +22,8 @@ class MainActivity : ComponentActivity() {
                 surface = AarflingoColors.Card,
                 onBackground = AarflingoColors.Text,
                 onSurface = AarflingoColors.Text,
+                secondary = AarflingoColors.Info,
+                tertiary = AarflingoColors.Warn,
             )
             MaterialTheme(colorScheme = dark, typography = MaterialTheme.typography) {
                 AarflingoApp(viewModel = viewModel())
