@@ -10,6 +10,10 @@ final class AppState: ObservableObject {
     @Published var prediction: TriadPrediction = .demo
     @Published var history: [HistoryItem] = HistoryItem.samples
     @Published var liveOn = false
+    @Published var hapticsEnabled = true
+    @Published var autoConnect = false {
+        didSet { UserDefaults.standard.set(autoConnect, forKey: "autoConnect") }
+    }
     @Published var selectedIntentFilter: String? = nil
 
     var uniqueIntents: [String] {
@@ -32,6 +36,7 @@ final class AppState: ObservableObject {
 
     init() {
         runtimeURL = UserDefaults.standard.string(forKey: "runtimeURL") ?? "http://127.0.0.1:8765"
+        autoConnect = UserDefaults.standard.bool(forKey: "autoConnect")
     }
 
     func refreshMock() {
