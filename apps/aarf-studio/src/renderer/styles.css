@@ -33,9 +33,29 @@ main {
   max-width: 480px;
 }
 
+.gate-pass,
 .gate-pass {
   color: #3dd68c;
 }
+
+.gate-review { color: #f0c674; }
+.gate-reject { color: #f07178; }
+
+.camera-panel { max-width: 900px; }
+.camera-row { display: flex; gap: 1rem; flex-wrap: wrap; }
+.camera-feed {
+  width: 100%;
+  max-width: 480px;
+  border-radius: 8px;
+  background: #000;
+}
+.prediction-panel { min-width: 200px; }
+.feedback-row { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.75rem; }
+.feedback-row button { font-size: 0.85rem; }
+.toolbar { margin-top: 1rem; display: flex; gap: 0.5rem; }
+.meta { color: #8b9cb3; font-size: 0.9rem; }
+table { width: 100%; border-collapse: collapse; }
+td, th { padding: 0.35rem 0.5rem; text-align: left; border-bottom: 1px solid #2a3441; }
 
 .camera-placeholder {
   height: 180px;
