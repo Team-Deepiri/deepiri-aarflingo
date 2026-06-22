@@ -139,3 +139,50 @@ fun SignalBar(label: String, value: Float, color: Color = AarflingoColors.Accent
         }
     }
 }
+
+@Composable
+fun TriadChart(counts: List<Pair<String, Int>>) {
+    val total = counts.sumOf { it.second }.toFloat()
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        counts.forEach { (label, count) ->
+            val fraction = if (total > 0f) count.toFloat() / total else 0f
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    when (label) {
+                        "play" -> "\uD83C\uDFBE"
+                        "food" -> "\uD83C\uDF56"
+                        "outside" -> "\uD83D\uDEAA"
+                        "rest" -> "\uD83D\uDE34"
+                        "avoid" -> "\u26A0\uFE0F"
+                        "attention" -> "\uD83D\uDC3E"
+                        else -> "\uD83D\uDC15"
+                    },
+                    fontSize = 18.sp,
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(label.replaceFirstChar { it.uppercase() }, modifier = Modifier.width(80.dp), color = AarflingoColors.Text, style = MaterialTheme.typography.bodySmall)
+                Box(Modifier.weight(1f).height(20.dp).clip(RoundedCornerShape(99.dp)).background(AarflingoColors.Border)) {
+                    Box(
+                        Modifier
+                            .fillMaxWidth(fraction)
+                            .height(20.dp)
+                            .clip(RoundedCornerShape(99.dp))
+                            .background(
+                                when (label) {
+                                    "play" -> AarflingoColors.Accent
+                                    "food" -> AarflingoColors.Warn
+                                    "outside" -> AarflingoColors.Info
+                                    "rest" -> AarflingoColors.Muted
+                                    "avoid" -> AarflingoColors.Danger
+                                    "attention" -> AarflingoColors.Purple
+                                    else -> AarflingoColors.Info
+                                },
+                            ),
+                    )
+                }
+                Spacer(Modifier.width(8.dp))
+                Text("$count", color = AarflingoColors.Muted, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold, modifier = Modifier.width(30.dp))
+            }
+        }
+    }
+}
