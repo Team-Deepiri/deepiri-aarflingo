@@ -20,15 +20,17 @@
 
 Then in studio → **Live camera** → **WSL bridge** → **Start**. See [docs/WEBCAM.md](docs/WEBCAM.md).
 
-See [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) and [docs/ELECTRON.md](docs/ELECTRON.md).
+See [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md), [docs/ELECTRON.md](docs/ELECTRON.md), and [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Architecture
 
 | Path | Role |
 |------|------|
 | `ethogram/` | Intent / emotion / behavior taxonomy + coupling matrix |
-| `core/feature_spec.py` | 20-dim perception vector layout |
-| `services/perception` | OpenCV motion dog detect, gaze zones, scene |
+| `core/feature_spec.py` | 28-dim perception + modality vector layout |
+| `lib/aarf-physio` | ECG/IMU vitals encoder (PhysioZoo-shaped) |
+| `services/audio` | Bark / arousal-valence vocal encoder |
+| `services/perception` | OpenCV + YOLO dog detect, gaze zones, scene |
 | `services/forecast` | PyTorch TriadNet (BiLSTM-style MLP), train + infer |
 | `services/feedback` | SQLite prediction log + human corrections |
 | `services/runtime` | FastAPI + WebSocket live webcam inference |
