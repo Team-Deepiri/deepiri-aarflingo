@@ -1,22 +1,24 @@
-"""Pose keypoint proxy from bbox geometry."""
+"""Pose proxy from bounding box geometry."""
 from __future__ import annotations
 
 from dataclasses import dataclass
 
-from app.dog_detect import BBox
+from .dog_detect import BBox
 
 
 @dataclass
-class Pose:
-    tail_base: tuple[float, float]
-    neck: tuple[float, float]
-    nose: tuple[float, float]
+class PoseEstimate:
+    aspect_ratio: float
+    height_ratio: float
+    center_y: float
+    leaning_forward: float
 
 
-def estimate_pose(bbox: BBox) -> Pose:
-    cx = bbox.x + bbox.w / 2
-    return Pose(
-        tail_base=(bbox.x + 0.1, bbox.y + bbox.h * 0.5),
-        neck=(cx, bbox.y + bbox.h * 0.35),
-        nose=(bbox.x + bbox.w * 0.85, bbox.y + bbox.h * 0.25),
+def estimate_pose(bbox: BBox) -> PoseEstimate:
+    aspect = bbox.w / max(bbox.h, 1e-6)
+    return PoseEstimate(
+        aspect_ratio=aspect,
+        height_ratio=bbox.h,
+        center_y=bbox.cy,
+        leaning_forward=max(0.0, 0.65 - bbox.cy),
     )
