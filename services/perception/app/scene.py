@@ -1,21 +1,26 @@
-"""Scene context tags from simple statistics."""
+"""Scene-level motion and arousal proxies."""
 from __future__ import annotations
 
 from dataclasses import dataclass
 
+import numpy as np
+
 
 @dataclass
-class SceneContext:
-    indoor: bool
+class SceneSignals:
     motion_level: float
+    brightness: float
+    contrast: float
     tags: list[str]
 
 
-def classify_scene(frame_bytes: bytes) -> SceneContext:
-    mean_val = sum(frame_bytes) / max(len(frame_bytes), 1) / 255.0
-    indoor = mean_val < 0.6
-    motion = min(1.0, mean_val)
-    tags = ["indoor"] if indoor else ["outdoor"]
-    if motion > 0.5:
-        tags.append("active")
-    return SceneContext(indoor=indoor, motion_level=motion, tags=tags)
+def classify_scene(frame_bgr: np.ndarray, motion_level: float = 0.0) -> SceneSignals:
+    gray = np.mean(frame_bgr, axis=2)
+    brightness = float(np.mean(gray) / 255.0)
+    contrast = float(np.std(gray) / 128.0)
+    tags: list[str] = []
+    if motion_level > 0.08:
+        tags.append("motion")
+    if brightness < 0.25:
+        tags.append("low_light")
+    return SceneSignals(motion_level=motion_level, brightness=brightness, contrast=contrast, tags=tags)
