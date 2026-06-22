@@ -15,6 +15,15 @@ final class AppState: ObservableObject {
         Dictionary(grouping: history, by: \.intent).mapValues(\.count)
     }
 
+    var uniqueIntents: [String] {
+        Array(Set(history.map(\.intent))).sorted()
+    }
+
+    var averageConfidence: Double {
+        guard !history.isEmpty else { return 0 }
+        return history.map(\.confidence).reduce(0, +) / Double(history.count)
+    }
+
     init() {
         runtimeURL = UserDefaults.standard.string(forKey: "runtimeURL") ?? "http://127.0.0.1:8765"
     }

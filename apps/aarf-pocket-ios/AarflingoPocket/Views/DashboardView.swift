@@ -32,8 +32,10 @@ struct DashboardView: View {
                         Text("Feedback metrics")
                             .font(.headline)
                         MetricRow(label: "Predictions logged", value: "\(appState.history.count)")
+                        MetricRow(label: "Avg. confidence", value: "\(Int(appState.averageConfidence * 100))%")
+                        MetricRow(label: "Unique intents", value: "\(appState.uniqueIntents.count)")
                         MetricRow(label: "Positive ratings", value: "12")
-                        MetricRow(label: "Retrain ready", value: "No")
+                        MetricRow(label: "Retrain ready", value: appState.history.count >= 20 ? "Yes" : "Need \(20 - appState.history.count) more")
                     }
                     .aarflingoCard()
                 }
