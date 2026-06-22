@@ -69,7 +69,18 @@ data class HistoryItem(
     val behavior: String,
     val confidence: Float,
     val timestamp: Date = Date(),
-)
+) {
+    val intentEmoji: String
+        get() = when (intent) {
+            "play" -> "\uD83C\uDFBE"
+            "food" -> "\uD83C\uDF56"
+            "outside" -> "\uD83D\uDEAA"
+            "rest" -> "\uD83D\uDE34"
+            "avoid" -> "\u26A0\uFE0F"
+            "attention" -> "\uD83D\uDC3E"
+            else -> "\uD83D\uDC15"
+        }
+}
 
 class AppViewModel : ViewModel() {
     var runtimeUrl by mutableStateOf("http://10.0.2.2:8765")
@@ -83,6 +94,10 @@ class AppViewModel : ViewModel() {
         listOf(
             HistoryItem(intent = "play", emotion = "excited", behavior = "play_bow", confidence = 0.89f),
             HistoryItem(intent = "food", emotion = "content", behavior = "sniff_ground", confidence = 0.76f),
+            HistoryItem(intent = "rest", emotion = "calm", behavior = "yawning", confidence = 0.93f),
+            HistoryItem(intent = "outside", emotion = "anxious", behavior = "freeze", confidence = 0.68f),
+            HistoryItem(intent = "play", emotion = "excited", behavior = "play_bow", confidence = 0.95f),
+            HistoryItem(intent = "attention", emotion = "happy", behavior = "paw_raise", confidence = 0.82f),
         ),
     )
 
