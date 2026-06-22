@@ -58,6 +58,23 @@ fun HistoryScreen(vm: AppViewModel, modifier: Modifier = Modifier) {
         )
 
         if (vm.history.isNotEmpty()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                FilterChip("All", vm.selectedIntentFilter == null) { vm.selectedIntentFilter = null }
+                vm.uniqueIntents.forEach { intent ->
+                    FilterChip(
+                        "${emoji(intent)} ${intent.replaceFirstChar { it.uppercase() }}",
+                        vm.selectedIntentFilter == intent,
+                    ) { vm.selectedIntentFilter = intent }
+                }
+            }
+
+            Spacer(Modifier.height(4.dp))
+
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -91,9 +108,19 @@ fun HistoryScreen(vm: AppViewModel, modifier: Modifier = Modifier) {
                     )
                 }
             }
+        }
 
-            Spacer(Modifier.height(8.dp))
-
+        if (displayedItems.isEmpty()) {
+            Column(
+                modifier = Modifier.fillMaxSize().padding(top = 100.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                Text("\uD83D\uDD53", fontSize = 48.dp.value)
+                Text("No history yet", style = MaterialTheme.typography.titleMedium, color = AarflingoColors.Muted)
+                Text("Start a live session to see predictions here", color = AarflingoColors.Muted.copy(alpha = 0.6f), style = MaterialTheme.typography.bodySmall)
+            }
+        } else {
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
                 modifier = Modifier.padding(horizontal = 16.dp),
@@ -157,4 +184,14 @@ fun FilterChip(label: String, selected: Boolean, onClick: () -> Unit) {
             fontWeight = FontWeight.SemiBold,
         )
     }
+}
+
+private fun emoji(intent: String): String = when (intent) {
+    "play" -> "\uD83C\uDFBE"
+    "food" -> "\uD83C\uDF56"
+    "outside" -> "\uD83D\uDEAA"
+    "rest" -> "\uD83D\uDE34"
+    "avoid" -> "\u26A0\uFE0F"
+    "attention" -> "\uD83D\uDC3E"
+    else -> "\uD83D\uDC15"
 }
