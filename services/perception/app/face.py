@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from app.pose import Pose
+from .pose import PoseEstimate as Pose
 
 
 @dataclass
