@@ -59,10 +59,10 @@ Calibrate gaze zones for your home: edit `infra/configs/zones.default.yaml` (doo
 ## Training & retrain
 
 ```bash
-./scripts/train_pipeline.sh          # train + metrics JSON + ONNX export
-./scripts/full_pipeline.sh           # all tests + train + runtime API + studio build
+./scripts/train_aarflingo.sh         # train → checkpoint + metrics + ONNX + verify infer
+./scripts/verify_aarflingo.sh        # tests + train + runtime API + studio build
 make train
-make pipeline
+make verify
 ```
 
 Math reference: [docs/MATH.md](docs/MATH.md) · notebooks: [notebooks/](notebooks/)

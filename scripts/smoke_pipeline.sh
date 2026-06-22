@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Quick smoke: perception + train artifacts + feedback (no long test suite).
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
@@ -6,13 +7,13 @@ cd "$ROOT"
 echo "==> core metrics"
 python3 core/metrics/test_anticipate.py
 
-echo "==> perception pipeline"
+echo "==> perception"
 cd services/perception
-PYTHONPATH="$ROOT:$PWD" poetry run pytest -q 2>/dev/null || PYTHONPATH="$ROOT:$PWD" python -m pytest -q
+PYTHONPATH="$ROOT:$PWD" poetry run pytest -q
 
-echo "==> forecast train + checkpoint"
-cd "$ROOT/services/forecast"
-PYTHONPATH="$ROOT:$PWD" poetry run aarflingo-forecast build-default
+echo "==> train aarflingo model + verify artifacts"
+cd "$ROOT"
+EPOCHS="${EPOCHS:-15}" bash "$ROOT/scripts/train_aarflingo.sh"
 
 echo "==> feedback store"
 cd "$ROOT/services/feedback"
@@ -27,6 +28,6 @@ print(s.metrics())
 "
 
 echo "==> runtime health (if running)"
-curl -sf http://127.0.0.1:8765/health >/dev/null && echo "runtime ok" || echo "runtime not running (start ./scripts/run_runtime.sh)"
+curl -sf http://127.0.0.1:8765/health >/dev/null && echo "runtime ok" || echo "runtime not running (./scripts/run_runtime.sh)"
 
 echo "smoke ok"

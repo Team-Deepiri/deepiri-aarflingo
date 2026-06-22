@@ -1,6 +1,8 @@
 """Export TriadNet checkpoint to ONNX."""
 from __future__ import annotations
 
+import json
+from datetime import datetime, timezone
 from pathlib import Path
 
 import torch
@@ -47,4 +49,17 @@ def export_onnx(out_dir: Path, model_name: str = "triad", checkpoint: Path | Non
         dynamic_axes={"input": {0: "batch"}},
         opset_version=17,
     )
+    manifest = {
+        "model": model_name,
+        "format": "onnx",
+        "opset": 17,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "checkpoint": str(ckpt.resolve()) if ckpt.exists() else None,
+        "intents": intents,
+        "emotions": emotions,
+        "behaviors": behaviors,
+        "input_shape": [1, 300],
+        "outputs": ["intent_probs", "emotion_probs", "behavior_probs"],
+    }
+    (out_dir / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     return out_path

@@ -17,7 +17,9 @@ git checkout -b feat/my-change
 ./setup.sh              # system + project deps + default model
 ./setup.sh --run        # install and launch Electron studio
 make test               # unit tests across services
-make smoke              # end-to-end smoke pipeline
+make train              # train checkpoint + ONNX + artifact verify
+make smoke              # quick perception + train + feedback smoke
+make verify             # full test suite + train + runtime + studio build
 ```
 
 ## Run live stack

@@ -1,4 +1,4 @@
-.PHONY: setup test smoke dev runtime studio electron train pipeline
+.PHONY: setup test smoke dev runtime studio electron train verify
 
 setup:
 	./setup.sh
@@ -7,10 +7,10 @@ setup-run:
 	./setup.sh --run
 
 train:
-	./scripts/train_pipeline.sh
+	./scripts/train_aarflingo.sh
 
-pipeline:
-	./scripts/full_pipeline.sh
+verify:
+	./scripts/verify_aarflingo.sh
 
 branding:
 	./scripts/sync-branding.sh

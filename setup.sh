@@ -167,10 +167,8 @@ install_python_services() {
 }
 
 train_and_export() {
-  info "Training default TriadNet checkpoint (first run ~1–2 min)..."
-  (cd services/forecast && poetry run aarflingo-forecast build-default)
-  info "Exporting ONNX bundle..."
-  (cd services/forecast && poetry run aarflingo-forecast export-onnx --out "$REPO_ROOT/artifacts/bundles/default/studio")
+  info "Training TriadNet + exporting ONNX (first run ~1–2 min)..."
+  EPOCHS="${EPOCHS:-30}" bash "$REPO_ROOT/scripts/train_aarflingo.sh"
 }
 
 install_js() {

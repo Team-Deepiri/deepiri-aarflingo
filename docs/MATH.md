@@ -62,7 +62,7 @@ where \(\hat{y}\) are argmax indices.
 ## Training pipeline
 
 ```bash
-./scripts/train_pipeline.sh
+./scripts/train_aarflingo.sh
 # or
 cd services/forecast && poetry run aarflingo-forecast train --epochs 30
 ```

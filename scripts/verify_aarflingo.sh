@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
-# End-to-end verification: unit tests → train → ONNX → runtime API smoke.
+# Run tests, train model artifacts, and prove runtime + studio work.
+#
+#   ./scripts/verify_aarflingo.sh
+#   EPOCHS=12 ./scripts/verify_aarflingo.sh
+#
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
@@ -20,24 +24,19 @@ cleanup() {
 }
 trap cleanup EXIT
 
-step "core metrics + math tests"
+step "unit tests (core + services + aarf-gate)"
 python3 core/metrics/test_anticipate.py
 PYTHONPATH="$ROOT" python3 -m pytest -q core/tests
-
-step "python service unit tests"
 for svc in ingest perception forecast feedback runtime; do
-  step "  pytest services/$svc"
   (cd "services/$svc" && PYTHONPATH="$ROOT:$PWD" poetry run pytest -q)
 done
-
-step "aarf-gate"
 (cd lib/aarf-gate && npm test -s)
 
-step "train TriadNet + export ONNX"
-EPOCHS="${EPOCHS:-15}" bash "$ROOT/scripts/train_pipeline.sh"
+step "train model + export ONNX + verify artifacts"
+EPOCHS="${EPOCHS:-20}" bash "$ROOT/scripts/train_aarflingo.sh"
 
-step "runtime API smoke (start server)"
-RUNTIME_LOG="${TMPDIR:-/tmp}/aarflingo-full-pipeline-runtime.log"
+step "runtime live smoke"
+RUNTIME_LOG="${TMPDIR:-/tmp}/aarflingo-runtime-verify.log"
 (
   cd "$ROOT/services/runtime"
   export PYTHONPATH="$ROOT:$ROOT/services/runtime"
@@ -47,14 +46,10 @@ RUNTIME_LOG="${TMPDIR:-/tmp}/aarflingo-full-pipeline-runtime.log"
 RUNTIME_PID="$(cat "${TMPDIR:-/tmp}/aarflingo-runtime.pid")"
 
 for _ in $(seq 1 60); do
-  if curl -sf http://127.0.0.1:8765/health >/dev/null 2>&1; then
-    break
-  fi
+  curl -sf http://127.0.0.1:8765/health >/dev/null 2>&1 && break
   sleep 0.5
 done
-curl -sf http://127.0.0.1:8765/health | python3 -c "import json,sys; d=json.load(sys.stdin); assert d.get('ok')"
-
-step "  runtime infer + feedback (pytest integration)"
+curl -sf http://127.0.0.1:8765/health | python3 -c "import json,sys; d=json.load(sys.stdin); assert d['ok']"
 (cd "$ROOT/services/runtime" && PYTHONPATH="$ROOT:$PWD" poetry run pytest -q tests/test_server.py)
 
 step "studio build"
@@ -65,4 +60,4 @@ kill "$RUNTIME_PID" 2>/dev/null || true
 wait "$RUNTIME_PID" 2>/dev/null || true
 RUNTIME_PID=""
 
-step "full pipeline OK"
+step "aarflingo verify OK"
