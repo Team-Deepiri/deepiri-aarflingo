@@ -11,10 +11,22 @@ enum AarflingoTheme {
     static let danger = Color(red: 0.94, green: 0.44, blue: 0.47)
     static let info = Color(red: 0.42, green: 0.71, blue: 1.0)
 
+    static let accentGradient = LinearGradient(
+        colors: [accent, Color(red: 0.18, green: 0.70, blue: 0.45)],
+        startPoint: .leading,
+        endPoint: .trailing
+    )
+
     static let gradient = LinearGradient(
         colors: [Color(red: 0.1, green: 0.16, blue: 0.21), bg],
         startPoint: .topLeading,
         endPoint: .bottomTrailing
+    )
+
+    static let surfaceGradient = LinearGradient(
+        colors: [card, Color(red: 0.06, green: 0.10, blue: 0.14)],
+        startPoint: .top,
+        endPoint: .bottom
     )
 }
 
@@ -22,7 +34,7 @@ struct CardStyle: ViewModifier {
     func body(content: Content) -> some View {
         content
             .padding()
-            .background(AarflingoTheme.card)
+            .background(AarflingoTheme.surfaceGradient)
             .overlay(RoundedRectangle(cornerRadius: 14).stroke(AarflingoTheme.border, lineWidth: 1))
             .clipShape(RoundedRectangle(cornerRadius: 14))
     }
