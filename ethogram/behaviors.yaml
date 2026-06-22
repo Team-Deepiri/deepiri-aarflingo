@@ -1,0 +1,33 @@
+# Observable behavior labels (AARF triad — behavior axis)
+version: "1.0"
+behaviors:
+  - id: tail_wag_loose
+    label: Loose tail wag
+    modality: body
+  - id: tail_tucked
+    label: Tail tucked
+    modality: body
+  - id: play_bow
+    label: Play bow
+    modality: body
+  - id: lip_lick
+    label: Lip lick
+    modality: face
+  - id: whale_eye
+    label: Whale eye
+    modality: face
+  - id: hard_stare
+    label: Hard stare
+    modality: gaze
+  - id: yawning
+    label: Yawning
+    modality: face
+  - id: sniff_ground
+    label: Sniff ground
+    modality: scene
+  - id: freeze
+    label: Freeze
+    modality: body
+  - id: bark
+    label: Bark
+    modality: vocal
