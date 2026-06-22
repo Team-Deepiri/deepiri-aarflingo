@@ -1,0 +1,50 @@
+"""Export TriadNet checkpoint to ONNX."""
+from __future__ import annotations
+
+from pathlib import Path
+
+import torch
+import torch.nn as nn
+
+from .labels import behavior_labels, emotion_labels, intent_labels
+from .triad_model import TriadNet, flatten_sequence
+
+
+class _OnnxWrapper(nn.Module):
+    def __init__(self, model: TriadNet) -> None:
+        super().__init__()
+        self.model = model
+
+    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        li, le, lb = self.model(x)
+        return torch.softmax(li, dim=-1), torch.softmax(le, dim=-1), torch.softmax(lb, dim=-1)
+
+
+def default_checkpoint() -> Path:
+    return Path(__file__).resolve().parents[3] / "artifacts" / "models" / "default" / "triad.pt"
+
+
+def export_onnx(out_dir: Path, model_name: str = "triad", checkpoint: Path | None = None) -> Path:
+    intents = intent_labels()
+    emotions = emotion_labels()
+    behaviors = behavior_labels()
+    model = TriadNet(intents, emotions, behaviors)
+    ckpt = checkpoint or default_checkpoint()
+    if ckpt.exists():
+        model.load_state_dict(torch.load(ckpt, map_location="cpu", weights_only=True))
+    wrapped = _OnnxWrapper(model)
+    wrapped.eval()
+
+    dummy = flatten_sequence([[0.0] * 20] * 15)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_path = out_dir / f"{model_name}.onnx"
+    torch.onnx.export(
+        wrapped,
+        dummy,
+        str(out_path),
+        input_names=["input"],
+        output_names=["intent_probs", "emotion_probs", "behavior_probs"],
+        dynamic_axes={"input": {0: "batch"}},
+        opset_version=17,
+    )
+    return out_path
