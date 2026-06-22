@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+dist/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Swift / Xcode
+.build/
+DerivedData/
+*.xcuserstate
+
+# Artifacts
+artifacts/bundles/*
+!artifacts/bundles/.gitkeep
+artifacts/manifests/*
+!artifacts/manifests/.gitkeep
+*.onnx
+*.mlmodel
+*.mlpackage
+
+# Data
+data/raw/
+data/clips/
+*.mp4
+*.mov
+
+# Env
+.env
+.env.*
+
+# OS
+.DS_Store
+Thumbs.db
