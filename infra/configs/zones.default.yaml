@@ -1,0 +1,4 @@
+# Normalized [x, y, w, h] regions in frame (0–1). Calibrate per home in Studio.
+door:  { x: 0.75, y: 0.05, w: 0.22, h: 0.45 }
+toy:   { x: 0.05, y: 0.55, w: 0.25, h: 0.35 }
+bowl:  { x: 0.40, y: 0.70, w: 0.20, h: 0.25 }
