@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://deepiri.dev/aarflingo/triad/event.json",
+  "title": "TriadEvent",
+  "type": "object",
+  "required": ["event_id", "session_id", "ts_ms", "clip_uri"],
+  "properties": {
+    "event_id": {"type": "string"},
+    "session_id": {"type": "string"},
+    "ts_ms": {"type": "integer", "minimum": 0},
+    "clip_uri": {"type": "string"},
+    "prediction": {"$ref": "prediction.json"},
+    "features": {
+      "type": "object",
+      "properties": {
+        "gaze_aversion": {"type": "number"},
+        "tail_angle_deg": {"type": "number"},
+        "arousal_proxy": {"type": "number"}
+      }
+    }
+  },
+  "additionalProperties": false
+}
