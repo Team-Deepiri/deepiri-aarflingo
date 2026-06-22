@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [ingest, perception, forecast]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install deps
+        run: pip install typer pytest
+      - name: Unit tests
+        working-directory: services/${{ matrix.service }}
+        run: |
+          if [ -d tests ]; then PYTHONPATH=. pytest -q; fi
+
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Test aarf-gate
+        working-directory: lib/aarf-gate
+        run: |
+          npm install
+          npm test
