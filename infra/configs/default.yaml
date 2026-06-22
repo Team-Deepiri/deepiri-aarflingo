@@ -1,0 +1,26 @@
+# Shared runtime defaults
+project: aarflingo
+version: "0.1.0"
+
+paths:
+  data_root: ./data
+  artifacts_root: ./artifacts
+  ethogram_root: ./ethogram
+
+ingest:
+  clip_seconds: 3.0
+  pre_roll_seconds: 0.5
+  sample_fps: 15
+
+perception:
+  min_dog_confidence: 0.4
+  gaze_aversion_threshold: 0.6
+
+forecast:
+  review_confidence_threshold: 0.5
+  coupling_loss_weight: 0.3
+  batch_size: 32
+  epochs: 10
+
+gate:
+  coupling_matrix: ethogram/coupling-matrix.json
