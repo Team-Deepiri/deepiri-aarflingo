@@ -123,6 +123,13 @@ fun LiveScreen(vm: AppViewModel, modifier: Modifier = Modifier) {
             ) {
                 Text(if (vm.liveOn) "Stop session" else "Start session")
             }
+            Button(
+                onClick = { vm.refreshMock() },
+                colors = ButtonDefaults.buttonColors(containerColor = AarflingoColors.Card),
+                modifier = Modifier.weight(1f),
+            ) {
+                Text("Simulate", color = AarflingoColors.Text)
+            }
         }
 
         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
