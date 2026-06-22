@@ -1,0 +1,37 @@
+{
+  "cases": [
+    {
+      "name": "play_bow_high_confidence",
+      "prediction": {
+        "intent_id": "solicit_play",
+        "emotion_id": "excited",
+        "behavior_id": "play_bow",
+        "confidence": 0.92,
+        "ts_ms": 1000
+      },
+      "expected_gate": "pass"
+    },
+    {
+      "name": "rest_with_play_bow_forbidden",
+      "prediction": {
+        "intent_id": "rest",
+        "emotion_id": "calm",
+        "behavior_id": "play_bow",
+        "confidence": 0.8,
+        "ts_ms": 2000
+      },
+      "expected_gate": "reject"
+    },
+    {
+      "name": "low_confidence_needs_review",
+      "prediction": {
+        "intent_id": "explore",
+        "emotion_id": "content",
+        "behavior_id": "sniff_ground",
+        "confidence": 0.35,
+        "ts_ms": 3000
+      },
+      "expected_gate": "review"
+    }
+  ]
+}
