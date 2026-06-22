@@ -64,7 +64,7 @@ where \(\hat{y}\) are argmax indices.
 ```bash
 ./scripts/train_aarflingo.sh
 # or
-cd services/forecast && poetry run aarflingo-forecast train --epochs 30
+poetry run aarflingo-forecast train --epochs 30
 ```
 
 Outputs:

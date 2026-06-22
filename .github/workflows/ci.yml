@@ -36,34 +36,42 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-          cache: pip
 
-      - name: Install tooling
-        run: python -m pip install poetry pytest pyyaml numpy
+      - name: Install Poetry
+        run: python -m pip install poetry
+
+      - name: Cache Poetry virtualenv
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pypoetry
+            ~/.cache/pip
+          key: poetry-${{ runner.os }}-${{ hashFiles('poetry.lock') }}
+          restore-keys: |
+            poetry-${{ runner.os }}-
+
+      - name: Install Python dependencies
+        run: poetry install --no-interaction --no-ansi
 
       - name: Core tests
         env:
           PYTHONPATH: ${{ github.workspace }}
         run: |
           python core/metrics/test_anticipate.py
-          python -m pytest -q core/tests
-          cd lib/aarf-physio && python -m pip install poetry && poetry install --no-interaction --no-ansi && poetry run pytest -q
+          poetry run pytest -q core/tests
+          PYTHONPATH="${{ github.workspace }}:${{ github.workspace }}/lib/aarf-physio" poetry run pytest -q lib/aarf-physio/tests
 
       - name: Service tests
         run: |
           set -euo pipefail
           for svc in ingest perception forecast feedback runtime audio; do
             echo "==> services/$svc"
-            (
-              cd "${{ github.workspace }}/services/$svc"
-              poetry install --no-interaction --no-ansi
-              export PYTHONPATH="${{ github.workspace }}:${{ github.workspace }}/services/$svc"
-              if [ -d tests ]; then
-                poetry run pytest -q
-              else
-                echo "No tests/ directory — install-only check passed"
-              fi
-            )
+            export PYTHONPATH="${{ github.workspace }}:${{ github.workspace }}/services/$svc"
+            if [ -d "services/$svc/tests" ]; then
+              poetry run pytest -q "services/$svc/tests"
+            else
+              echo "No tests/ directory — install-only check passed"
+            fi
           done
 
   js:

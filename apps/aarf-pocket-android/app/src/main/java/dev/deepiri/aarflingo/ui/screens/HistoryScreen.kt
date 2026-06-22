@@ -29,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import dev.deepiri.aarflingo.data.AppViewModel
 import dev.deepiri.aarflingo.ui.components.AarflingoCard
 import dev.deepiri.aarflingo.ui.theme.AarflingoColors
@@ -116,7 +117,7 @@ fun HistoryScreen(vm: AppViewModel, modifier: Modifier = Modifier) {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                Text("\uD83D\uDD53", fontSize = 48.dp.value)
+                Text("\uD83D\uDD53", fontSize = 48.sp)
                 Text("No history yet", style = MaterialTheme.typography.titleMedium, color = AarflingoColors.Muted)
                 Text("Start a live session to see predictions here", color = AarflingoColors.Muted.copy(alpha = 0.6f), style = MaterialTheme.typography.bodySmall)
             }
@@ -149,7 +150,7 @@ fun HistoryScreen(vm: AppViewModel, modifier: Modifier = Modifier) {
                                             style = MaterialTheme.typography.labelSmall,
                                         )
                                         if (item.confidence >= 0.8f) {
-                                            Text("\u2B50", fontSize = 10.dp.value)
+                                            Text("\u2B50", fontSize = 10.sp)
                                         }
                                     }
                                 }

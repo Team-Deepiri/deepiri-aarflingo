@@ -27,6 +27,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import dev.deepiri.aarflingo.data.AppViewModel
 import dev.deepiri.aarflingo.ui.components.AarflingoCard
 import dev.deepiri.aarflingo.ui.components.ChipTone
@@ -86,7 +87,7 @@ fun LiveScreen(vm: AppViewModel, modifier: Modifier = Modifier) {
                 }
             } else {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("\uD83D\uDCF9", fontSize = 48.dp.value)
+                    Text("\uD83D\uDCF9", fontSize = 48.sp)
                     Text("Tap Start to preview", color = AarflingoColors.Muted)
                     Text("Live dog intent inference", color = AarflingoColors.Muted.copy(alpha = 0.6f), style = MaterialTheme.typography.bodySmall)
                 }

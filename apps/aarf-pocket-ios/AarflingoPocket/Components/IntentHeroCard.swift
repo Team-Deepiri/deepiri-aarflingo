@@ -56,13 +56,6 @@ struct IntentHeroCard: View {
             Text(prediction.intentLabel)
                 .font(.title.bold())
                 .foregroundStyle(AarflingoTheme.text)
-            HStack(spacing: 16) {
-                Label(prediction.emotionEmoji, title: { Text(prediction.emotion) })
-                Label(prediction.emotionEmoji, title: { Text(prediction.emotion) })
-                    .hidden()
-            }
-            .font(.subheadline)
-            .foregroundStyle(AarflingoTheme.muted)
             Text("\(prediction.emotion) · \(prediction.behavior.replacingOccurrences(of: "_", with: " "))")
                 .font(.subheadline)
                 .foregroundStyle(AarflingoTheme.muted)

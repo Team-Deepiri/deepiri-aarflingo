@@ -38,8 +38,6 @@ done
 REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
 cd "$REPO_ROOT"
 
-PYTHON_SERVICES=(ingest labeler perception forecast artifact-bridge feedback runtime edge-runtime audio)
-
 kill_repo_processes() {
   declare -A seen=()
   local -a pids=()
@@ -159,17 +157,8 @@ ensure_poetry() {
 }
 
 install_python_services() {
-  local svc
-  for svc in "${PYTHON_SERVICES[@]}"; do
-    info "Poetry install: services/$svc"
-    if [ "$svc" = "perception" ]; then
-      (cd "services/$svc" && poetry install --no-interaction --no-ansi -E yolo)
-    else
-      (cd "services/$svc" && poetry install --no-interaction --no-ansi)
-    fi
-  done
-  info "Poetry install: lib/aarf-physio"
-  (cd lib/aarf-physio && poetry install --no-interaction --no-ansi)
+  info "Poetry install (root lock, YOLO extra)"
+  poetry install --no-interaction --no-ansi -E yolo
 }
 
 train_and_export() {
@@ -219,7 +208,7 @@ run_stack() {
 
   info "Starting AARF runtime in background..."
   (
-    cd "$REPO_ROOT/services/runtime"
+    cd "$REPO_ROOT"
     export PYTHONPATH="$REPO_ROOT:$REPO_ROOT/services/runtime"
     nohup poetry run aarflingo-runtime --host 127.0.0.1 --port 8765 \
       >"$runtime_log" 2>&1 &

@@ -26,9 +26,9 @@ trap cleanup EXIT
 
 step "unit tests (core + services + aarf-gate)"
 python3 core/metrics/test_anticipate.py
-PYTHONPATH="$ROOT" python3 -m pytest -q core/tests
+PYTHONPATH="$ROOT" poetry run pytest -q core/tests
 for svc in ingest perception forecast feedback runtime; do
-  (cd "services/$svc" && PYTHONPATH="$ROOT:$PWD" poetry run pytest -q)
+  PYTHONPATH="$ROOT:$ROOT/services/$svc" poetry run pytest -q "services/$svc/tests"
 done
 (cd lib/aarf-gate && npm test -s)
 
@@ -38,7 +38,6 @@ SKIP_VISION=1 EPOCHS="${EPOCHS:-12}" bash "$ROOT/scripts/train_aarflingo.sh"
 step "runtime live smoke"
 RUNTIME_LOG="${TMPDIR:-/tmp}/aarflingo-runtime-verify.log"
 (
-  cd "$ROOT/services/runtime"
   export PYTHONPATH="$ROOT:$ROOT/services/runtime"
   poetry run aarflingo-runtime --host 127.0.0.1 --port 8765 >"$RUNTIME_LOG" 2>&1 &
   echo $!
@@ -50,7 +49,7 @@ for _ in $(seq 1 60); do
   sleep 0.5
 done
 curl -sf http://127.0.0.1:8765/health | python3 -c "import json,sys; d=json.load(sys.stdin); assert d['ok']"
-(cd "$ROOT/services/runtime" && PYTHONPATH="$ROOT:$PWD" poetry run pytest -q tests/test_server.py)
+PYTHONPATH="$ROOT:$ROOT/services/runtime" poetry run pytest -q services/runtime/tests/test_server.py
 
 step "studio build"
 bash "$ROOT/scripts/sync-branding.sh"

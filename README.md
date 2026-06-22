@@ -58,7 +58,6 @@ docker compose -f infra/docker/docker-compose.yml up aarf-runtime
 
 # Jetson (L4T base image — build on device or with buildx)
 docker build -f infra/docker/jetson.Dockerfile -t aarflingo-edge .
-# on collar / Jetson:
 poetry run aarflingo-edge run --camera 0
 ```
 
@@ -83,8 +82,8 @@ Math reference: [docs/MATH.md](docs/MATH.md) · notebooks: [notebooks/](notebook
 From human feedback export:
 
 ```bash
-cd services/feedback && poetry run aarflingo-feedback export --out ../../artifacts/feedback/export.json
-cd ../forecast && poetry run aarflingo-forecast train --feedback ../../artifacts/feedback/export.json
+poetry run aarflingo-feedback export --out artifacts/feedback/export.json
+poetry run aarflingo-forecast train --feedback artifacts/feedback/export.json
 ```
 
 ## Mobile (pocket apps)
