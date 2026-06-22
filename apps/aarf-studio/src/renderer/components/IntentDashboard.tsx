@@ -1,29 +1,48 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { useRuntimeLive } from "../hooks/useRuntimeLive";
 
-const DEMO = {
-  intent: "solicit_play",
-  emotion: "excited",
-  behavior: "play_bow",
-  confidence: 0.88,
-  gate: "pass",
-};
+const RUNTIME = import.meta.env.VITE_RUNTIME_URL || "http://127.0.0.1:8765";
 
 export function IntentDashboard() {
+  const { prediction } = useRuntimeLive();
+  const [metrics, setMetrics] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    fetch(`${RUNTIME}/metrics`)
+      .then((r) => r.json())
+      .then(setMetrics)
+      .catch(() => {});
+  }, [prediction]);
+
+  const p = prediction || {
+    intent: "—",
+    emotion: "—",
+    behavior: "—",
+    confidence: 0,
+    gate: "idle",
+  };
+
   return (
     <section className="card">
       <h2>Intent dashboard</h2>
       <dl>
         <dt>Intent</dt>
-        <dd>{DEMO.intent}</dd>
+        <dd>{p.intent}</dd>
         <dt>Emotion</dt>
-        <dd>{DEMO.emotion}</dd>
+        <dd>{p.emotion}</dd>
         <dt>Behavior</dt>
-        <dd>{DEMO.behavior}</dd>
+        <dd>{p.behavior}</dd>
         <dt>Confidence</dt>
-        <dd>{(DEMO.confidence * 100).toFixed(0)}%</dd>
+        <dd>{(p.confidence * 100).toFixed(0)}%</dd>
         <dt>Gate</dt>
-        <dd className={`gate-${DEMO.gate}`}>{DEMO.gate}</dd>
+        <dd className={`gate-${p.gate}`}>{p.gate}</dd>
       </dl>
+      <h3>Feedback metrics</h3>
+      <ul>
+        <li>Predictions logged: {metrics.predictions ?? 0}</li>
+        <li>Feedback events: {metrics.feedback_events ?? 0}</li>
+        <li>Positive ratings: {metrics.positive_ratings ?? 0}</li>
+      </ul>
     </section>
   );
 }
