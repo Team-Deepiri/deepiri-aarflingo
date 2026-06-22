@@ -186,3 +186,14 @@ fun TriadChart(counts: List<Pair<String, Int>>) {
         }
     }
 }
+
+@Composable
+fun MetricRow(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(label, color = AarflingoColors.Muted, style = MaterialTheme.typography.bodySmall)
+        Text(value, fontWeight = FontWeight.SemiBold, color = AarflingoColors.Text)
+    }
+}

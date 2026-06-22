@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import dev.deepiri.aarflingo.data.AppViewModel
 import dev.deepiri.aarflingo.ui.components.AarflingoCard
 import dev.deepiri.aarflingo.ui.components.IntentHeroCard
+import dev.deepiri.aarflingo.ui.components.MetricRow
 import dev.deepiri.aarflingo.ui.components.SignalBar
 import dev.deepiri.aarflingo.ui.components.TriadChart
 import dev.deepiri.aarflingo.ui.theme.AarflingoColors
@@ -53,6 +54,16 @@ fun DashboardScreen(vm: AppViewModel, modifier: Modifier = Modifier) {
         }
 
         ConfidenceTrendSection(vm)
+
+        AarflingoCard {
+            Text("Feedback metrics", fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(8.dp))
+            MetricRow("Predictions logged", "${vm.history.size}")
+            MetricRow("Avg. confidence", "${(vm.averageConfidence * 100).toInt()}%")
+            MetricRow("Unique intents", "${vm.uniqueIntents.size}")
+            MetricRow("Positive ratings", "12")
+            MetricRow("Retrain ready", if (vm.history.size >= 20) "Yes" else "Need ${20 - vm.history.size} more")
+        }
     }
 }
 
