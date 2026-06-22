@@ -3,8 +3,18 @@ name: Deepiri CI - deepiri-aarflingo
 on:
   pull_request:
     branches: [main, dev]
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - "notebooks/**"
+      - "LICENSE"
   push:
-    branches: [main, dev]
+    branches: [main]
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - "notebooks/**"
+      - "LICENSE"
   workflow_dispatch:
 
 permissions:
@@ -15,42 +25,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  python:
-    name: Python (${{ matrix.service }})
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        service: [ingest, perception, forecast, feedback, runtime]
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install Poetry
-        run: python -m pip install poetry
-
-      - name: Install service dependencies
-        working-directory: services/${{ matrix.service }}
-        run: poetry install --no-interaction --no-ansi
-
-      - name: Unit tests
-        working-directory: services/${{ matrix.service }}
-        env:
-          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/services/${{ matrix.service }}
-        run: |
-          if [ -d tests ]; then
-            poetry run pytest -q
-          else
-            echo "No tests/ directory — install-only check passed"
-          fi
-
-  core-metrics:
-    name: Core metrics
+  test:
+    name: Python (core + services)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -60,20 +36,37 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: pip
 
-      - name: Install test deps
-        run: python -m pip install pytest pyyaml numpy
+      - name: Install tooling
+        run: python -m pip install poetry pytest pyyaml numpy
 
-      - name: Run core unit tests
+      - name: Core tests
         env:
           PYTHONPATH: ${{ github.workspace }}
-        run: python -m pytest -q core/tests
+        run: |
+          python core/metrics/test_anticipate.py
+          python -m pytest -q core/tests
 
-      - name: Run anticipate metric smoke
-        run: python core/metrics/test_anticipate.py
+      - name: Service tests
+        run: |
+          set -euo pipefail
+          for svc in ingest perception forecast feedback runtime; do
+            echo "==> services/$svc"
+            (
+              cd "${{ github.workspace }}/services/$svc"
+              poetry install --no-interaction --no-ansi
+              export PYTHONPATH="${{ github.workspace }}:${{ github.workspace }}/services/$svc"
+              if [ -d tests ]; then
+                poetry run pytest -q
+              else
+                echo "No tests/ directory — install-only check passed"
+              fi
+            )
+          done
 
-  gate:
-    name: AARF gate (TypeScript)
+  js:
+    name: JS (gate + studio)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -83,38 +76,18 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: npm
-          cache-dependency-path: lib/aarf-gate/package-lock.json
 
-      - name: Install dependencies
+      - name: AARF gate
         working-directory: lib/aarf-gate
-        run: npm ci
-
-      - name: Run tests
-        working-directory: lib/aarf-gate
-        run: npm test
-
-  studio:
-    name: AARF Studio build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: npm
-          cache-dependency-path: apps/aarf-studio/package-lock.json
+        run: |
+          npm ci
+          npm test
 
       - name: Sync branding
         run: bash scripts/sync-branding.sh
 
-      - name: Install dependencies
+      - name: Studio build
         working-directory: apps/aarf-studio
-        run: npm ci
-
-      - name: Build
-        working-directory: apps/aarf-studio
-        run: npm run build
+        run: |
+          npm ci
+          npm run build

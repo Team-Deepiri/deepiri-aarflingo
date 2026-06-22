@@ -34,10 +34,15 @@ Runtime API: http://127.0.0.1:8765 — see [README](README.md) for endpoints.
 
 ## CI
 
-GitHub Actions on `main` and `dev`:
+Lean GitHub Actions to keep runner minutes down:
 
-- **Deepiri CI** — Python services, core metrics, aarf-gate, studio build
-- **CodeQL** — Python + TypeScript security analysis
+- **Deepiri CI** — 2 jobs (Python core + all services, JS gate + studio build)
+  - Runs on PRs to `main` / `dev`
+  - Push runs on `main` only (not every `dev` push)
+  - Skips docs-only / notebook-only changes
+- **CodeQL** — single combined Python + TypeScript scan
+  - PRs and pushes to `main` only, plus weekly schedule
+  - Use `make verify` locally before opening PRs to `main`
 
 ## Commits
 
