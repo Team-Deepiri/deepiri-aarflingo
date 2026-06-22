@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 @MainActor
 final class AppState: ObservableObject {
@@ -27,7 +28,11 @@ final class AppState: ObservableObject {
             ),
             at: 0
         )
-        if history.count > 30 { history.removeLast() }
+        if history.count > 50 { history.removeLast() }
+    }
+
+    func clearHistory() {
+        history.removeAll()
     }
 }
 
@@ -114,8 +119,24 @@ struct HistoryItem: Identifiable {
     let confidence: Double
     let timestamp: Date
 
+    var intentEmoji: String {
+        switch intent {
+        case "play": return "🎾"
+        case "food": return "🍖"
+        case "outside": return "🚪"
+        case "rest": return "😴"
+        case "avoid": return "⚠️"
+        case "attention": return "🐾"
+        default: return "🐕"
+        }
+    }
+
     static let samples: [HistoryItem] = [
         HistoryItem(id: UUID(), intent: "play", emotion: "excited", behavior: "play_bow", confidence: 0.89, timestamp: Date().addingTimeInterval(-120)),
         HistoryItem(id: UUID(), intent: "food", emotion: "content", behavior: "sniff_ground", confidence: 0.76, timestamp: Date().addingTimeInterval(-600)),
+        HistoryItem(id: UUID(), intent: "rest", emotion: "calm", behavior: "yawning", confidence: 0.93, timestamp: Date().addingTimeInterval(-1800)),
+        HistoryItem(id: UUID(), intent: "outside", emotion: "anxious", behavior: "freeze", confidence: 0.68, timestamp: Date().addingTimeInterval(-3600)),
+        HistoryItem(id: UUID(), intent: "play", emotion: "excited", behavior: "play_bow", confidence: 0.95, timestamp: Date().addingTimeInterval(-7200)),
+        HistoryItem(id: UUID(), intent: "attention", emotion: "happy", behavior: "paw_raise", confidence: 0.82, timestamp: Date().addingTimeInterval(-14400)),
     ]
 }
