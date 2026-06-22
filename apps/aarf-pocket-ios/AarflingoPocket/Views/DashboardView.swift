@@ -32,6 +32,18 @@ struct DashboardView: View {
             }
             .background(AarflingoTheme.gradient.ignoresSafeArea())
             .navigationTitle("Dashboard")
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    HStack(spacing: 8) {
+                        Image("AarflingoLogo")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(height: 28)
+                        Text("Aarflingo")
+                            .font(.headline)
+                    }
+                }
+            }
         }
     }
 }
