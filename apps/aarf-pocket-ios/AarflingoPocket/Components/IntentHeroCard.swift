@@ -44,6 +44,12 @@ struct IntentHeroCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text(prediction.intentEmoji)
+                    .font(.system(size: 36))
+                Spacer()
+                ConfidenceRing(confidence: prediction.confidence, gate: prediction.gate)
+            }
             Text("CURRENT INTENT")
                 .font(.caption.weight(.bold))
                 .foregroundStyle(AarflingoTheme.muted)
@@ -54,7 +60,6 @@ struct IntentHeroCard: View {
                 .font(.subheadline)
                 .foregroundStyle(AarflingoTheme.muted)
             HStack(spacing: 16) {
-                ConfidenceRing(confidence: prediction.confidence, gate: prediction.gate)
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Gate: \(prediction.gate)")
                         .font(.subheadline.weight(.semibold))
