@@ -10,18 +10,32 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        service: [ingest, perception, forecast]
+        service: [ingest, perception, forecast, feedback, runtime]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Install deps
-        run: pip install typer pytest
-      - name: Unit tests
+      - name: Install service deps
         working-directory: services/${{ matrix.service }}
         run: |
-          if [ -d tests ]; then PYTHONPATH=. pytest -q; fi
+          pip install poetry
+          poetry install --no-interaction
+      - name: Unit tests
+        working-directory: services/${{ matrix.service }}
+        env:
+          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/services/${{ matrix.service }}
+        run: |
+          if [ -d tests ]; then poetry run pytest -q; fi
+
+  core-metrics:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python core/metrics/test_anticipate.py
 
   gate:
     runs-on: ubuntu-latest
@@ -33,5 +47,5 @@ jobs:
       - name: Test aarf-gate
         working-directory: lib/aarf-gate
         run: |
-          npm install
+          npm ci
           npm test
