@@ -9,6 +9,7 @@ final class AppState: ObservableObject {
     @Published var connected = false
     @Published var prediction: TriadPrediction = .demo
     @Published var history: [HistoryItem] = HistoryItem.samples
+    @Published var liveOn = false
 
     init() {
         runtimeURL = UserDefaults.standard.string(forKey: "runtimeURL") ?? "http://127.0.0.1:8765"
