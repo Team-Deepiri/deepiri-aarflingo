@@ -1,31 +1,21 @@
 # AARFLingo Roadmap
 
-## Phase 0 — Spec & ethogram (complete)
-- Canonical intents, emotions, behaviors
-- Coupling matrix + JSON schemas
-- Gate library + fixtures
+## Now (v0.1)
 
-## Phase 1 — Capture & perceive
-- Ingest CLI + clipper
-- Perception pipeline (detect, pose, gaze proxies)
-- Baseline recording scripts
+- Webcam live inference via `services/runtime` + AARF Studio browser UI
+- OpenCV motion dog detect + 20-dim feature vector + TriadNet forecast
+- SQLite feedback store + one-click retrain hook
+- Jetson edge-runtime CLI + Docker deploy path
 
-## Phase 2 — Label & train
-- Labeler review queue
-- Forecast triad model + coupling loss
-- Docker training image
+## Next
 
-## Phase 3 — Export & studio
-- ONNX/CoreML artifact bridge
-- aarf-studio desktop review
-- CI smoke pipeline
+- Real pose keypoints (MediaPipe / YOLO-pose) replacing bbox proxies
+- Collar IMU + mic fusion with vision triad
+- Active learning: surface low-confidence frames for human label
+- ONNX → TensorRT on Jetson with INT8 calibration
 
-## Phase 4 — Pocket & collar (next)
-- aarf-pocket iOS CoreML
-- On-device gate + intent dashboard
-- See `PHASE2_COLLAR.md` for wearable path
+## Later
 
-## Phase 5 — Field validation
-- 10-dog pilot, clinic partner
-- Calibration per-dog baseline
-- Ethics review board sign-off
+- Multi-dog household disambiguation
+- Federated ethogram updates per breed / individual
+- On-device vocalization policy engine (AARF gate + TTS)
