@@ -1,9 +1,16 @@
-"""Coupling-aware loss helpers."""
+"""Coupling-aware loss helpers (ethogram-backed)."""
 from __future__ import annotations
 
 import json
-import math
 from pathlib import Path
+
+from core.triad_math import (
+    DEFAULT_LAMBDA,
+    DEFAULT_MU,
+    confidence_penalty,
+    coupling_loss_weight,
+    total_loss_scalar,
+)
 
 
 def _matrix_path() -> Path:
@@ -22,17 +29,11 @@ def coupling_penalty(intent: str, emotion: str, behavior: str) -> float:
     return coupling_loss(coupling_weight(intent, emotion, behavior))
 
 
-def coupling_loss(weight: float, epsilon: float = 1e-6) -> float:
-    if weight <= 0:
-        return 10.0
-    return -math.log(weight + epsilon)
+def coupling_loss(weight: float) -> float:
+    return coupling_loss_weight(weight)
 
 
-def confidence_penalty(confidence: float, threshold: float = 0.5) -> float:
-    if confidence >= threshold:
-        return 0.0
-    return (threshold - confidence) ** 2
-
-
-def total_loss(ce: float, couple_w: float, conf: float, lam: float = 0.3, mu: float = 0.1) -> float:
-    return ce + lam * coupling_loss(couple_w) + mu * confidence_penalty(conf)
+def total_loss(ce: float, couple_w: float, conf: float, lam: float = DEFAULT_LAMBDA, mu: float = DEFAULT_MU) -> float:
+    """Legacy scalar API — splits CE equally across three heads for tests."""
+    third = ce / 3.0
+    return total_loss_scalar(third, third, third, couple_w, conf, lam=lam, mu=mu)

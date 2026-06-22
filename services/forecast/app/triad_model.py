@@ -14,6 +14,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from core.feature_spec import FEATURE_DIM, SEQUENCE_LEN  # noqa: E402
+from core.triad_torch import flatten_sequence_tensor, triad_confidence
 
 
 @dataclass
@@ -55,13 +56,7 @@ class TriadNet(nn.Module):
 
 
 def flatten_sequence(frames: list[list[float]]) -> torch.Tensor:
-    padded = frames[-SEQUENCE_LEN:]
-    while len(padded) < SEQUENCE_LEN:
-        padded.insert(0, [0.0] * FEATURE_DIM)
-    flat: list[float] = []
-    for row in padded:
-        flat.extend(row[:FEATURE_DIM] + [0.0] * max(0, FEATURE_DIM - len(row)))
-    return torch.tensor([flat], dtype=torch.float32)
+    return flatten_sequence_tensor(frames)
 
 
 def predict_from_model(
@@ -77,7 +72,7 @@ def predict_from_model(
     ii = int(pi.argmax())
     ei = int(pe.argmax())
     bi = int(pb.argmax())
-    conf = float((pi[ii] + pe[ei] + pb[bi]) / 3)
+    conf = triad_confidence(pi, pe, pb, ii, ei, bi)
     return TriadPrediction(
         intent_id=model.intent_labels[ii],
         emotion_id=model.emotion_labels[ei],
