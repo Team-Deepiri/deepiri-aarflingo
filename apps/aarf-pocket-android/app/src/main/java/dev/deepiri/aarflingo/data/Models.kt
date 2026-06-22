@@ -89,6 +89,7 @@ class AppViewModel : ViewModel() {
     var prediction by mutableStateOf(TriadPrediction.Demo)
     var autoConnect by mutableStateOf(false)
     var selectedIntentFilter by mutableStateOf<String?>(null)
+    var showOnboarding by mutableStateOf(false)
 
     var history by mutableStateOf(
         listOf(
