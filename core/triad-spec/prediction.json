@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://deepiri.dev/aarflingo/triad/prediction.json",
+  "title": "TriadPrediction",
+  "type": "object",
+  "required": ["intent_id", "emotion_id", "behavior_id", "confidence", "ts_ms"],
+  "properties": {
+    "intent_id": {"type": "string"},
+    "emotion_id": {"type": "string"},
+    "behavior_id": {"type": "string"},
+    "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+    "ts_ms": {"type": "integer", "minimum": 0},
+    "source": {"type": "string", "enum": ["model", "human", "gate"]},
+    "session_id": {"type": "string"}
+  },
+  "additionalProperties": false
+}
