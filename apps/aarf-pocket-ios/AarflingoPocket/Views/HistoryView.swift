@@ -18,6 +18,25 @@ struct HistoryView: View {
     }
 }
 
+struct FilterChip: View {
+    let label: String
+    let selected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(label)
+                .font(.caption.weight(.semibold))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(selected ? AarflingoTheme.accent.opacity(0.2) : AarflingoTheme.card)
+                .overlay(Capsule().stroke(selected ? AarflingoTheme.accent : AarflingoTheme.border, lineWidth: 1))
+                .foregroundStyle(selected ? AarflingoTheme.accent : AarflingoTheme.muted)
+                .clipShape(Capsule())
+        }
+    }
+}
+
 struct HistoryRow: View {
     let item: HistoryItem
 
