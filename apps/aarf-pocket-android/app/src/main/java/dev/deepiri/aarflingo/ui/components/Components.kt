@@ -67,7 +67,11 @@ fun AarflingoCard(modifier: Modifier = Modifier, content: @Composable () -> Unit
 @Composable
 fun IntentHeroCard(prediction: TriadPrediction) {
     AarflingoCard {
-        ConfidenceRing(prediction.confidence, prediction.gate)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(prediction.intentEmoji, fontSize = 36.sp)
+            Spacer(Modifier.width(8.dp))
+            ConfidenceRing(prediction.confidence, prediction.gate)
+        }
         Text("CURRENT INTENT", color = AarflingoColors.Muted, style = MaterialTheme.typography.labelSmall)
         Text(prediction.intentLabel, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(4.dp))
