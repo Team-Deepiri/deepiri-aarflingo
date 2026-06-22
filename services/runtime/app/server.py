@@ -10,7 +10,7 @@ from pydantic import BaseModel
 
 from pathlib import Path
 
-from app.engine import _load_file, _load_service_module, STATE, broadcast, process_jpeg, webcam_loop
+from app.engine import STATE, _load_service_package, broadcast, process_jpeg, webcam_loop
 
 
 class FeedbackBody(BaseModel):
@@ -88,9 +88,9 @@ def live_retrain() -> dict:
         n = STATE.store.export_training_json(fb)
     else:
         n = 0
-    train_mod = _load_service_module("forecast", "train")
+    train_mod = _load_service_package("forecast", "train")
     result = train_mod.train_epochs(epochs=15, feedback_path=fb if n else None)
-    _forecast_infer = _load_service_module("forecast", "infer")
+    _forecast_infer = _load_service_package("forecast", "infer")
     _forecast_infer._MODEL = None
     return {"status": "ok", "feedback_samples": n, "train": result}
 
