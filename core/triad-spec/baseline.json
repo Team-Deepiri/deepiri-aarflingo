@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://deepiri.dev/aarflingo/triad/baseline.json",
+  "title": "TriadBaseline",
+  "type": "object",
+  "required": ["baseline_id", "dog_id", "captured_at", "metrics"],
+  "properties": {
+    "baseline_id": {"type": "string"},
+    "dog_id": {"type": "string"},
+    "captured_at": {"type": "string", "format": "date-time"},
+    "clip_uri": {"type": "string"},
+    "metrics": {
+      "type": "object",
+      "required": ["resting_heart_rate_bpm", "tail_angle_mean_deg"],
+      "properties": {
+        "resting_heart_rate_bpm": {"type": "number", "minimum": 40, "maximum": 200},
+        "tail_angle_mean_deg": {"type": "number"},
+        "gaze_aversion_mean": {"type": "number", "minimum": 0, "maximum": 1},
+        "arousal_index": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    }
+  },
+  "additionalProperties": false
+}
