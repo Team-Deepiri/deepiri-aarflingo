@@ -1,10 +1,13 @@
-.PHONY: setup test smoke dev runtime studio electron
+.PHONY: setup test smoke dev runtime studio electron train
 
 setup:
 	./setup.sh
 
 setup-run:
 	./setup.sh --run
+
+train:
+	./scripts/train_pipeline.sh
 
 test:
 	python3 core/metrics/test_anticipate.py

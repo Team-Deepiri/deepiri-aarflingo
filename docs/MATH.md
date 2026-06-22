@@ -1,39 +1,75 @@
-# Triad Model Math
+# IEB Triad Mathematics (AARFLingo)
 
-## Notation
+Reference for `core/triad_math.py` and `services/forecast` training.
 
-- Intent logits \(z_I\), emotion \(z_E\), behavior \(z_B\)
-- Coupling matrix \(C\) from `ethogram/coupling-matrix.json`
+## Feature sequence
 
-## Softmax heads
+Per-frame perception vector \(x_t \in \mathbb{R}^D\) with \(D=20\) (see `core/feature_spec.py`).
+
+Stack \(T=15\) frames, left-pad with zeros if shorter:
 
 \[
-P(k) = \frac{e^{z_k}}{\sum_j e^{z_j}}
+\tilde{X} \in \mathbb{R}^{T \times D}, \quad x = \mathrm{vec}(\tilde{X}) \in \mathbb{R}^{TD}
 \]
 
-## Coupling prior loss
+## TriadNet forward
 
-For batch prediction \((i, e, b)\):
+Shared MLP backbone \(f_\theta\), three linear heads:
 
 \[
-\mathcal{L}_{couple} = -\log \big( C_{i,e,b} + \epsilon \big)
+h = f_\theta(x), \quad z_I = W_I h, \quad z_E = W_E h, \quad z_B = W_B h
 \]
 
-## Total objective
-
 \[
-\mathcal{L} = \mathcal{L}_{CE} + \lambda \mathcal{L}_{couple} + \mu \mathcal{L}_{conf}
+\pi^I = \mathrm{softmax}(z_I), \quad \pi^E = \mathrm{softmax}(z_E), \quad \pi^B = \mathrm{softmax}(z_B)
 \]
 
-where \(\mathcal{L}_{conf}\) penalizes over-confidence below human review threshold \(\tau=0.5\).
+## Losses
 
-## Gate decision
+Cross-entropy per head (true labels \(y_I, y_E, y_B\)):
 
 \[
-\text{gate}(i,e,b,c) =
-\begin{cases}
-\text{reject} & (i,b) \in \text{forbidden} \\
-\text{review} & c < \tau \\
-\text{pass} & \text{otherwise}
+\mathcal{L}_{CE} = -\log \pi^I_{y_I} - \log \pi^E_{y_E} - \log \pi^B_{y_B}
+\]
+
+Ethogram coupling weight \(w = w(y_I, y_E, y_B)\) from `ethogram/coupling-matrix.json`:
+
+\[
+\mathcal{L}_c = \begin{cases}
+-\log(w + \varepsilon) & w > 0 \\
+L_{\mathrm{forbidden}} & w \le 0
 \end{cases}
 \]
+
+Total training loss (default \(\lambda = 0.3\)):
+
+\[
+\mathcal{L} = \mathcal{L}_{CE} + \lambda \mathcal{L}_c
+\]
+
+## Inference confidence
+
+\[
+\mathrm{conf} = \frac{\pi^I_{\hat{y}_I} + \pi^E_{\hat{y}_E} + \pi^B_{\hat{y}_B}}{3}
+\]
+
+where \(\hat{y}\) are argmax indices.
+
+## Gate (runtime)
+
+`gate_decision` in `services/runtime/app/engine.py` applies `forbidden_pairs` and coupling triples with confidence threshold 0.55.
+
+## Training pipeline
+
+```bash
+./scripts/train_pipeline.sh
+# or
+cd services/forecast && poetry run aarflingo-forecast train --epochs 30
+```
+
+Outputs:
+
+- `artifacts/models/default/triad.pt` — best validation checkpoint
+- `artifacts/models/default/train_metrics.json` — per-epoch train/val loss and accuracy
+
+Verify math interactively: `notebooks/01_triad_math_simulation.ipynb`.

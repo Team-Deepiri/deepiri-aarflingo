@@ -54,7 +54,16 @@ poetry run aarflingo-edge run --camera 0
 
 Calibrate gaze zones for your home: edit `infra/configs/zones.default.yaml` (door / toy / bowl regions).
 
-## Retrain from feedback
+## Training & retrain
+
+```bash
+./scripts/train_pipeline.sh          # train + metrics JSON + ONNX export
+make train
+```
+
+Math reference: [docs/MATH.md](docs/MATH.md) · notebooks: [notebooks/](notebooks/)
+
+From human feedback export:
 
 ```bash
 cd services/feedback && poetry run aarflingo-feedback export --out ../../artifacts/feedback/export.json
