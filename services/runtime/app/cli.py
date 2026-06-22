@@ -8,7 +8,10 @@ app = typer.Typer(help="AARFLingo live runtime")
 
 
 @app.command()
-def serve(host: str = "127.0.0.1", port: int = 8765) -> None:
+def serve(
+    host: str = typer.Option(default="127.0.0.1", help="Bind host"),
+    port: int = typer.Option(default=8765, help="Bind port"),
+) -> None:
     uvicorn.run("app.server:app", host=host, port=port, reload=False)
 
 
