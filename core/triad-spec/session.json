@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://deepiri.dev/aarflingo/triad/session.json",
+  "title": "TriadSession",
+  "type": "object",
+  "required": ["session_id", "dog_id", "started_at", "environment"],
+  "properties": {
+    "session_id": {"type": "string"},
+    "dog_id": {"type": "string"},
+    "started_at": {"type": "string", "format": "date-time"},
+    "ended_at": {"type": "string", "format": "date-time"},
+    "environment": {"type": "string", "enum": ["home", "clinic", "field", "studio"]},
+    "device": {"type": "string"},
+    "baseline_id": {"type": "string"},
+    "notes": {"type": "string"}
+  },
+  "additionalProperties": false
+}
