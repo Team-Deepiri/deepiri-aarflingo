@@ -113,7 +113,7 @@ fun ConfidenceRing(confidence: Float, gate: String) {
 }
 
 @Composable
-fun SignalBar(label: String, value: Float) {
+fun SignalBar(label: String, value: Float, color: Color = AarflingoColors.Accent) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -134,7 +134,7 @@ fun SignalBar(label: String, value: Float) {
                     .fillMaxWidth(value.coerceIn(0f, 1f))
                     .height(6.dp)
                     .clip(RoundedCornerShape(99.dp))
-                    .background(AarflingoColors.Accent),
+                    .background(color),
             )
         }
     }
