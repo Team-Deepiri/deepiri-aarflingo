@@ -20,6 +20,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -80,11 +81,22 @@ fun IntentHeroCard(prediction: TriadPrediction) {
             color = AarflingoColors.Muted,
         )
         Spacer(Modifier.height(8.dp))
-        Text(
-            "Dog detected: ${if (prediction.dogPresent) "yes" else "no"}",
-            color = AarflingoColors.Muted,
-            style = MaterialTheme.typography.bodySmall,
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "Gate: ${prediction.gate.uppercase()}",
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(prediction.gateColor),
+                    )
+                }
+                Text(
+                    "Dog detected: ${if (prediction.dogPresent) "yes" else "no"}",
+                    color = AarflingoColors.Muted,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+        }
     }
 }
 
