@@ -170,7 +170,7 @@ train_and_export() {
   info "Training default TriadNet checkpoint (first run ~1–2 min)..."
   (cd services/forecast && poetry run aarflingo-forecast build-default)
   info "Exporting ONNX bundle..."
-  (cd services/artifact-bridge && poetry run aarflingo-artifact-bridge export --out "$REPO_ROOT/artifacts/bundles/default/studio")
+  (cd services/forecast && poetry run aarflingo-forecast export-onnx --out "$REPO_ROOT/artifacts/bundles/default/studio")
 }
 
 install_js() {
@@ -214,7 +214,7 @@ run_stack() {
   (
     cd "$REPO_ROOT/services/runtime"
     export PYTHONPATH="$REPO_ROOT:$REPO_ROOT/services/runtime"
-    nohup poetry run aarflingo-runtime serve --host 127.0.0.1 --port 8765 \
+    nohup poetry run aarflingo-runtime --host 127.0.0.1 --port 8765 \
       >"$runtime_log" 2>&1 &
     echo $! > "${TMPDIR:-/tmp}/deepiri-aarflingo-runtime.pid"
   )

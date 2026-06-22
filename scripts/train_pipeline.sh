@@ -14,12 +14,12 @@ if [ -f "$TRAIN_JSON" ]; then
 fi
 
 echo "==> export ONNX bundle"
-cd "$ROOT/services/artifact-bridge"
+cd "$ROOT/services/forecast"
 export PYTHONPATH="$ROOT:$PWD"
-poetry run aarflingo-artifact-bridge export --out "$ROOT/artifacts/bundles/default/studio"
+poetry run aarflingo-forecast export-onnx --out "$ROOT/artifacts/bundles/default/studio"
 
 echo "==> core math tests"
 cd "$ROOT"
-PYTHONPATH="$ROOT" python3 -m pytest -q core/tests/test_triad_math.py
+PYTHONPATH="$ROOT" python3 -m pytest -q core/tests
 
 echo "train pipeline ok — checkpoint: artifacts/models/default/triad.pt"
