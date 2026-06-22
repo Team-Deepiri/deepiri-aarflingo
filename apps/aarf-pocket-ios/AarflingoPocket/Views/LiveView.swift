@@ -65,7 +65,19 @@ struct LiveView: View {
                         }
                     }
 
-                    IntentHeroCard(prediction: appState.prediction)
+                    if appState.liveOn {
+                        IntentHeroCard(prediction: appState.prediction)
+
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Live signals")
+                                .font(.headline)
+                            LiveSignalBar(label: "Vision", value: 0.88)
+                            LiveSignalBar(label: "Audio", value: 0.62)
+                            LiveSignalBar(label: "Heart rate", value: 0.35)
+                            LiveSignalBar(label: "Motion", value: 0.74)
+                        }
+                        .aarflingoCard()
+                    }
 
                     HStack(spacing: 10) {
                         Button(appState.liveOn ? "Stop session" : "Start session") {
@@ -123,6 +135,33 @@ struct LiveMetric: View {
         .padding(8)
         .background(AarflingoTheme.card.opacity(0.6))
         .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+}
+
+struct LiveSignalBar: View {
+    let label: String
+    let value: Double
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(label).font(.caption).foregroundStyle(AarflingoTheme.muted)
+                Spacer()
+                Text("\(Int(value * 100))%")
+                    .font(.caption2)
+                    .foregroundStyle(AarflingoTheme.muted)
+            }
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(AarflingoTheme.border)
+                    Capsule()
+                        .fill(AarflingoTheme.accent)
+                        .frame(width: geo.size.width * value)
+                        .animation(.easeOut(duration: 0.4), value: value)
+                }
+            }
+            .frame(height: 6)
+        }
     }
 }
 
