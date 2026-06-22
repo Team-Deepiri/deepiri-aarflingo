@@ -91,7 +91,7 @@ struct LiveView: View {
                                 }
                             }
                         }
-                        .buttonStyle(PrimaryButtonStyle())
+                        .buttonStyle(PrimaryButtonStyle(accent: true))
                     }
 
                     Text("ML models (TriadNet, vocal, vitals) will run on-device via CoreML in a future release.")
@@ -167,13 +167,21 @@ struct LiveSignalBar: View {
 }
 
 struct PrimaryButtonStyle: ButtonStyle {
+    let accent: Bool
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.headline)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 12)
-            .background(AarflingoTheme.accent.opacity(configuration.isPressed ? 0.7 : 1))
-            .foregroundStyle(Color.black.opacity(0.85))
+            .background(
+                accent
+                    ? AarflingoTheme.accentGradient
+                    : LinearGradient(colors: [AarflingoTheme.card, AarflingoTheme.border], startPoint: .leading, endPoint: .trailing)
+            )
+            .foregroundStyle(accent ? Color.black.opacity(0.85) : AarflingoTheme.text)
             .clipShape(RoundedRectangle(cornerRadius: 10))
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+            .animation(.easeInOut(duration: 0.15), value: configuration.isPressed)
     }
 }
