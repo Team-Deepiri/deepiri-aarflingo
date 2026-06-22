@@ -37,6 +37,8 @@ See [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md), [docs/ELECTRON.md](docs/ELECTR
 | `services/edge-runtime` | Jetson / collar loop (ONNX optional) |
 | `services/artifact-bridge` | ONNX export for studio + hardware |
 | `apps/aarf-studio` | Live camera UI + feedback buttons |
+| `apps/aarf-pocket-ios` | SwiftUI pocket app (UI shell, iOS 16+) |
+| `apps/aarf-pocket-android` | Kotlin Compose pocket app (UI shell) |
 | `infra/docker/` | `runtime.Dockerfile` + `jetson.Dockerfile` |
 
 ## API (runtime)
@@ -56,7 +58,6 @@ docker compose -f infra/docker/docker-compose.yml up aarf-runtime
 
 # Jetson (L4T base image — build on device or with buildx)
 docker build -f infra/docker/jetson.Dockerfile -t aarflingo-edge .
-# on collar / Jetson:
 poetry run aarflingo-edge run --camera 0
 ```
 
@@ -81,9 +82,26 @@ Math reference: [docs/MATH.md](docs/MATH.md) · notebooks: [notebooks/](notebook
 From human feedback export:
 
 ```bash
-cd services/feedback && poetry run aarflingo-feedback export --out ../../artifacts/feedback/export.json
-cd ../forecast && poetry run aarflingo-forecast train --feedback ../../artifacts/feedback/export.json
+poetry run aarflingo-feedback export --out artifacts/feedback/export.json
+poetry run aarflingo-forecast train --feedback artifacts/feedback/export.json
 ```
+
+## Mobile (pocket apps)
+
+Native shells for on-the-go monitoring — **UI-only in v0.1** (mock predictions; ML hooks later).
+
+| App | Stack | Docs |
+|-----|-------|------|
+| iOS | SwiftUI | [apps/aarf-pocket-ios/README.md](apps/aarf-pocket-ios/README.md) |
+| Android | Kotlin + Compose | [apps/aarf-pocket-android/README.md](apps/aarf-pocket-android/README.md) |
+
+```bash
+make mobile-android    # WSL: build debug APK
+make mobile-verify     # Android build + iOS source check
+./scripts/mobile/run-android-app.sh   # emulator + install
+```
+
+iOS Simulator requires **macOS**; CI builds both on `.github/workflows/mobile.yml`.
 
 ## License
 

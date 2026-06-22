@@ -53,51 +53,33 @@ echo '{}' >"$STAGE_DIR/verify.json"
 
 if stage_enabled vision && [ "$SKIP_VISION" != "1" ]; then
   step "vision — YOLOv8 dog detector (COCO pretrained)"
-  pushd "$ROOT/services/perception" >/dev/null
-  poetry install --no-interaction --no-ansi -E yolo >&2
-  export PYTHONPATH="$ROOT:$PWD"
+  export PYTHONPATH="$ROOT:$ROOT/services/perception"
   run_stage_json "$STAGE_DIR/vision.json" poetry run aarflingo-perception prepare-vision
-  popd >/dev/null
 elif stage_enabled vision; then
   step "vision — skipped (SKIP_VISION=1)"
 fi
 
 if stage_enabled audio; then
   step "audio — vocal encoder (DogSpeak / Barkopedia-shaped)"
-  pushd "$ROOT/services/audio" >/dev/null
-  poetry install --no-interaction --no-ansi >&2
-  export PYTHONPATH="$ROOT:$PWD"
+  export PYTHONPATH="$ROOT:$ROOT/services/audio"
   run_stage_json "$STAGE_DIR/audio.json" poetry run aarflingo-audio train --epochs "$AUDIO_EPOCHS"
-  popd >/dev/null
 fi
 
 if stage_enabled physio; then
   step "physio — ECG/IMU vitals encoder (PhysioZoo / Mendeley-shaped)"
-  pushd "$ROOT/lib/aarf-physio" >/dev/null
-  poetry install --no-interaction --no-ansi >&2
   run_stage_json "$STAGE_DIR/physio.json" poetry run aarf-physio train --epochs "$PHYSIO_EPOCHS"
-  popd >/dev/null
 fi
 
 if stage_enabled triad; then
   step "triad — multimodal TriadNet (${EPOCHS} epochs)"
-  pushd "$ROOT/services/forecast" >/dev/null
-  export PYTHONPATH="$ROOT:$PWD"
-  poetry install --no-interaction --no-ansi >&2
+  export PYTHONPATH="$ROOT:$ROOT/services/forecast"
   run_stage_json "$STAGE_DIR/triad_train.json" poetry run aarflingo-forecast train --epochs "$EPOCHS" --out "$CKPT"
-  popd >/dev/null
 
   step "export TriadNet ONNX"
-  pushd "$ROOT/services/forecast" >/dev/null
-  export PYTHONPATH="$ROOT:$PWD"
   run_stage_json "$STAGE_DIR/triad_export.json" poetry run aarflingo-forecast export-onnx --out "$ONNX_DIR"
-  popd >/dev/null
 
   step "verify all model artifacts + live inference"
-  pushd "$ROOT/services/forecast" >/dev/null
-  export PYTHONPATH="$ROOT:$PWD"
   run_stage_json "$STAGE_DIR/verify.json" poetry run python "$ROOT/scripts/verify_artifacts.py"
-  popd >/dev/null
 fi
 
 python3 - "$STAGE_DIR" "$MANIFEST" "$EPOCHS" "$AUDIO_EPOCHS" "$PHYSIO_EPOCHS" "$STAGES" "$ROOT" <<'PY'

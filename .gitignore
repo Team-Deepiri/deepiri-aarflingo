@@ -17,6 +17,13 @@ dist/
 .build/
 DerivedData/
 *.xcuserstate
+apps/aarf-pocket-ios/*.xcodeproj/
+apps/aarf-pocket-ios/*.xcworkspace/
+
+# Android
+apps/aarf-pocket-android/.gradle/
+apps/aarf-pocket-android/**/build/
+apps/aarf-pocket-android/local.properties
 
 **/*.ipynb_checkpoints/
 notebooks/.jupyter/

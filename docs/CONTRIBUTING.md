@@ -16,6 +16,7 @@ git checkout -b feat/my-change
 ```bash
 ./setup.sh              # system + project deps + default model
 ./setup.sh --run        # install and launch Electron studio
+poetry install          # or: poetry install -E yolo for vision training
 make test               # unit tests across services
 make train              # train checkpoint + ONNX + artifact verify
 make smoke              # quick perception + train + feedback smoke

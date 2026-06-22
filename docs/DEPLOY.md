@@ -21,7 +21,7 @@ docker run --device /dev/video0 -v $(pwd)/artifacts/bundles:/opt/aarflingo/artif
 Native (no Docker):
 
 ```bash
-cd services/edge-runtime && poetry install
+poetry install
 export PYTHONPATH=/path/to/deepiri-aarflingo
 poetry run aarflingo-edge run --camera 0
 ```
@@ -29,8 +29,10 @@ poetry run aarflingo-edge run --camera 0
 Export ONNX before edge deploy:
 
 ```bash
-cd services/forecast && poetry run aarflingo-forecast build-default
-cd ../artifact-bridge && poetry run aarflingo-artifact-bridge --out ../../artifacts/bundles/default/studio
+export PYTHONPATH=/path/to/deepiri-aarflingo:/path/to/deepiri-aarflingo/services/forecast
+poetry run aarflingo-forecast build-default
+export PYTHONPATH=/path/to/deepiri-aarflingo:/path/to/deepiri-aarflingo/services/artifact-bridge
+poetry run aarflingo-artifact-bridge --out artifacts/bundles/default/studio
 ```
 
 ## BOM pointer
