@@ -7,14 +7,19 @@ struct StatusChip: View {
     enum ChipTone { case ok, warn, info, neutral }
 
     var body: some View {
-        Text(label)
-            .font(.caption.weight(.semibold))
-            .padding(.horizontal, 10)
-            .padding(.vertical, 5)
-            .background(background.opacity(0.15))
-            .overlay(Capsule().stroke(background.opacity(0.45), lineWidth: 1))
-            .foregroundStyle(foreground)
-            .clipShape(Capsule())
+        HStack(spacing: 4) {
+            Circle()
+                .fill(background)
+                .frame(width: 6, height: 6)
+            Text(label)
+                .font(.caption.weight(.semibold))
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 5)
+        .background(background.opacity(0.12))
+        .overlay(Capsule().stroke(background.opacity(0.35), lineWidth: 1))
+        .foregroundStyle(foreground)
+        .clipShape(Capsule())
     }
 
     private var background: Color {
