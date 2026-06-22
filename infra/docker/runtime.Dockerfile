@@ -5,15 +5,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /opt/aarflingo
-COPY . /opt/aarflingo
-
+COPY pyproject.toml poetry.lock /opt/aarflingo/
 RUN pip install --no-cache-dir poetry \
-    && cd services/runtime && poetry config virtualenvs.create false \
-    && poetry install --no-interaction \
-    && cd ../forecast && poetry config virtualenvs.create false && poetry install --no-interaction \
-    && cd ../perception && poetry config virtualenvs.create false && poetry install --no-interaction \
-    && cd ../feedback && poetry config virtualenvs.create false && poetry install --no-interaction
+    && poetry config virtualenvs.create false \
+    && poetry install --no-interaction --no-ansi -E yolo --no-root
 
-ENV PYTHONPATH=/opt/aarflingo
+COPY . /opt/aarflingo
+RUN poetry install --no-interaction --no-ansi -E yolo
+
+ENV PYTHONPATH=/opt/aarflingo:/opt/aarflingo/services/runtime
 EXPOSE 8765
-CMD ["python", "-m", "app.cli", "serve", "--host", "0.0.0.0", "--port", "8765"]
+CMD ["poetry", "run", "aarflingo-runtime", "--host", "0.0.0.0", "--port", "8765"]

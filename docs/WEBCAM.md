@@ -52,7 +52,7 @@ curl -X POST http://127.0.0.1:8765/live/start \
 ```bash
 curl http://127.0.0.1:8765/bridge/info
 curl http://127.0.0.1:8766/health   # bridge on Windows host
-cd services/ingest && poetry run aarflingo-ingest webcam-probe --camera 0
+poetry run aarflingo-ingest webcam-probe --camera 0
 ```
 
 ## Calibrate gaze zones

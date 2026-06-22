@@ -17,6 +17,7 @@ Living plan for **deepiri-aarflingo**. Updated after multimodal training, WSL we
 | **Feedback** | SQLite store, export JSON, one-click retrain from studio |
 | **Edge** | `edge-runtime` CLI, Docker/Jetson Dockerfiles |
 | **CI** | Lean 2-job Python + JS; CodeQL on `main` + weekly |
+| **Mobile** | SwiftUI + Compose pocket apps (UI shell), WSL Android emulator scripts, mobile CI |
 
 Docs: [WEBCAM.md](WEBCAM.md) · [DATASETS.md](DATASETS.md) · [DEPLOY.md](DEPLOY.md)
 

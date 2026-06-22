@@ -8,16 +8,13 @@ echo "==> core metrics"
 python3 core/metrics/test_anticipate.py
 
 echo "==> perception"
-cd services/perception
-PYTHONPATH="$ROOT:$PWD" poetry run pytest -q
+PYTHONPATH="$ROOT:$ROOT/services/perception" poetry run pytest -q services/perception/tests
 
 echo "==> train aarflingo model + verify artifacts"
-cd "$ROOT"
 SKIP_VISION=1 EPOCHS="${EPOCHS:-12}" bash "$ROOT/scripts/train_aarflingo.sh"
 
 echo "==> feedback store"
-cd "$ROOT/services/feedback"
-PYTHONPATH="$ROOT:$PWD" poetry run python -c "
+PYTHONPATH="$ROOT:$ROOT/services/feedback" poetry run python -c "
 from app.store import FeedbackStore
 from pathlib import Path
 s = FeedbackStore(Path('$ROOT/artifacts/feedback/test.db'))

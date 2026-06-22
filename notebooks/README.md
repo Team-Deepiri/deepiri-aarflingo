@@ -12,9 +12,9 @@ Jupyter notebooks that implement and verify the IEB triad math used by `services
 ```bash
 cd /path/to/deepiri-aarflingo
 pip install -r notebooks/requirements.txt
-cd services/forecast && poetry install
-export PYTHONPATH="$(pwd)/../..:$(pwd)"
-jupyter notebook ../../notebooks/
+poetry install
+export PYTHONPATH="$(pwd):$(pwd)/services/forecast"
+jupyter notebook notebooks/
 ```
 
 Unit tests in `core/tests/test_triad_math.py` mirror notebook assertions for CI.
