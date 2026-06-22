@@ -1,6 +1,7 @@
 """Math-only tests (no torch required)."""
 from __future__ import annotations
 
+from core.feature_spec import FEATURE_DIM, SEQUENCE_LEN
 from core.triad_math import (
     coupling_loss_weight,
     flatten_sequence_rows,
@@ -11,8 +12,8 @@ from core.triad_math import (
 
 
 def test_flatten_sequence_padding() -> None:
-    rows = flatten_sequence_rows([[1.0] * 20] * 3)
-    assert len(rows) == 20 * 15
+    rows = flatten_sequence_rows([[1.0] * FEATURE_DIM] * 3)
+    assert len(rows) == FEATURE_DIM * SEQUENCE_LEN
     assert rows[0] == 0.0
 
 

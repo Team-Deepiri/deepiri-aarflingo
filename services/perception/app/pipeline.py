@@ -4,6 +4,12 @@ from __future__ import annotations
 import numpy as np
 
 from .dog_detect import MotionDogDetector, detect_dog
+
+try:
+    from .yolo_detect import YoloDogDetector, default_weights
+except ImportError:
+    YoloDogDetector = None  # type: ignore[misc, assignment]
+    default_weights = None  # type: ignore[assignment]
 from .face import estimate_face_signals
 from .gaze import load_zones, score_gaze
 from .pose import estimate_pose
@@ -12,13 +18,28 @@ from .temporal import TemporalTracker
 
 _TRACKER = TemporalTracker()
 _DETECTOR = MotionDogDetector()
+_YOLO: object | None = None
 _ZONES = load_zones()
+
+
+def _get_yolo() -> object | None:
+    global _YOLO
+    if YoloDogDetector is None or default_weights is None:
+        return None
+    if _YOLO is None and default_weights().exists():
+        _YOLO = YoloDogDetector()
+    return _YOLO
 
 
 def run_pipeline_frame(frame_bgr: np.ndarray) -> dict:
     global _TRACKER, _DETECTOR, _ZONES
     gray_mean = float(np.mean(frame_bgr) / 255.0)
-    bbox = detect_dog(frame_bgr, _DETECTOR)
+    yolo = _get_yolo()
+    bbox = None
+    if yolo is not None:
+        bbox = yolo.detect(frame_bgr)  # type: ignore[union-attr]
+    if bbox is None:
+        bbox = detect_dog(frame_bgr, _DETECTOR)
 
     if bbox is None:
         motion, vx, vy = _TRACKER.update(None, gray_mean)
@@ -52,6 +73,7 @@ def run_pipeline_frame(frame_bgr: np.ndarray) -> dict:
         "bbox_cy": bbox.cy,
         "bbox_w": bbox.w,
         "bbox_h": bbox.h,
+        "vision_yolo_dog_conf": float(bbox.confidence),
         "motion": motion,
         "velocity_x": vx,
         "velocity_y": vy,

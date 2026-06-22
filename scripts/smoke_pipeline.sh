@@ -13,7 +13,7 @@ PYTHONPATH="$ROOT:$PWD" poetry run pytest -q
 
 echo "==> train aarflingo model + verify artifacts"
 cd "$ROOT"
-EPOCHS="${EPOCHS:-15}" bash "$ROOT/scripts/train_aarflingo.sh"
+SKIP_VISION=1 EPOCHS="${EPOCHS:-12}" bash "$ROOT/scripts/train_aarflingo.sh"
 
 echo "==> feedback store"
 cd "$ROOT/services/feedback"

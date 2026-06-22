@@ -12,7 +12,8 @@ ROOT = Path(__file__).resolve().parents[3]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from core.feature_spec import FEATURE_DIM, SEQUENCE_LEN, vectorize  # noqa: E402
+from core.feature_spec import BASE_FEATURE_NAMES, SEQUENCE_LEN, vectorize  # noqa: E402
+from core.modality_spec import modality_defaults  # noqa: E402
 
 
 @dataclass
@@ -23,15 +24,26 @@ class TriadSample:
     behavior_id: str
 
 
-def _synth_row(intent: str) -> dict:
+def _modality_for_intent(intent: str) -> dict[str, float]:
+    m = modality_defaults()
+    if intent == "outside":
+        m.update({"vision_yolo_dog_conf": 0.85, "ecg_stress": 0.7, "audio_arousal": 0.6, "imu_activity": 0.35})
+    elif intent == "play":
+        m.update({"vision_yolo_dog_conf": 0.92, "audio_arousal": 0.85, "audio_valence": 0.8, "audio_bark_prob": 0.75, "imu_activity": 0.8})
+    elif intent == "food":
+        m.update({"vision_yolo_dog_conf": 0.88, "audio_arousal": 0.35, "imu_activity": 0.25, "imu_posture_static": 0.7})
+    elif intent == "avoid":
+        m.update({"vision_yolo_dog_conf": 0.8, "ecg_stress": 0.85, "audio_valence": 0.1, "audio_bark_prob": 0.4, "imu_posture_static": 0.85})
+    else:
+        m.update({"vision_yolo_dog_conf": 0.75, "ecg_hr_norm": 0.35, "ecg_stress": 0.2, "imu_posture_static": 0.9, "imu_activity": 0.1})
+    return m
+
+
+def _synth_row(intent: str) -> tuple[dict, str, str, str]:
     r = random.random
-    base = {name: r() * 0.2 for name in [
-        "dog_present", "bbox_cx", "bbox_cy", "bbox_w", "bbox_h", "motion",
-        "velocity_x", "velocity_y", "gaze_door", "gaze_toy", "gaze_bowl",
-        "gaze_center", "edge_left", "edge_right", "edge_top", "edge_bottom",
-        "brightness", "contrast", "aspect_ratio", "arousal_proxy",
-    ]}
+    base = {name: r() * 0.2 for name in BASE_FEATURE_NAMES}
     base["dog_present"] = 1.0
+    base.update(_modality_for_intent(intent))
     if intent == "outside":
         base.update({"gaze_door": 0.7 + r() * 0.2, "motion": 0.08 + r() * 0.1})
         return base, "outside", "anxious", "freeze"
@@ -79,7 +91,3 @@ def load_feedback_dataset(feedback_db: Path) -> list[TriadSample]:
             )
         )
     return out
-
-
-def load_demo_dataset() -> list[TriadSample]:
-    return load_synthetic_dataset(n_per_class=8)

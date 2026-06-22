@@ -8,6 +8,14 @@ from pathlib import Path
 import torch
 import torch.nn as nn
 
+import sys
+
+ROOT = Path(__file__).resolve().parents[3]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from core.feature_spec import FEATURE_DIM, SEQUENCE_LEN  # noqa: E402
+
 from .labels import behavior_labels, emotion_labels, intent_labels
 from .triad_model import TriadNet, flatten_sequence
 
@@ -58,7 +66,7 @@ def export_onnx(out_dir: Path, model_name: str = "triad", checkpoint: Path | Non
         "intents": intents,
         "emotions": emotions,
         "behaviors": behaviors,
-        "input_shape": [1, 300],
+        "input_shape": [1, FEATURE_DIM * SEQUENCE_LEN],
         "outputs": ["intent_probs", "emotion_probs", "behavior_probs"],
     }
     (out_dir / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")

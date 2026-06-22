@@ -47,11 +47,12 @@ jobs:
         run: |
           python core/metrics/test_anticipate.py
           python -m pytest -q core/tests
+          cd lib/aarf-physio && python -m pip install poetry && poetry install --no-interaction --no-ansi && poetry run pytest -q
 
       - name: Service tests
         run: |
           set -euo pipefail
-          for svc in ingest perception forecast feedback runtime; do
+          for svc in ingest perception forecast feedback runtime audio; do
             echo "==> services/$svc"
             (
               cd "${{ github.workspace }}/services/$svc"

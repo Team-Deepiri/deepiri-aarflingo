@@ -38,7 +38,7 @@ done
 REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
 cd "$REPO_ROOT"
 
-PYTHON_SERVICES=(ingest labeler perception forecast artifact-bridge feedback runtime edge-runtime)
+PYTHON_SERVICES=(ingest labeler perception forecast artifact-bridge feedback runtime edge-runtime audio)
 
 kill_repo_processes() {
   declare -A seen=()
@@ -162,13 +162,19 @@ install_python_services() {
   local svc
   for svc in "${PYTHON_SERVICES[@]}"; do
     info "Poetry install: services/$svc"
-    (cd "services/$svc" && poetry install --no-interaction --no-ansi)
+    if [ "$svc" = "perception" ]; then
+      (cd "services/$svc" && poetry install --no-interaction --no-ansi -E yolo)
+    else
+      (cd "services/$svc" && poetry install --no-interaction --no-ansi)
+    fi
   done
+  info "Poetry install: lib/aarf-physio"
+  (cd lib/aarf-physio && poetry install --no-interaction --no-ansi)
 }
 
 train_and_export() {
-  info "Training TriadNet + exporting ONNX (first run ~1–2 min)..."
-  EPOCHS="${EPOCHS:-30}" bash "$REPO_ROOT/scripts/train_aarflingo.sh"
+  info "Training multimodal Aarflingo (vision + audio + physio + triad)..."
+  SKIP_VISION="${SKIP_VISION:-0}" EPOCHS="${EPOCHS:-30}" bash "$REPO_ROOT/scripts/train_aarflingo.sh"
 }
 
 install_js() {

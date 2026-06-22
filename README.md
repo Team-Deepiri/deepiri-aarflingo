@@ -58,12 +58,17 @@ Calibrate gaze zones for your home: edit `infra/configs/zones.default.yaml` (doo
 
 ## Training & retrain
 
+Multimodal pipeline: **YOLO vision** + **vocal encoder** + **ECG/IMU vitals** → **TriadNet** fusion.
+
 ```bash
-./scripts/train_aarflingo.sh         # train → checkpoint + metrics + ONNX + verify infer
+./scripts/train_aarflingo.sh         # all stages (downloads YOLOv8n on first run)
+SKIP_VISION=1 ./scripts/train_aarflingo.sh   # audio + physio + triad only
 ./scripts/verify_aarflingo.sh        # tests + train + runtime API + studio build
 make train
 make verify
 ```
+
+Public dataset catalog: [docs/DATASETS.md](docs/DATASETS.md) (PhysioZoo, DogSpeak, Barkopedia, Mendeley IMU)
 
 Math reference: [docs/MATH.md](docs/MATH.md) · notebooks: [notebooks/](notebooks/)
 

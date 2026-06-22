@@ -1,7 +1,9 @@
 """Canonical perception feature vector layout (shared by train + runtime)."""
 from __future__ import annotations
 
-FEATURE_NAMES: list[str] = [
+from .modality_spec import MODALITY_NAMES, modality_vectorize
+
+BASE_FEATURE_NAMES: list[str] = [
     "dog_present",
     "bbox_cx",
     "bbox_cy",
@@ -24,9 +26,12 @@ FEATURE_NAMES: list[str] = [
     "arousal_proxy",
 ]
 
+FEATURE_NAMES: list[str] = BASE_FEATURE_NAMES + MODALITY_NAMES
+
 FEATURE_DIM = len(FEATURE_NAMES)
 SEQUENCE_LEN = 15
 
 
 def vectorize(features: dict) -> list[float]:
-    return [float(features.get(name, 0.0)) for name in FEATURE_NAMES]
+    base = [float(features.get(name, 0.0)) for name in BASE_FEATURE_NAMES]
+    return base + modality_vectorize(features)

@@ -33,7 +33,7 @@ done
 (cd lib/aarf-gate && npm test -s)
 
 step "train model + export ONNX + verify artifacts"
-EPOCHS="${EPOCHS:-20}" bash "$ROOT/scripts/train_aarflingo.sh"
+SKIP_VISION=1 EPOCHS="${EPOCHS:-12}" bash "$ROOT/scripts/train_aarflingo.sh"
 
 step "runtime live smoke"
 RUNTIME_LOG="${TMPDIR:-/tmp}/aarflingo-runtime-verify.log"

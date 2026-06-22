@@ -5,6 +5,7 @@ import pytest
 
 torch = pytest.importorskip("torch")
 
+from core.feature_spec import FEATURE_DIM, SEQUENCE_LEN
 from core.triad_math import numpy_cross_entropy, numpy_softmax
 from core.triad_torch import (
     cross_entropy_from_logits,
@@ -39,5 +40,5 @@ def test_triad_confidence_mean() -> None:
 
 
 def test_flatten_sequence_tensor_shape() -> None:
-    t = flatten_sequence_tensor([[float(i)] * 20 for i in range(5)])
-    assert t.shape == (1, 300)
+    t = flatten_sequence_tensor([[float(i)] * FEATURE_DIM for i in range(5)])
+    assert t.shape == (1, FEATURE_DIM * SEQUENCE_LEN)

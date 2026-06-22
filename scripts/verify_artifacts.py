@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify Aarflingo training artifacts and run a live inference smoke."""
+"""Verify multimodal Aarflingo training artifacts."""
 from __future__ import annotations
 
 import json
@@ -14,16 +14,30 @@ def _fail(msg: str) -> None:
     raise SystemExit(1)
 
 
+def _check_file(path: Path, min_bytes: int, label: str) -> int:
+    if not path.is_file() or path.stat().st_size < min_bytes:
+        _fail(f"{label} missing or too small: {path}")
+    return path.stat().st_size
+
+
 def main() -> None:
     ckpt = ROOT / "artifacts" / "models" / "default" / "triad.pt"
     onnx = ROOT / "artifacts" / "bundles" / "default" / "studio" / "triad.onnx"
+    vocal = ROOT / "artifacts" / "models" / "default" / "vocal.pt"
+    vitals = ROOT / "artifacts" / "models" / "default" / "vitals.pt"
+    yolo_onnx = ROOT / "artifacts" / "bundles" / "default" / "studio" / "dog_yolo.onnx"
     metrics_path = ROOT / "artifacts" / "models" / "default" / "train_metrics.json"
     manifest = ROOT / "artifacts" / "bundles" / "default" / "studio" / "manifest.json"
 
-    if not ckpt.is_file() or ckpt.stat().st_size < 1000:
-        _fail(f"checkpoint missing or too small: {ckpt}")
-    if not onnx.is_file() or onnx.stat().st_size < 1000:
-        _fail(f"onnx missing or too small: {onnx}")
+    ckpt_bytes = _check_file(ckpt, 1000, "triad checkpoint")
+    onnx_bytes = _check_file(onnx, 1000, "triad onnx")
+    vocal_bytes = _check_file(vocal, 500, "vocal checkpoint")
+    vitals_bytes = _check_file(vitals, 500, "vitals checkpoint")
+
+    yolo_bytes = 0
+    if yolo_onnx.is_file():
+        yolo_bytes = yolo_onnx.stat().st_size
+
     if not metrics_path.is_file():
         _fail(f"train metrics missing: {metrics_path}")
 
@@ -42,19 +56,37 @@ def main() -> None:
 
     load_checkpoint(ckpt)
     play_row = {name: 0.1 for name in FEATURE_NAMES}
-    play_row.update({"dog_present": 1.0, "gaze_toy": 0.88, "motion": 0.2})
+    play_row.update(
+        {
+            "dog_present": 1.0,
+            "gaze_toy": 0.88,
+            "motion": 0.2,
+            "vision_yolo_dog_conf": 0.9,
+            "audio_arousal": 0.85,
+            "audio_valence": 0.75,
+            "audio_bark_prob": 0.7,
+            "ecg_hr_norm": 0.55,
+            "ecg_stress": 0.2,
+            "imu_activity": 0.75,
+            "imu_posture_static": 0.3,
+        }
+    )
     pred = infer_sequence([vectorize(play_row)] * 15)
     if not pred.intent_id or pred.confidence <= 0:
         _fail("inference returned empty prediction")
 
     out = {
         "ok": True,
-        "checkpoint_bytes": ckpt.stat().st_size,
-        "onnx_bytes": onnx.stat().st_size,
+        "checkpoint_bytes": ckpt_bytes,
+        "onnx_bytes": onnx_bytes,
+        "vocal_bytes": vocal_bytes,
+        "vitals_bytes": vitals_bytes,
+        "yolo_onnx_bytes": yolo_bytes,
         "best_val_acc": best_acc,
         "smoke_intent": pred.intent_id,
         "smoke_confidence": pred.confidence,
         "manifest_present": manifest.is_file(),
+        "feature_dim": len(FEATURE_NAMES),
     }
     print(json.dumps(out))
 
