@@ -19,12 +19,14 @@ struct DashboardView: View {
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Modality signals")
                             .font(.headline)
-                        SignalBar(label: "Vision", value: 0.88)
-                        SignalBar(label: "Audio arousal", value: 0.62)
-                        SignalBar(label: "ECG stress", value: 0.22)
-                        SignalBar(label: "IMU activity", value: 0.74)
+                        SignalBar(label: "Vision", value: 0.88, color: AarflingoTheme.info)
+                        SignalBar(label: "Audio arousal", value: 0.62, color: AarflingoTheme.warn)
+                        SignalBar(label: "ECG stress", value: 0.22, color: AarflingoTheme.danger)
+                        SignalBar(label: "IMU activity", value: 0.74, color: AarflingoTheme.accent)
                     }
                     .aarflingoCard()
+
+                    ConfidenceTrendChart(items: appState.history)
 
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Feedback metrics")
@@ -58,16 +60,24 @@ struct DashboardView: View {
 struct SignalBar: View {
     let label: String
     let value: Double
+    let color: Color
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(label).font(.caption).foregroundStyle(AarflingoTheme.muted)
+            HStack {
+                Text(label).font(.caption).foregroundStyle(AarflingoTheme.muted)
+                Spacer()
+                Text("\(Int(value * 100))%")
+                    .font(.caption2)
+                    .foregroundStyle(AarflingoTheme.muted)
+            }
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     Capsule().fill(AarflingoTheme.border)
                     Capsule()
-                        .fill(AarflingoTheme.accent)
+                        .fill(color)
                         .frame(width: geo.size.width * value)
+                        .animation(.easeOut(duration: 0.5), value: value)
                 }
             }
             .frame(height: 8)
