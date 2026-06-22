@@ -12,6 +12,7 @@ export type LivePrediction = {
   gate: string;
   intent_probs?: Record<string, number>;
   dog_present?: boolean;
+  features?: Record<string, number>;
   ts_ms?: number;
 };
 

@@ -23,6 +23,7 @@ function speak(intent: string) {
 export function CameraView() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const overlayRef = useRef<HTMLCanvasElement>(null);
   const [localOn, setLocalOn] = useState(false);
   const [retrainMsg, setRetrainMsg] = useState("");
   const lastSpoke = useRef("");
@@ -74,6 +75,39 @@ export function CameraView() {
     return () => clearInterval(id);
   }, [localOn]);
 
+  useEffect(() => {
+    const video = videoRef.current;
+    const overlay = overlayRef.current;
+    const f = prediction?.features;
+    if (!video || !overlay || !f?.dog_present) {
+      const ctx = overlay?.getContext("2d");
+      if (ctx && overlay) ctx.clearRect(0, 0, overlay.width, overlay.height);
+      return;
+    }
+    const draw = () => {
+      const w = video.videoWidth;
+      const h = video.videoHeight;
+      if (!w || !h) return;
+      overlay.width = w;
+      overlay.height = h;
+      const ctx = overlay.getContext("2d");
+      if (!ctx) return;
+      ctx.clearRect(0, 0, w, h);
+      const cx = (f.bbox_cx ?? 0) * w;
+      const cy = (f.bbox_cy ?? 0) * h;
+      const bw = (f.bbox_w ?? 0) * w;
+      const bh = (f.bbox_h ?? 0) * h;
+      ctx.strokeStyle = prediction?.gate === "pass" ? "#3dd68c" : "#f0c674";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(cx - bw / 2, cy - bh / 2, bw, bh);
+      ctx.fillStyle = "rgba(61, 214, 140, 0.15)";
+      ctx.fillRect(cx - bw / 2, cy - bh / 2, bw, bh);
+    };
+    draw();
+    const id = setInterval(draw, 200);
+    return () => clearInterval(id);
+  }, [prediction]);
+
   return (
     <section className="card camera-panel">
       <h2>Live camera</h2>
@@ -82,7 +116,10 @@ export function CameraView() {
         {error ? ` — ${error}` : ""}
       </p>
       <div className="camera-row">
-        <video ref={videoRef} autoPlay playsInline muted className="camera-feed" />
+        <div className="camera-wrap">
+          <video ref={videoRef} autoPlay playsInline muted className="camera-feed" />
+          <canvas ref={overlayRef} className="camera-overlay" />
+        </div>
         <canvas ref={canvasRef} style={{ display: "none" }} />
         <aside className="prediction-panel">
           {prediction ? (
