@@ -1,0 +1,29 @@
+name: deepiri-aarflingo-codeql-config
+
+# Exclude generated, vendored, and runtime artifact paths from CodeQL analysis.
+
+paths-ignore:
+  - '**/node_modules/**'
+  - '**/.next/**'
+  - '**/dist/**'
+  - '**/build/**'
+  - '**/logs/**'
+  - '**/tmp/**'
+  - '**/temp/**'
+  - '**/docs/**'
+  - '**/notebooks/**'
+  - '**/.venv/**'
+  - '**/venv/**'
+  - '**/.cache/**'
+  - '**/.ruff_cache/**'
+  - '**/.tox/**'
+  - '**/.eggs/**'
+  - '**/__pycache__/**'
+  - '**/.pytest_cache/**'
+  - '**/.mypy_cache/**'
+  - '**/coverage/**'
+  - '**/*.min.js'
+  - '**/artifacts/**'
+  - '**/data/raw/**'
+  - '**/data/clips/**'
+  - '**/infra/docker/**'

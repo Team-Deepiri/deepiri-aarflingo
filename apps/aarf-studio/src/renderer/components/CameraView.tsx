@@ -121,6 +121,7 @@ export function CameraView() {
           }}
         >
           Stop
+        </button>
         <button
           type="button"
           onClick={async () => {
