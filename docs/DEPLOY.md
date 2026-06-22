@@ -30,7 +30,7 @@ Export ONNX before edge deploy:
 
 ```bash
 cd services/forecast && poetry run aarflingo-forecast build-default
-cd ../artifact-bridge && poetry run aarflingo-artifact-bridge export --out ../../artifacts/bundles/default/studio
+cd ../artifact-bridge && poetry run aarflingo-artifact-bridge --out ../../artifacts/bundles/default/studio
 ```
 
 ## BOM pointer
