@@ -60,6 +60,14 @@ struct SettingsView: View {
                 }
 
                 Section {
+                    Button(action: { appState.showOnboarding = true }) {
+                        Label("Show onboarding", systemImage: "hand.wave")
+                    }
+                } header: {
+                    Text("Help")
+                }
+
+                Section {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Aarflingo Pocket")
                             .font(.subheadline.weight(.semibold))
@@ -74,6 +82,62 @@ struct SettingsView: View {
             .scrollContentBackground(.hidden)
             .background(AarflingoTheme.gradient.ignoresSafeArea())
             .navigationTitle("Settings")
+            .sheet(isPresented: $appState.showOnboarding) {
+                OnboardingView()
+            }
+        }
+    }
+}
+
+struct OnboardingView: View {
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 24) {
+                    Image(systemName: "dog.fill")
+                        .font(.system(size: 72))
+                        .foregroundStyle(AarflingoTheme.accent)
+                    Text("Welcome to Aarflingo Pocket")
+                        .font(.title.bold())
+                        .multilineTextAlignment(.center)
+
+                    VStack(alignment: .leading, spacing: 16) {
+                        OnboardingStep(icon: "video.fill", title: "Live monitoring", description: "Point your camera at your dog and get real-time intent predictions — play, food, rest, and more.")
+                        OnboardingStep(icon: "gauge.with.dots.needle.67percent", title: "Triad dashboard", description: "View intent distribution, confidence trends, and multi-modal signal strengths at a glance.")
+                        OnboardingStep(icon: "clock.arrow.circlepath", title: "History & analytics", description: "Review past predictions, filter by intent, and track behavioral patterns over time.")
+                        OnboardingStep(icon: "link.circle", title: "Runtime connect", description: "Connect to the Aarflingo runtime for live TriadNet inference. Configure the URL in Settings.")
+                    }
+                    .padding(.horizontal)
+                }
+                .padding()
+            }
+            .background(AarflingoTheme.gradient.ignoresSafeArea())
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Get started") { dismiss() }
+                }
+            }
+        }
+    }
+}
+
+struct OnboardingStep: View {
+    let icon: String
+    let title: String
+    let description: String
+
+    var body: some View {
+        HStack(spacing: 14) {
+            Image(systemName: icon)
+                .font(.title2)
+                .foregroundStyle(AarflingoTheme.accent)
+                .frame(width: 36)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title).font(.subheadline.weight(.semibold))
+                Text(description).font(.caption).foregroundStyle(AarflingoTheme.muted)
+            }
         }
     }
 }

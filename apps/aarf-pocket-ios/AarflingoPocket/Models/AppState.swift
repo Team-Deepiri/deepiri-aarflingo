@@ -10,6 +10,7 @@ final class AppState: ObservableObject {
     @Published var prediction: TriadPrediction = .demo
     @Published var history: [HistoryItem] = HistoryItem.samples
     @Published var liveOn = false
+    @Published var showOnboarding = false
     @Published var hapticsEnabled = true
     @Published var autoConnect = false {
         didSet { UserDefaults.standard.set(autoConnect, forKey: "autoConnect") }
