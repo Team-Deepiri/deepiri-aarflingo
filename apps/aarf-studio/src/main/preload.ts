@@ -1,4 +1,1 @@
-// Preload bridge placeholder for future Electron APIs.
-export const api = {
-  version: "0.1.0",
-};
+// Preload bridge — see electron/preload.mjs (contextBridge exposes window.aarf).
