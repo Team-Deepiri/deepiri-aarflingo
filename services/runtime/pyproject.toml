@@ -19,6 +19,8 @@ python-multipart = "^0.0.12"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0.0"
+pillow = "^10.0.0"
+httpx = "^0.27.0"
 
 [tool.poetry.scripts]
 aarflingo-runtime = "app.cli:app"
