@@ -5,7 +5,7 @@ struct HistoryView: View {
     @State private var searchText = ""
 
     var displayedItems: [HistoryItem] {
-        let items = appState.history
+        let items = appState.filteredHistory
         guard !searchText.isEmpty else { return items }
         return items.filter {
             $0.intent.localizedCaseInsensitiveContains(searchText) ||
@@ -29,6 +29,28 @@ struct HistoryView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
+                if !appState.history.isEmpty {
+                    HStack {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 6) {
+                                FilterChip(label: "All", selected: appState.selectedIntentFilter == nil) {
+                                    appState.selectedIntentFilter = nil
+                                }
+                                ForEach(appState.uniqueIntents, id: \.self) { intent in
+                                    FilterChip(
+                                        label: "\(emoji(for: intent)) \(intent.capitalized)",
+                                        selected: appState.selectedIntentFilter == intent
+                                    ) {
+                                        appState.selectedIntentFilter = intent
+                                    }
+                                }
+                            }
+                            .padding(.horizontal)
+                        }
+                    }
+                    .padding(.vertical, 8)
+                }
+
                 if displayedItems.isEmpty {
                     VStack(spacing: 16) {
                         Image(systemName: "clock.arrow.circlepath")
@@ -58,6 +80,14 @@ struct HistoryView: View {
                                 }
                             }
                         }
+                        .onDelete { offsets in
+                            if let section = groupedItems.keys.sorted(by: >).first {
+                                let items = groupedItems[section]!
+                                if let idx = appState.history.firstIndex(where: { $0.id == items[offsets.first!].id }) {
+                                    appState.history.remove(at: idx)
+                                }
+                            }
+                        }
                     }
                     .scrollContentBackground(.hidden)
                 }
@@ -65,6 +95,28 @@ struct HistoryView: View {
             .background(AarflingoTheme.gradient.ignoresSafeArea())
             .navigationTitle("History")
             .searchable(text: $searchText, prompt: "Search intents, emotions...")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    if !appState.history.isEmpty {
+                        Button(action: { appState.clearHistory() }) {
+                            Image(systemName: "trash")
+                                .foregroundStyle(AarflingoTheme.danger)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    func emoji(for intent: String) -> String {
+        switch intent {
+        case "play": return "🎾"
+        case "food": return "🍖"
+        case "outside": return "🚪"
+        case "rest": return "😴"
+        case "avoid": return "⚠️"
+        case "attention": return "🐾"
+        default: return "🐕"
         }
     }
 }

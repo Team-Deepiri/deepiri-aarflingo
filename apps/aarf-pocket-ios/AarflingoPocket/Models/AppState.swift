@@ -10,13 +10,19 @@ final class AppState: ObservableObject {
     @Published var prediction: TriadPrediction = .demo
     @Published var history: [HistoryItem] = HistoryItem.samples
     @Published var liveOn = false
-
-    var intentCounts: [String: Int] {
-        Dictionary(grouping: history, by: \.intent).mapValues(\.count)
-    }
+    @Published var selectedIntentFilter: String? = nil
 
     var uniqueIntents: [String] {
         Array(Set(history.map(\.intent))).sorted()
+    }
+
+    var filteredHistory: [HistoryItem] {
+        guard let f = selectedIntentFilter else { return history }
+        return history.filter { $0.intent == f }
+    }
+
+    var intentCounts: [String: Int] {
+        Dictionary(grouping: history, by: \.intent).mapValues(\.count)
     }
 
     var averageConfidence: Double {
