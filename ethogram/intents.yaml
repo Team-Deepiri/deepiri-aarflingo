@@ -22,3 +22,12 @@ intents:
   - id: alert
     label: Alert
     description: Orienting to novel or salient stimulus
+  - id: outside
+    label: Outside
+    description: Wants to go outside — door orientation, exit seeking
+  - id: play
+    label: Play
+    description: Wants to play — toy orientation, play bow precursor
+  - id: food
+    label: Food
+    description: Wants food — bowl orientation, meal anticipation
