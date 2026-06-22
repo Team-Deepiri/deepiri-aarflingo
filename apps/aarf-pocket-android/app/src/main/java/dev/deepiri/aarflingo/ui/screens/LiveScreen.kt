@@ -26,8 +26,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import dev.deepiri.aarflingo.data.AppViewModel
+import dev.deepiri.aarflingo.ui.components.AarflingoCard
 import dev.deepiri.aarflingo.ui.components.ChipTone
 import dev.deepiri.aarflingo.ui.components.IntentHeroCard
+import dev.deepiri.aarflingo.ui.components.SignalBar
 import dev.deepiri.aarflingo.ui.components.StatusChip
 import dev.deepiri.aarflingo.ui.theme.AarflingoColors
 
@@ -91,6 +93,18 @@ fun LiveScreen(vm: AppViewModel, modifier: Modifier = Modifier) {
 
         if (vm.liveOn) {
             IntentHeroCard(vm.prediction)
+
+            AarflingoCard {
+                Text("Live signals", fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.height(8.dp))
+                SignalBar("Vision", 0.88f)
+                Spacer(Modifier.height(4.dp))
+                SignalBar("Audio", 0.62f)
+                Spacer(Modifier.height(4.dp))
+                SignalBar("Heart rate", 0.35f)
+                Spacer(Modifier.height(4.dp))
+                SignalBar("Motion", 0.74f)
+            }
         }
 
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
