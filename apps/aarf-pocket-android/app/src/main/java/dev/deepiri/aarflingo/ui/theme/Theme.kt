@@ -12,4 +12,5 @@ object AarflingoColors {
     val Warn = Color(0xFFF0C674)
     val Danger = Color(0xFFF07178)
     val Info = Color(0xFF6CB6FF)
+    val Purple = Color(0xFFD18FF0)
 }
