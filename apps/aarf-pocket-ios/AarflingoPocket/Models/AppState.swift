@@ -55,6 +55,8 @@ struct TriadPrediction: Identifiable, Equatable {
             ("food", "content", "sniff_ground", 0.84),
             ("outside", "anxious", "freeze", 0.78),
             ("rest", "calm", "yawning", 0.71),
+            ("avoid", "fearful", "cowering", 0.64),
+            ("attention", "happy", "paw_raise", 0.87),
         ]
         let pick = intents.randomElement()!
         return TriadPrediction(
@@ -74,7 +76,32 @@ struct TriadPrediction: Identifiable, Equatable {
         case "outside": return "Wants outside"
         case "rest": return "Resting"
         case "avoid": return "Needs space"
+        case "attention": return "Seeks attention"
         default: return intent.capitalized
+        }
+    }
+
+    var intentEmoji: String {
+        switch intent {
+        case "play": return "🎾"
+        case "food": return "🍖"
+        case "outside": return "🚪"
+        case "rest": return "😴"
+        case "avoid": return "⚠️"
+        case "attention": return "🐾"
+        default: return "🐕"
+        }
+    }
+
+    var emotionEmoji: String {
+        switch emotion {
+        case "excited": return "🤩"
+        case "content": return "😊"
+        case "anxious": return "😰"
+        case "calm": return "😌"
+        case "fearful": return "😨"
+        case "happy": return "🐶"
+        default: return "❓"
         }
     }
 }
