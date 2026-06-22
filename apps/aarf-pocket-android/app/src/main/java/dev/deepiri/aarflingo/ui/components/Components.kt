@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import dev.deepiri.aarflingo.data.TriadPrediction
 import dev.deepiri.aarflingo.ui.theme.AarflingoColors
 
@@ -88,7 +89,10 @@ fun ConfidenceRing(confidence: Float, gate: String) {
     val color = if (gate == "pass") AarflingoColors.Accent else AarflingoColors.Warn
     Box(contentAlignment = Alignment.Center, modifier = Modifier.size(72.dp)) {
         Box(Modifier.matchParentSize().clip(CircleShape).border(6.dp, AarflingoColors.Border, CircleShape))
-        Text("${(confidence * 100).toInt()}%", fontWeight = FontWeight.Bold, color = AarflingoColors.Text, fontSize = 18.sp)
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("${(confidence * 100).toInt()}", fontWeight = FontWeight.Bold, color = AarflingoColors.Text, fontSize = 18.sp)
+            Text("%", color = AarflingoColors.Muted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        }
     }
 }
 
