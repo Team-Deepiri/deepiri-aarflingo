@@ -53,3 +53,18 @@ fun DashboardScreen(vm: AppViewModel, modifier: Modifier = Modifier) {
         }
     }
 }
+
+@Composable
+fun ConfidenceTrendSection(vm: AppViewModel) {
+    val data = vm.history.take(20).reversed()
+    AarflingoCard {
+        Text("Confidence trend (last ${data.size})", fontWeight = FontWeight.SemiBold, color = AarflingoColors.Muted, style = MaterialTheme.typography.labelMedium)
+        Spacer(Modifier.height(8.dp))
+        Text(
+            "Avg: ${(vm.averageConfidence * 100).toInt()}% · Latest: ${(vm.prediction.confidence * 100).toInt()}%",
+            color = AarflingoColors.Accent,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold,
+        )
+    }
+}
