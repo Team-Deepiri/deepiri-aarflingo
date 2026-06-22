@@ -81,3 +81,35 @@ struct MetricRow: View {
         .font(.subheadline)
     }
 }
+
+struct TriadChart: View {
+    let counts: [(String, Int)]
+
+    var maxCount: Int { counts.map(\.1).max() ?? 1 }
+
+    var body: some View {
+        VStack(spacing: 8) {
+            ForEach(counts, id: \.0) { intent, count in
+                HStack {
+                    Text(intent.capitalized)
+                        .font(.caption)
+                        .frame(width: 80, alignment: .leading)
+                    GeometryReader { geo in
+                        ZStack(alignment: .leading) {
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(AarflingoTheme.border)
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(AarflingoTheme.accent)
+                                .frame(width: max(geo.size.width * CGFloat(count) / CGFloat(maxCount), 4))
+                        }
+                    }
+                    .frame(height: 16)
+                    Text("\(count)")
+                        .font(.caption2.weight(.semibold))
+                        .frame(width: 24)
+                }
+                .foregroundStyle(AarflingoTheme.text)
+            }
+        }
+    }
+}
