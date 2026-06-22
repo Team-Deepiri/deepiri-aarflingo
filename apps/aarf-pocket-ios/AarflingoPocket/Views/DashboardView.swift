@@ -120,3 +120,37 @@ struct TriadChart: View {
         }
     }
 }
+
+struct ConfidenceTrendChart: View {
+    let items: [HistoryItem]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Confidence trend")
+                .font(.headline)
+            if items.isEmpty {
+                Text("No data yet")
+                    .font(.subheadline)
+                    .foregroundStyle(AarflingoTheme.muted)
+            } else {
+                let recent = Array(items.prefix(10).reversed())
+                HStack(alignment: .bottom, spacing: 4) {
+                    ForEach(Array(recent.enumerated()), id: \.offset) { i, item in
+                        VStack(spacing: 2) {
+                            RoundedRectangle(cornerRadius: 3)
+                                .fill(item.confidence >= 0.8 ? AarflingoTheme.accent : AarflingoTheme.warn)
+                                .frame(height: CGFloat(item.confidence) * 80)
+                            Text("\(Int(item.confidence * 100))")
+                                .font(.system(size: 8))
+                                .foregroundStyle(AarflingoTheme.muted)
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                }
+                .frame(height: 100)
+                .padding(.top, 4)
+            }
+        }
+        .aarflingoCard()
+    }
+}
