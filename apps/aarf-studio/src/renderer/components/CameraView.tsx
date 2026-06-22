@@ -1,12 +1,23 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+
+import type { CaptureMode } from "../lib/platform";
+import { postFrame, useCameraCapture } from "../hooks/useCameraCapture";
 import { useRuntimeLive } from "../hooks/useRuntimeLive";
+import { runtimeUrl } from "../lib/platform";
+
+const INTENT_LABELS: Record<string, string> = {
+  outside: "Wants outside",
+  play: "Wants to play",
+  food: "Wants food",
+  avoid: "Needs space",
+  rest: "Resting",
+  explore: "Exploring",
+};
 
 const WORDS: Record<string, string> = {
   outside: "outside",
   play: "play",
   food: "food",
-  solicit_play: "play",
-  approach: "come",
   avoid: "help",
   rest: "rest",
 };
@@ -20,14 +31,32 @@ function speak(intent: string) {
   window.speechSynthesis.speak(u);
 }
 
+function IntentRing({ confidence, gate }: { confidence: number; gate: string }) {
+  const pct = Math.round(confidence * 100);
+  const color = gate === "pass" ? "#3dd68c" : gate === "reject" ? "#f07178" : "#f0c674";
+  return (
+    <div className="intent-ring" style={{ ["--pct" as string]: pct, ["--ring" as string]: color }}>
+      <span>{pct}%</span>
+    </div>
+  );
+}
+
 export function CameraView() {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const overlayRef = useRef<HTMLCanvasElement>(null);
-  const [localOn, setLocalOn] = useState(false);
-  const [retrainMsg, setRetrainMsg] = useState("");
   const lastSpoke = useRef("");
-  const { prediction, connected, error, startWebcam, stopWebcam, sendFeedback } = useRuntimeLive();
+  const [retrainMsg, setRetrainMsg] = useState("");
+  const [captureMode, setCaptureMode] = useState<CaptureMode>("bridge");
+  const { prediction, connected, error: runtimeError, health, startWebcam, stopWebcam, sendFeedback } =
+    useRuntimeLive();
+
+  const onFrame = useCallback(async (blob: Blob) => {
+    await postFrame(blob);
+  }, []);
+
+  const cam = useCameraCapture(onFrame, prediction);
+
+  useEffect(() => {
+    if (cam.wsl) setCaptureMode("bridge");
+  }, [cam.wsl]);
 
   useEffect(() => {
     if (!prediction || prediction.gate !== "pass" || prediction.confidence < 0.85) return;
@@ -37,143 +66,181 @@ export function CameraView() {
     speak(prediction.intent);
   }, [prediction]);
 
-  useEffect(() => {
-    if (!localOn || !videoRef.current) return;
-    let stream: MediaStream;
-    navigator.mediaDevices
-      .getUserMedia({ video: { width: 640, height: 480 }, audio: false })
-      .then((s) => {
-        stream = s;
-        if (videoRef.current) videoRef.current.srcObject = s;
-      })
-      .catch((e) => console.error(e));
-    return () => stream?.getTracks().forEach((t) => t.stop());
-  }, [localOn]);
-
-  // Push browser frames to runtime when local preview on
-  useEffect(() => {
-    if (!localOn) return;
-    const id = setInterval(async () => {
-      const video = videoRef.current;
-      const canvas = canvasRef.current;
-      if (!video || !canvas || video.readyState < 2) return;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      ctx.drawImage(video, 0, 0);
-      canvas.toBlob(async (blob) => {
-        if (!blob) return;
-        const fd = new FormData();
-        fd.append("file", blob, "frame.jpg");
-        await fetch(
-          (import.meta.env.VITE_RUNTIME_URL || "http://127.0.0.1:8765") + "/infer/frame",
-          { method: "POST", body: fd }
-        );
-      }, "image/jpeg", 0.75);
-    }, 200);
-    return () => clearInterval(id);
-  }, [localOn]);
-
-  useEffect(() => {
-    const video = videoRef.current;
-    const overlay = overlayRef.current;
-    const f = prediction?.features;
-    if (!video || !overlay || !f?.dog_present) {
-      const ctx = overlay?.getContext("2d");
-      if (ctx && overlay) ctx.clearRect(0, 0, overlay.width, overlay.height);
-      return;
+  const handleStart = async () => {
+    if (captureMode === "server") {
+      await startWebcam({ mode: "server" });
+    } else {
+      await startWebcam({ mode: "browser" });
     }
-    const draw = () => {
-      const w = video.videoWidth;
-      const h = video.videoHeight;
-      if (!w || !h) return;
-      overlay.width = w;
-      overlay.height = h;
-      const ctx = overlay.getContext("2d");
-      if (!ctx) return;
-      ctx.clearRect(0, 0, w, h);
-      const cx = (f.bbox_cx ?? 0) * w;
-      const cy = (f.bbox_cy ?? 0) * h;
-      const bw = (f.bbox_w ?? 0) * w;
-      const bh = (f.bbox_h ?? 0) * h;
-      ctx.strokeStyle = prediction?.gate === "pass" ? "#3dd68c" : "#f0c674";
-      ctx.lineWidth = 2;
-      ctx.strokeRect(cx - bw / 2, cy - bh / 2, bw, bh);
-      ctx.fillStyle = "rgba(61, 214, 140, 0.15)";
-      ctx.fillRect(cx - bw / 2, cy - bh / 2, bw, bh);
-    };
-    draw();
-    const id = setInterval(draw, 200);
-    return () => clearInterval(id);
-  }, [prediction]);
+    await cam.start(captureMode);
+  };
+
+  const handleStop = async () => {
+    cam.stop();
+    await stopWebcam();
+  };
+
+  const features = prediction?.features || {};
+  const showWslHint = Boolean(health.wsl || cam.wsl) && captureMode !== "bridge";
 
   return (
-    <section className="card camera-panel">
-      <h2>Live camera</h2>
-      <p className="meta">
-        Runtime: {connected ? "connected" : "disconnected"}
-        {error ? ` — ${error}` : ""}
-      </p>
-      <div className="camera-row">
-        <div className="camera-wrap">
-          <video ref={videoRef} autoPlay playsInline muted className="camera-feed" />
-          <canvas ref={overlayRef} className="camera-overlay" />
+    <div className="camera-layout">
+      <div className="camera-main card">
+        <div className="card-head">
+          <div>
+            <h2>Live perception</h2>
+            <p className="meta">Webcam → TriadNet → speak intent when confidence is high</p>
+          </div>
+          <div className="status-chips">
+            <span className={`chip ${connected ? "chip-ok" : "chip-warn"}`}>
+              {connected ? "Runtime live" : "Runtime offline"}
+            </span>
+            {health.wsl || cam.wsl ? <span className="chip chip-info">WSL</span> : null}
+            {cam.status === "live" ? <span className="chip chip-ok">Camera live</span> : null}
+          </div>
         </div>
-        <canvas ref={canvasRef} style={{ display: "none" }} />
-        <aside className="prediction-panel">
+
+        {showWslHint ? (
+          <div className="alert alert-warn">
+            <strong>WSL:</strong> Use <button type="button" className="linkish" onClick={() => setCaptureMode("bridge")}>Windows bridge</button>{" "}
+            — run <code>scripts/webcam/start_webcam_bridge.ps1</code> in PowerShell on Windows.
+          </div>
+        ) : null}
+
+        <div className="mode-tabs" role="tablist">
+          {(["bridge", "browser", "server"] as CaptureMode[]).map((m) => (
+            <button
+              key={m}
+              type="button"
+              role="tab"
+              aria-selected={captureMode === m}
+              className={captureMode === m ? "mode-tab active" : "mode-tab"}
+              onClick={() => setCaptureMode(m)}
+            >
+              {m === "bridge" ? "WSL bridge" : m === "browser" ? "Browser cam" : "Server OpenCV"}
+            </button>
+          ))}
+        </div>
+
+        <div className="video-stage">
+          <video
+            ref={cam.videoRef}
+            autoPlay
+            playsInline
+            muted
+            className={`video-feed ${captureMode === "browser" && cam.status !== "idle" ? "" : "hidden-feed"}`}
+          />
+          <img
+            ref={cam.bridgeImgRef}
+            src={cam.status === "idle" ? undefined : cam.bridgeUrl}
+            alt="Webcam bridge stream"
+            className={`video-feed ${captureMode === "bridge" && cam.status !== "idle" ? "" : "hidden-feed"}`}
+          />
+          {captureMode === "server" && cam.status === "live" ? (
+            <div className="video-placeholder overlay-placeholder">
+              <p>Server capture active</p>
+              <p className="meta">Runtime OpenCV reads the WSL bridge stream.</p>
+            </div>
+          ) : null}
+          {cam.status === "idle" ? (
+            <div className="video-placeholder">
+              <p>Camera preview</p>
+              <p className="meta">
+                {captureMode === "bridge"
+                  ? "Start bridge on Windows, then press Start here."
+                  : "Press Start to begin live inference."}
+              </p>
+            </div>
+          ) : null}
+          {captureMode !== "server" && cam.status === "live" ? (
+            <canvas ref={cam.overlayRef} className="video-overlay" />
+          ) : null}
+          <canvas ref={cam.canvasRef} hidden />
+          {cam.status === "starting" ? (
+            <div className="video-overlay-msg">
+              <div className="spinner" />
+              <p>Starting camera…</p>
+            </div>
+          ) : null}
+        </div>
+
+        {(cam.error || runtimeError) && <div className="alert alert-error">{cam.error || runtimeError}</div>}
+
+        <div className="toolbar">
+          <button type="button" className="btn primary" onClick={() => void handleStart()} disabled={cam.status === "live" || cam.status === "starting"}>
+            Start
+          </button>
+          <button type="button" className="btn" onClick={() => void handleStop()} disabled={cam.status === "idle"}>
+            Stop
+          </button>
+          <button
+            type="button"
+            className="btn ghost"
+            onClick={async () => {
+              const r = await fetch(`${runtimeUrl()}/live/retrain`, { method: "POST" });
+              setRetrainMsg(JSON.stringify(await r.json(), null, 2));
+            }}
+          >
+            Retrain
+          </button>
+        </div>
+        {retrainMsg ? <pre className="code-block">{retrainMsg}</pre> : null}
+      </div>
+
+      <aside className="camera-side">
+        <section className="card prediction-hero">
           {prediction ? (
             <>
-              <h3>{prediction.intent}</h3>
-              <p>{prediction.emotion} · {prediction.behavior}</p>
-              <p>{(prediction.confidence * 100).toFixed(0)}% · gate: {prediction.gate}</p>
+              <p className="eyebrow">Current intent</p>
+              <h2 className="intent-title">{INTENT_LABELS[prediction.intent] || prediction.intent}</h2>
+              <p className="intent-sub">
+                {prediction.emotion} · {prediction.behavior}
+              </p>
+              <div className="prediction-row">
+                <IntentRing confidence={prediction.confidence} gate={prediction.gate} />
+                <div>
+                  <p className="gate-label">
+                    Gate: <span className={`gate-${prediction.gate}`}>{prediction.gate}</span>
+                  </p>
+                  <p className="meta">Dog detected: {prediction.dog_present ? "yes" : "no"}</p>
+                </div>
+              </div>
             </>
           ) : (
-            <p>Awaiting prediction…</p>
+            <p className="meta">Point the camera at your dog — waiting for first prediction…</p>
           )}
-          <div className="feedback-row">
-            <button type="button" onClick={() => sendFeedback(1)}>Correct</button>
-            <button type="button" onClick={() => sendFeedback(-1)}>Wrong</button>
-            <button type="button" onClick={() => sendFeedback(1, "outside")}>Fix: outside</button>
-            <button type="button" onClick={() => sendFeedback(1, "play")}>Fix: play</button>
-            <button type="button" onClick={() => sendFeedback(1, "food")}>Fix: food</button>
+        </section>
+
+        <section className="card">
+          <h3>Modality signals</h3>
+          <div className="signal-grid">
+            {[
+              ["Vision", features.vision_yolo_dog_conf],
+              ["Audio arousal", features.audio_arousal],
+              ["ECG stress", features.ecg_stress],
+              ["IMU activity", features.imu_activity],
+            ].map(([label, val]) => (
+              <div key={label as string} className="signal">
+                <span>{label}</span>
+                <div className="signal-bar">
+                  <div style={{ width: `${Math.min(100, Number(val || 0) * 100)}%` }} />
+                </div>
+              </div>
+            ))}
           </div>
-        </aside>
-      </div>
-      <div className="toolbar">
-        <button
-          type="button"
-          onClick={async () => {
-            setLocalOn(true);
-            await startWebcam(0);
-          }}
-        >
-          Start webcam + runtime
-        </button>
-        <button
-          type="button"
-          onClick={async () => {
-            setLocalOn(false);
-            await stopWebcam();
-          }}
-        >
-          Stop
-        </button>
-        <button
-          type="button"
-          onClick={async () => {
-            const r = await fetch(
-              (import.meta.env.VITE_RUNTIME_URL || "http://127.0.0.1:8765") + "/live/retrain",
-              { method: "POST" }
-            );
-            const j = await r.json();
-            setRetrainMsg(JSON.stringify(j));
-          }}
-        >
-          Retrain from feedback
-        </button>
-      </div>
-      {retrainMsg ? <pre className="meta">{retrainMsg}</pre> : null}
-    </section>
+        </section>
+
+        <section className="card">
+          <h3>Correct the model</h3>
+          <div className="feedback-grid">
+            <button type="button" className="btn good" onClick={() => sendFeedback(1)}>Correct</button>
+            <button type="button" className="btn bad" onClick={() => sendFeedback(-1)}>Wrong</button>
+            <button type="button" className="btn" onClick={() => sendFeedback(1, "outside")}>Fix: outside</button>
+            <button type="button" className="btn" onClick={() => sendFeedback(1, "play")}>Fix: play</button>
+            <button type="button" className="btn" onClick={() => sendFeedback(1, "food")}>Fix: food</button>
+          </div>
+        </section>
+      </aside>
+    </div>
   );
 }

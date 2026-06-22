@@ -1,40 +1,60 @@
-# Webcam live inference
+# Webcam live paths for Aarflingo
 
-## 1. Start runtime
+## Recommended: WSL dev (Windows bridge)
+
+WSL cannot see USB webcams directly. Pattern from `lighthouse-avionics-video-processing`:
+
+### 1. Start bridge on **Windows** (PowerShell)
+
+```powershell
+cd \\wsl$\Ubuntu\home\<you>\projects\Deepiri\deepiri-aarflingo
+.\scripts\webcam\start_webcam_bridge.ps1
+```
+
+Stream: `http://localhost:8766/video/stream`
+
+### 2. Start runtime in WSL
 
 ```bash
 ./scripts/run_runtime.sh
-# → http://127.0.0.1:8765/health
 ```
 
-## 2. Studio (browser camera → server inference)
+Runtime auto-detects WSL and uses `http://<windows-host>:8766/video/stream` for server capture.
+
+### 3. Open studio
 
 ```bash
-cd apps/aarf-studio && cp .env.example .env && npm run dev
+./setup.sh --run
+# or
+cd apps/aarf-studio && npm run electron:dev
 ```
 
-Open **Camera** → **Start webcam + runtime**. The browser captures frames and POSTs them to `/infer/frame`; predictions stream on `WS /ws/live`.
+In **Live camera** → choose **WSL bridge** → **Start**.
 
-## 3. Server-side OpenCV webcam
+The UI displays the MJPEG stream and POSTs frames to `/infer/frame` for predictions.
+
+## Browser camera (native Linux / macOS / Windows host)
+
+Choose **Browser cam** — uses `getUserMedia` in Electron or Chrome. Electron grants media permissions automatically.
+
+## Server OpenCV (runtime pulls frames)
+
+Choose **Server OpenCV** — runtime reads the bridge URL (WSL) or `/dev/video0` (Linux).
 
 ```bash
-curl -X POST http://127.0.0.1:8765/live/start -H 'Content-Type: application/json' -d '{"camera":0}'
+curl -X POST http://127.0.0.1:8765/live/start \
+  -H 'Content-Type: application/json' \
+  -d '{"camera":0,"mode":"server"}'
 ```
 
-Useful when the runtime runs on the same machine as a USB camera (collar dev kit, Jetson).
-
-## 4. Feedback loop
-
-- **Correct / Wrong** buttons → `POST /feedback`
-- **Fix: outside|play|food** → stores corrected label for retrain
-- **Retrain**: `POST /live/retrain` or CLI export + `aarflingo-forecast train --feedback ...`
-
-## 5. Calibrate zones
-
-Edit [`infra/configs/zones.default.yaml`](../infra/configs/zones.default.yaml) so `door`, `toy`, and `bowl` rectangles match where those objects appear in your camera frame (normalized 0–1).
-
-## 6. Probe camera
+## Probe endpoints
 
 ```bash
+curl http://127.0.0.1:8765/bridge/info
+curl http://127.0.0.1:8766/health   # bridge on Windows host
 cd services/ingest && poetry run aarflingo-ingest webcam-probe --camera 0
 ```
+
+## Calibrate gaze zones
+
+Edit [`infra/configs/zones.default.yaml`](../infra/configs/zones.default.yaml) for door / toy / bowl regions in your room.

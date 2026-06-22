@@ -1,4 +1,4 @@
-import { app, BrowserWindow, nativeImage, shell } from "electron";
+import { app, BrowserWindow, nativeImage, session, shell } from "electron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -11,11 +11,23 @@ if (process.env.AARF_ELECTRON_NO_SANDBOX === "1") {
 
 const iconPath = path.join(__dirname, "../../../assets/branding/Aarflingo-logo.png");
 
+function configurePermissions() {
+  session.defaultSession.setPermissionRequestHandler((_wc, permission, callback) => {
+    callback(permission === "media" || permission === "mediaKeySystem");
+  });
+  session.defaultSession.setPermissionCheckHandler((_wc, permission) => {
+    return permission === "media" || permission === "mediaKeySystem";
+  });
+}
+
 function createWindow() {
   const win = new BrowserWindow({
-    width: 1280,
-    height: 840,
+    width: 1320,
+    height: 900,
+    minWidth: 960,
+    minHeight: 640,
     title: "Aarflingo Studio",
+    backgroundColor: "#0a0e12",
     icon: nativeImage.createFromPath(iconPath),
     webPreferences: {
       preload: path.join(__dirname, "preload.mjs"),
@@ -37,7 +49,10 @@ function createWindow() {
   }
 }
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  configurePermissions();
+  createWindow();
+});
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();

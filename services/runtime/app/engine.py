@@ -99,7 +99,7 @@ class LiveState:
     running: bool = False
     session_id: str | None = None
     dog_id: str = "default"
-    camera_index: int = 0
+    camera_index: int | str = 0
     sequence: deque = field(default_factory=lambda: deque(maxlen=15))
     last_prediction_id: str | None = None
     last_frame_jpeg: bytes | None = None
@@ -190,19 +190,23 @@ async def broadcast(msg: dict) -> None:
         STATE.subscribers.remove(q)
 
 
-async def webcam_loop(camera_index: int) -> None:
+async def webcam_loop(camera: int | str) -> None:
     import cv2
 
-    cap = cv2.VideoCapture(camera_index)
+    cap = cv2.VideoCapture(camera)
     if not cap.isOpened():
-        await broadcast({"type": "error", "message": f"Cannot open camera {camera_index}"})
+        hint = ""
+        if isinstance(camera, int):
+            hint = " On WSL, start scripts/webcam/start_webcam_bridge.ps1 on Windows and use bridge mode."
+        await broadcast({"type": "error", "message": f"Cannot open camera {camera}.{hint}"})
         STATE.running = False
         return
 
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
     STATE.running = True
-    STATE.session_id = STATE.store.start_session(dog_id=STATE.dog_id, source="webcam")
+    source = "bridge" if isinstance(camera, str) else "webcam"
+    STATE.session_id = STATE.store.start_session(dog_id=STATE.dog_id, source=source)
 
     try:
         while STATE.running:

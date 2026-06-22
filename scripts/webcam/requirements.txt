@@ -1,0 +1,5 @@
+# Flask + OpenCV for scripts/webcam/webcam_bridge.py
+flask>=3.0.0
+flask-cors>=4.0.0
+opencv-python-headless>=4.10.0
+numpy>=2.0.0

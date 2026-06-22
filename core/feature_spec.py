@@ -1,7 +1,20 @@
 """Canonical perception feature vector layout (shared by train + runtime)."""
 from __future__ import annotations
 
-from .modality_spec import MODALITY_NAMES, modality_vectorize
+import importlib.util
+from pathlib import Path
+
+try:
+    from .modality_spec import MODALITY_NAMES, modality_vectorize
+except ImportError:
+    _mod_path = Path(__file__).with_name("modality_spec.py")
+    _spec = importlib.util.spec_from_file_location("modality_spec", _mod_path)
+    if _spec is None or _spec.loader is None:
+        raise
+    _mod = importlib.util.module_from_spec(_spec)
+    _spec.loader.exec_module(_mod)
+    MODALITY_NAMES = _mod.MODALITY_NAMES
+    modality_vectorize = _mod.modality_vectorize
 
 BASE_FEATURE_NAMES: list[str] = [
     "dog_present",

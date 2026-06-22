@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from pathlib import Path
 
 from app.engine import STATE, _load_service_package, broadcast, process_jpeg, webcam_loop
+from app.platform import default_bridge_stream_url, is_wsl, windows_host_ip
 
 
 class FeedbackBody(BaseModel):
@@ -22,8 +23,9 @@ class FeedbackBody(BaseModel):
 
 
 class StartBody(BaseModel):
-    camera: int = 0
+    camera: int | str = 0
     dog_id: str = "default"
+    mode: str | None = None  # browser | server | bridge
 
 
 @asynccontextmanager
@@ -42,7 +44,24 @@ app.add_middleware(
 
 @app.get("/health")
 def health() -> dict:
-    return {"ok": True, "running": STATE.running, "session_id": STATE.session_id}
+    return {
+        "ok": True,
+        "running": STATE.running,
+        "session_id": STATE.session_id,
+        "wsl": is_wsl(),
+        "bridge_url": default_bridge_stream_url(),
+    }
+
+
+@app.get("/bridge/info")
+def bridge_info() -> dict:
+    return {
+        "wsl": is_wsl(),
+        "windows_host": windows_host_ip(),
+        "stream_url": default_bridge_stream_url(),
+        "health_url": default_bridge_stream_url().replace("/video/stream", "/health"),
+        "start_windows": "powershell -File scripts/webcam/start_webcam_bridge.ps1",
+    }
 
 
 @app.get("/metrics")
@@ -59,10 +78,13 @@ def recent() -> list:
 async def live_start(body: StartBody) -> dict:
     if STATE.running:
         return {"status": "already_running", "session_id": STATE.session_id}
-    STATE.camera_index = body.camera
+    camera: int | str = body.camera
+    if body.mode in ("bridge", "server") or (is_wsl() and isinstance(camera, int)):
+        camera = default_bridge_stream_url()
+    STATE.camera_index = camera
     STATE.dog_id = body.dog_id
-    asyncio.create_task(webcam_loop(body.camera))
-    return {"status": "started", "camera": body.camera}
+    asyncio.create_task(webcam_loop(camera))
+    return {"status": "started", "camera": camera, "mode": body.mode or "server", "wsl": is_wsl()}
 
 
 @app.post("/live/stop")

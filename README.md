@@ -7,14 +7,18 @@
 ## Quick start (webcam)
 
 ```bash
-./setup.sh --run        # install system + project deps, train model, open Electron
-./setup.sh            # install only
-./setup.sh --kill     # stop runtime + Electron
-
-# manual split:
-./scripts/run_runtime.sh    # API on http://127.0.0.1:8765
-cd apps/aarf-studio && npm run dev   # browser UI
+./setup.sh --run        # install + train + Electron studio
+./scripts/run_runtime.sh
 ```
+
+**WSL:** USB cameras need the Windows MJPEG bridge (lighthouse pattern):
+
+```powershell
+# Windows PowerShell
+.\scripts\webcam\start_webcam_bridge.ps1
+```
+
+Then in studio → **Live camera** → **WSL bridge** → **Start**. See [docs/WEBCAM.md](docs/WEBCAM.md).
 
 See [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) and [docs/ELECTRON.md](docs/ELECTRON.md).
 

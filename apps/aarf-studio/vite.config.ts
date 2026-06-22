@@ -18,6 +18,18 @@ export default defineConfig({
     fs: {
       allow: [repoRoot],
     },
+    proxy: {
+      "/runtime": {
+        target: "http://127.0.0.1:8765",
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/runtime/, ""),
+      },
+      "/bridge": {
+        target: "http://127.0.0.1:8766",
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/bridge/, ""),
+      },
+    },
   },
   build: {
     outDir: "dist",
