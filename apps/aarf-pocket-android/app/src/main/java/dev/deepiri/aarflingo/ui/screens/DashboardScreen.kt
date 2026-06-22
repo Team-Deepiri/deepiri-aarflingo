@@ -2,7 +2,9 @@ package dev.deepiri.aarflingo.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -13,7 +15,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import dev.deepiri.aarflingo.data.AppViewModel
+import dev.deepiri.aarflingo.ui.components.AarflingoCard
 import dev.deepiri.aarflingo.ui.components.IntentHeroCard
+import dev.deepiri.aarflingo.ui.components.SignalBar
+import dev.deepiri.aarflingo.ui.components.TriadChart
+import dev.deepiri.aarflingo.ui.theme.AarflingoColors
 
 @Composable
 fun DashboardScreen(vm: AppViewModel, modifier: Modifier = Modifier) {
@@ -27,5 +33,23 @@ fun DashboardScreen(vm: AppViewModel, modifier: Modifier = Modifier) {
         Text("Dashboard", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
 
         IntentHeroCard(vm.prediction)
+
+        AarflingoCard {
+            Text("Intent distribution", fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(12.dp))
+            TriadChart(vm.intentCounts.map { Pair(it.key, it.value) }.sortedByDescending { it.second })
+        }
+
+        AarflingoCard {
+            Text("Modality signals", fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(8.dp))
+            SignalBar("Vision", 0.88f, AarflingoColors.Info)
+            Spacer(Modifier.height(4.dp))
+            SignalBar("Audio arousal", 0.62f, AarflingoColors.Warn)
+            Spacer(Modifier.height(4.dp))
+            SignalBar("ECG stress", 0.22f, AarflingoColors.Danger)
+            Spacer(Modifier.height(4.dp))
+            SignalBar("IMU activity", 0.74f, AarflingoColors.Accent)
+        }
     }
 }
