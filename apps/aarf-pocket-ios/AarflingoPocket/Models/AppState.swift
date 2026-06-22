@@ -11,6 +11,10 @@ final class AppState: ObservableObject {
     @Published var history: [HistoryItem] = HistoryItem.samples
     @Published var liveOn = false
 
+    var intentCounts: [String: Int] {
+        Dictionary(grouping: history, by: \.intent).mapValues(\.count)
+    }
+
     init() {
         runtimeURL = UserDefaults.standard.string(forKey: "runtimeURL") ?? "http://127.0.0.1:8765"
     }

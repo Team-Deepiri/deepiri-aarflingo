@@ -10,6 +10,13 @@ struct DashboardView: View {
                     IntentHeroCard(prediction: appState.prediction)
 
                     VStack(alignment: .leading, spacing: 12) {
+                        Text("Intent distribution")
+                            .font(.headline)
+                        TriadChart(counts: appState.intentCounts.map { ($0.key, $0.value) }.sorted { $0.1 > $1.1 })
+                    }
+                    .aarflingoCard()
+
+                    VStack(alignment: .leading, spacing: 12) {
                         Text("Modality signals")
                             .font(.headline)
                         SignalBar(label: "Vision", value: 0.88)
