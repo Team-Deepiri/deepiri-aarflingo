@@ -90,9 +90,15 @@ struct ConfidenceRing: View {
                 .trim(from: 0, to: confidence)
                 .stroke(ringColor, style: StrokeStyle(lineWidth: 6, lineCap: .round))
                 .rotationEffect(.degrees(-90))
-            Text("\(Int(confidence * 100))%")
-                .font(.headline.bold())
-                .foregroundStyle(AarflingoTheme.text)
+                .animation(.easeInOut(duration: 0.6), value: confidence)
+            VStack(spacing: -2) {
+                Text("\(Int(confidence * 100))")
+                    .font(.headline.bold())
+                    .foregroundStyle(AarflingoTheme.text)
+                Text("%")
+                    .font(.system(size: 10).bold())
+                    .foregroundStyle(AarflingoTheme.muted)
+            }
         }
         .frame(width: 72, height: 72)
     }
