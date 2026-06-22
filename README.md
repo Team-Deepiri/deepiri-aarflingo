@@ -1,6 +1,7 @@
-# deepiri-aarflingo
+# Aarflingo
+<img width="1024" height="1024" alt="Aarflingo-logo" src="https://github.com/user-attachments/assets/10ea553c-3157-471f-8227-72cab66166a2" />
 
-**DeepIRI-AARF** — proactive canine intent forecasting: webcam → perception → triad model → feedback → retrain → edge deploy.
+**Deepiri's Aarflingo** — proactive canine intent forecasting: webcam → perception → triad model → feedback → retrain → edge deploy.
 
 ## Quick start (webcam)
 
