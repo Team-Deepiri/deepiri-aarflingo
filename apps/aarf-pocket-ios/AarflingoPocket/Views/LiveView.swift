@@ -71,10 +71,10 @@ struct LiveView: View {
                         VStack(alignment: .leading, spacing: 12) {
                             Text("Live signals")
                                 .font(.headline)
-                            LiveSignalBar(label: "Vision", value: 0.88)
-                            LiveSignalBar(label: "Audio", value: 0.62)
-                            LiveSignalBar(label: "Heart rate", value: 0.35)
-                            LiveSignalBar(label: "Motion", value: 0.74)
+                            LiveSignalBar(label: "Vision", value: 0.88, color: AarflingoTheme.info)
+                            LiveSignalBar(label: "Audio", value: 0.62, color: AarflingoTheme.warn)
+                            LiveSignalBar(label: "Heart rate", value: 0.35, color: AarflingoTheme.danger)
+                            LiveSignalBar(label: "Motion", value: 0.74, color: AarflingoTheme.accent)
                         }
                         .aarflingoCard()
                     }
@@ -141,6 +141,7 @@ struct LiveMetric: View {
 struct LiveSignalBar: View {
     let label: String
     let value: Double
+    let color: Color
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -155,7 +156,7 @@ struct LiveSignalBar: View {
                 ZStack(alignment: .leading) {
                     Capsule().fill(AarflingoTheme.border)
                     Capsule()
-                        .fill(AarflingoTheme.accent)
+                        .fill(color)
                         .frame(width: geo.size.width * value)
                         .animation(.easeOut(duration: 0.4), value: value)
                 }
