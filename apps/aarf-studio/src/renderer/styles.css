@@ -1,0 +1,46 @@
+body {
+  font-family: system-ui, sans-serif;
+  margin: 0;
+  background: #0f1419;
+  color: #e7ecf3;
+}
+
+.app header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  border-bottom: 1px solid #2a3441;
+}
+
+nav button {
+  margin-right: 0.5rem;
+  background: #1c2530;
+  color: inherit;
+  border: 1px solid #3a4a5c;
+  padding: 0.4rem 0.8rem;
+  cursor: pointer;
+}
+
+main {
+  padding: 1rem;
+}
+
+.card {
+  background: #151c24;
+  border-radius: 8px;
+  padding: 1rem;
+  max-width: 480px;
+}
+
+.gate-pass {
+  color: #3dd68c;
+}
+
+.camera-placeholder {
+  height: 180px;
+  background: #0a0e12;
+  display: grid;
+  place-items: center;
+  border: 1px dashed #3a4a5c;
+}
