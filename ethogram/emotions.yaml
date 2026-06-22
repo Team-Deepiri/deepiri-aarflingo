@@ -1,0 +1,31 @@
+# Affect / arousal axis for AARF triad
+version: "1.0"
+emotions:
+  - id: calm
+    label: Calm
+    valence: 0.2
+    arousal: 0.1
+  - id: content
+    label: Content
+    valence: 0.5
+    arousal: 0.2
+  - id: excited
+    label: Excited
+    valence: 0.6
+    arousal: 0.8
+  - id: anxious
+    label: Anxious
+    valence: -0.4
+    arousal: 0.7
+  - id: fearful
+    label: Fearful
+    valence: -0.7
+    arousal: 0.8
+  - id: frustrated
+    label: Frustrated
+    valence: -0.5
+    arousal: 0.6
+  - id: conflicted
+    label: Conflicted
+    valence: 0.0
+    arousal: 0.5
