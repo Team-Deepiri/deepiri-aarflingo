@@ -14,16 +14,18 @@ git checkout -b feat/my-change
 ## Local setup
 
 ```bash
-./scripts/setup.sh    # poetry deps + default model + ONNX export
-make test             # unit tests across services
-make smoke            # end-to-end smoke pipeline
+./setup.sh              # system + project deps + default model
+./setup.sh --run        # install and launch Electron studio
+make test               # unit tests across services
+make smoke              # end-to-end smoke pipeline
 ```
 
 ## Run live stack
 
 ```bash
-make dev              # runtime + Vite studio (web)
-make electron         # desktop Electron shell + Vite
+make dev                # runtime + Vite studio (web)
+make electron           # desktop Electron shell + Vite
+./setup.sh --kill       # stop background processes
 ```
 
 Runtime API: http://127.0.0.1:8765 — see [README](README.md) for endpoints.

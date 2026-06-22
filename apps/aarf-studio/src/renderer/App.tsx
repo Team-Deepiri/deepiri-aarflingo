@@ -9,7 +9,13 @@ export function App() {
   return (
     <div className="app">
       <header>
-        <h1>AARF Studio</h1>
+        <div className="brand">
+          <img src="/logo.png" alt="Deepiri" className="brand-logo" />
+          <div className="brand-text">
+            <h1>AARF Studio</h1>
+            <p className="brand-sub">DeepIRI · Adaptive Animal Response Framework</p>
+          </div>
+        </div>
         <nav>
           <button onClick={() => setTab("dashboard")}>Dashboard</button>
           <button onClick={() => setTab("camera")}>Camera</button>

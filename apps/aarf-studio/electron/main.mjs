@@ -1,15 +1,22 @@
-import { app, BrowserWindow, shell } from "electron";
+import { app, BrowserWindow, nativeImage, shell } from "electron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const isDev = Boolean(process.env.VITE_DEV_SERVER_URL);
 
+if (process.env.AARF_ELECTRON_NO_SANDBOX === "1") {
+  app.commandLine.appendSwitch("no-sandbox");
+}
+
+const iconPath = path.join(__dirname, "../public/logo.png");
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 1280,
     height: 840,
-    title: "AARF Studio",
+    title: "Deepiri AARF Studio",
+    icon: nativeImage.createFromPath(iconPath),
     webPreferences: {
       preload: path.join(__dirname, "preload.mjs"),
       contextIsolation: true,

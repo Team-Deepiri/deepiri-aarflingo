@@ -1,7 +1,10 @@
 .PHONY: setup test smoke dev runtime studio electron
 
 setup:
-	./scripts/setup.sh
+	./setup.sh
+
+setup-run:
+	./setup.sh --run
 
 test:
 	python3 core/metrics/test_anticipate.py

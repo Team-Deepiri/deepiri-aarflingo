@@ -5,14 +5,13 @@
 ## Quick start (webcam)
 
 ```bash
-./scripts/setup.sh          # installs deps + trains default model + exports ONNX
+./setup.sh --run        # install system + project deps, train model, open Electron
+./setup.sh            # install only
+./setup.sh --kill     # stop runtime + Electron
+
+# manual split:
 ./scripts/run_runtime.sh    # API on http://127.0.0.1:8765
-
-# another terminal
-cd apps/aarf-studio && npm run dev   # open Vite URL → Camera tab → Start webcam + runtime
-
-# desktop shell (Electron)
-cd apps/aarf-studio && npm run electron:dev
+cd apps/aarf-studio && npm run dev   # browser UI
 ```
 
 See [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) and [docs/ELECTRON.md](docs/ELECTRON.md).

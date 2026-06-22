@@ -8,9 +8,36 @@ body {
 .app header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 1rem;
   padding: 1rem;
   border-bottom: 1px solid #2a3441;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.brand-logo {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  object-fit: cover;
+  box-shadow: 0 2px 12px rgba(255, 120, 60, 0.25);
+}
+
+.brand-text h1 {
+  margin: 0;
+  font-size: 1.25rem;
+  letter-spacing: 0.02em;
+}
+
+.brand-sub {
+  margin: 0.15rem 0 0;
+  font-size: 0.8rem;
+  color: #8b9cb3;
 }
 
 nav button {
