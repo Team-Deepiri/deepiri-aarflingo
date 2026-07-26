@@ -1,0 +1,125 @@
+name: CD
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+concurrency:
+  group: cd-ghcr
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  verify:
+    name: Verify (test & version)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Poetry
+        run: python -m pip install poetry
+
+      - name: Cache Poetry virtualenv
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pypoetry
+            ~/.cache/pip
+          key: poetry-${{ runner.os }}-${{ hashFiles('poetry.lock') }}
+          restore-keys: |
+            poetry-${{ runner.os }}-
+
+      - name: Install Python dependencies
+        run: poetry install --no-interaction --no-ansi
+
+      - name: Verify release tag matches package version
+        if: github.event_name == 'release'
+        run: |
+          TAG="${{ github.event.release.tag_name }}"
+          TAG="${TAG#v}"
+          VERSION=$(poetry version -s)
+          echo "Release tag: $TAG | Package version: $VERSION"
+          test "$TAG" = "$VERSION"
+
+      - name: Core tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: |
+          python core/metrics/test_anticipate.py
+          poetry run pytest -q core/tests
+          PYTHONPATH="${{ github.workspace }}:${{ github.workspace }}/lib/aarf-physio" poetry run pytest -q lib/aarf-physio/tests
+
+      - name: Service tests
+        run: |
+          set -euo pipefail
+          for svc in ingest perception forecast feedback runtime audio; do
+            echo "==> services/$svc"
+            export PYTHONPATH="${{ github.workspace }}:${{ github.workspace }}/services/$svc"
+            if [ -d "services/$svc/tests" ]; then
+              poetry run pytest -q "services/$svc/tests"
+            else
+              echo "No tests/ directory — install-only check passed"
+            fi
+          done
+
+  publish:
+    name: Publish runtime image to GHCR
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set image tags
+        id: meta
+        run: |
+          IMAGE="ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')/aarf-runtime"
+          if [ "${{ github.event_name }}" = "release" ]; then
+            TAG="${{ github.event.release.tag_name }}"
+            VERSION="${TAG#v}"
+            {
+              echo "tags<<EOF"
+              echo "${IMAGE}:${TAG}"
+              echo "${IMAGE}:${VERSION}"
+              echo "${IMAGE}:latest"
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
+          else
+            SHORT_SHA="${GITHUB_SHA::7}"
+            {
+              echo "tags<<EOF"
+              echo "${IMAGE}:sha-${SHORT_SHA}"
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
+          fi
+          echo "image=${IMAGE}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push runtime image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infra/docker/runtime.Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
