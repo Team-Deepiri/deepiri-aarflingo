@@ -105,6 +105,7 @@ class LiveState:
     last_frame_jpeg: bytes | None = None
     subscribers: list[asyncio.Queue] = field(default_factory=list)
     store: FeedbackStore | None = None
+    latest_audio_modality: dict[str, float] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if self.store is None:
@@ -112,6 +113,16 @@ class LiveState:
 
 
 STATE = LiveState()
+
+
+def update_audio_modality(audio_arousal: float = 0.0, audio_valence: float = 0.0, audio_bark_prob: float = 0.0) -> dict[str, float]:
+    mod = {
+        "audio_arousal": float(audio_arousal),
+        "audio_valence": float(audio_valence),
+        "audio_bark_prob": float(audio_bark_prob),
+    }
+    STATE.latest_audio_modality = mod
+    return mod
 
 
 def _load_coupling_matrix() -> dict:
@@ -139,8 +150,12 @@ def gate_decision(pred: TriadPrediction) -> str:
     return "review"
 
 
-def process_frame(frame_bgr: np.ndarray) -> dict[str, Any]:
+def process_frame(frame_bgr: np.ndarray, audio_modality: dict[str, float] | None = None) -> dict[str, Any]:
     features = run_pipeline_frame(frame_bgr)
+    if audio_modality:
+        features.update(audio_modality)
+    elif STATE.latest_audio_modality:
+        features.update(STATE.latest_audio_modality)
     vec = vectorize(features)
     STATE.sequence.append(vec)
     seq = list(STATE.sequence)

@@ -185,3 +185,15 @@ export async function postFrame(blob: Blob): Promise<void> {
   fd.append("file", blob, "frame.jpg");
   await fetch(`${runtimeUrl()}/infer/frame`, { method: "POST", body: fd });
 }
+
+export async function postAudio(arousal: number, valence: number, barkProb: number): Promise<void> {
+  await fetch(`${runtimeUrl()}/infer/audio`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      audio_arousal: arousal,
+      audio_valence: valence,
+      audio_bark_prob: barkProb,
+    }),
+  });
+}

@@ -57,3 +57,16 @@ def test_feedback_roundtrip() -> None:
     )
     assert fb.status_code == 200
     assert fb.json()["feedback_id"]
+
+
+def test_infer_audio_endpoint() -> None:
+    res = client.post(
+        "/infer/audio",
+        json={"audio_arousal": 0.8, "audio_valence": 0.5, "audio_bark_prob": 0.95},
+    )
+    assert res.status_code == 200
+    body = res.json()
+    assert body["status"] == "ok"
+    assert body["audio_modality"]["audio_arousal"] == 0.8
+    assert body["audio_modality"]["audio_bark_prob"] == 0.95
+

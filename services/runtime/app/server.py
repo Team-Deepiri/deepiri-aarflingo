@@ -10,8 +10,14 @@ from pydantic import BaseModel
 
 from pathlib import Path
 
-from app.engine import STATE, _load_service_package, broadcast, process_jpeg, webcam_loop
+from app.engine import STATE, _load_service_package, broadcast, process_jpeg, update_audio_modality, webcam_loop
 from app.platform import default_bridge_stream_url, is_wsl, windows_host_ip
+
+
+class AudioBody(BaseModel):
+    audio_arousal: float = 0.0
+    audio_valence: float = 0.0
+    audio_bark_prob: float = 0.0
 
 
 class FeedbackBody(BaseModel):
@@ -102,6 +108,12 @@ async def infer_frame(file: UploadFile = File(...)) -> dict:
     return result
 
 
+@app.post("/infer/audio")
+def infer_audio(body: AudioBody) -> dict:
+    mod = update_audio_modality(body.audio_arousal, body.audio_valence, body.audio_bark_prob)
+    return {"status": "ok", "audio_modality": mod}
+
+
 @app.post("/live/retrain")
 def live_retrain() -> dict:
     root = Path(__file__).resolve().parents[3]
@@ -145,12 +157,19 @@ async def ws_live(ws: WebSocket) -> None:
                 continue
             if data.get("type") == "ping":
                 await ws.send_json({"type": "pong"})
-            elif data.get("type") == "feedback":
-                STATE.store.add_feedback(
-                    data["prediction_id"],
-                    rating=data.get("rating"),
-                    corrected_intent=data.get("corrected_intent"),
+            elif data.get("type") == "audio":
+                update_audio_modality(
+                    audio_arousal=float(data.get("audio_arousal", 0.0)),
+                    audio_valence=float(data.get("audio_valence", 0.0)),
+                    audio_bark_prob=float(data.get("audio_bark_prob", 0.0)),
                 )
+            elif data.get("type") == "feedback":
+                if STATE.store:
+                    STATE.store.add_feedback(
+                        data["prediction_id"],
+                        rating=data.get("rating"),
+                        corrected_intent=data.get("corrected_intent"),
+                    )
     except WebSocketDisconnect:
         pass
     finally:

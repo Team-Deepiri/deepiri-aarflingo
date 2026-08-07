@@ -18,14 +18,9 @@ EOF
 }
 
 fetch_barkopedia() {
-  if ! command -v huggingface-cli >/dev/null 2>&1; then
-    python3 -m pip install --user "huggingface_hub[cli]"
-    export PATH="${HOME}/.local/bin:${PATH}"
-  fi
-  huggingface-cli download ArlingtonCL2/BarkopediaDogEmotionClassification_Data \
+  poetry run hf download ArlingtonCL2/BarkopediaDogEmotionClassification_Data \
     --repo-type dataset \
-    --local-dir "$DATA/barkopedia" \
-    --local-dir-use-symlinks False
+    --local-dir "$DATA/barkopedia"
   echo "saved to $DATA/barkopedia"
 }
 

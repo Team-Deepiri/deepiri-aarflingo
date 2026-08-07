@@ -115,7 +115,7 @@ def train_vocal(
                 opt.zero_grad()
                 loss.backward()
                 opt.step()
-            loss_sum += float(loss)
+            loss_sum += float(loss.detach())
             correct += int(a_logits.argmax().item() == ai and v_logits.argmax().item() == vi)
         n = max(len(batch), 1)
         return loss_sum / n, correct / n
