@@ -43,6 +43,15 @@ BASE_FEATURE_NAMES: list[str] = [
     "pose_play_bow",
     "n_dogs",
     "track_stability",
+    "tau_door",
+    "tau_toy",
+    "tau_bowl",
+    "closing_door",
+    "closing_toy",
+    "closing_bowl",
+    "heading_door",
+    "heading_toy",
+    "heading_bowl",
 ]
 
 FEATURE_NAMES: list[str] = BASE_FEATURE_NAMES + MODALITY_NAMES

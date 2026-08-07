@@ -49,18 +49,23 @@ def _synth_row(intent: str) -> tuple[dict, str, str, str]:
     if intent == "outside":
         base.update({"gaze_door": 0.7 + r() * 0.2, "motion": 0.08 + r() * 0.1})
         base.update({"pose_head_y": 0.3 + r() * 0.2, "pose_head_gaze_x": 0.7 + r() * 0.2, "pose_body_stretch": 0.4 + r() * 0.3})
+        base.update({"tau_door": 0.5 + r() * 0.4, "closing_door": 0.5 + r() * 0.4, "heading_door": 0.6 + r() * 0.3})
         return base, "outside", "anxious", "freeze"
     if intent == "play":
         base.update({"gaze_toy": 0.75 + r() * 0.2, "motion": 0.15 + r() * 0.15})
         base.update({"pose_play_bow": 0.7 + r() * 0.3, "pose_head_y": 0.6 + r() * 0.2, "pose_body_stretch": 0.5 + r() * 0.3})
+        base.update({"tau_toy": 0.5 + r() * 0.4, "closing_toy": 0.5 + r() * 0.4, "heading_toy": 0.6 + r() * 0.3})
         return base, "play", "excited", "play_bow"
     if intent == "food":
         base.update({"gaze_bowl": 0.7 + r() * 0.2, "motion": 0.04 + r() * 0.05})
         base.update({"pose_head_y": 0.4 + r() * 0.2, "pose_head_gaze_x": 0.7 + r() * 0.2})
+        base.update({"tau_bowl": 0.5 + r() * 0.4, "closing_bowl": 0.5 + r() * 0.4, "heading_bowl": 0.6 + r() * 0.3})
         return base, "food", "content", "sniff_ground"
     if intent == "avoid":
         base.update({"gaze_aversion": 0.8, "motion": 0.05})
         base.update({"pose_head_y": 0.25 + r() * 0.15, "pose_head_gaze_x": 0.1 + r() * 0.2, "track_stability": 0.5 + r() * 0.3})
+        base.update({"tau_door": r() * 0.15, "tau_toy": r() * 0.15, "tau_bowl": r() * 0.15})
+        base.update({"heading_door": -0.3 - r() * 0.4, "heading_toy": -0.3 - r() * 0.4, "heading_bowl": -0.3 - r() * 0.4})
         return base, "avoid", "fearful", "tail_tucked"
     base.update({"motion": 0.02})
     base.update({"pose_head_y": 0.3 + r() * 0.2, "pose_body_stretch": 0.3 + r() * 0.2, "pose_play_bow": 0.0})

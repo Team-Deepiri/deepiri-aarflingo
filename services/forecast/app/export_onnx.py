@@ -45,7 +45,7 @@ def export_onnx(out_dir: Path, model_name: str = "triad", checkpoint: Path | Non
     wrapped = _OnnxWrapper(model)
     wrapped.eval()
 
-    dummy = flatten_sequence([[0.0] * 20] * 15)
+    dummy = flatten_sequence([[0.0] * FEATURE_DIM] * 15)
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / f"{model_name}.onnx"
     torch.onnx.export(

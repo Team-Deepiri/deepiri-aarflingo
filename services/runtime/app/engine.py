@@ -172,6 +172,7 @@ def process_frame(frame_bgr: np.ndarray) -> dict[str, Any]:
         "emotion": pred.emotion_id,
         "behavior": pred.behavior_id,
         "confidence": pred.confidence,
+        "margin": pred.margin,
         "intent_probs": pred.intent_probs or {},
         "gate": gate,
         "features": {k: features[k] for k in features if k != "bbox"},

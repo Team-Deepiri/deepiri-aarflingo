@@ -16,6 +16,7 @@ from .pose import estimate_pose
 from .scene import classify_scene
 from .temporal import TemporalTracker
 from .tracker import MultiDogTracker
+from .tau import score_approach
 
 _TRACKER = TemporalTracker()
 _MULTI = MultiDogTracker()
@@ -37,6 +38,7 @@ def _run_primary(primary, frame_bgr, motion: float, vx: float, vy: float) -> dic
     bbox = primary.bbox
     pose = estimate_pose(bbox)
     gaze = score_gaze(bbox, _ZONES)
+    approach = score_approach(bbox, vx, vy, _ZONES)
     scene = classify_scene(frame_bgr, motion_level=motion)
     face = estimate_face_signals(pose, arousal_proxy=scene.motion_level)
 
@@ -79,6 +81,12 @@ def _run_primary(primary, frame_bgr, motion: float, vx: float, vy: float) -> dic
         "track_stability": float(getattr(primary, "stability", 1.0)),
         "scene": scene.tags,
     }
+
+    for name in ("door", "toy", "bowl"):
+        base[f"tau_{name}"] = approach.tau.get(name, 0.0)
+        base[f"closing_{name}"] = approach.closing.get(name, 0.0)
+        base[f"heading_{name}"] = approach.heading.get(name, 0.0)
+    return base
 
 
 def run_pipeline_frame(frame_bgr: np.ndarray) -> dict:

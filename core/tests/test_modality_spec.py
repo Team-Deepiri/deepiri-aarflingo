@@ -14,3 +14,12 @@ def test_feature_dim_includes_modalities() -> None:
 def test_new_vision_features_present() -> None:
     for name in ("n_dogs", "pose_head_y", "pose_head_gaze_x", "pose_body_stretch", "pose_play_bow"):
         assert name in BASE_FEATURE_NAMES
+
+
+def test_approach_geometry_features_present() -> None:
+    for name in (
+        "tau_door", "tau_toy", "tau_bowl",
+        "closing_door", "closing_toy", "closing_bowl",
+        "heading_door", "heading_toy", "heading_bowl",
+    ):
+        assert name in BASE_FEATURE_NAMES
