@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import importlib.util
 import json
+import os
 import sys
 import time
 import types
@@ -93,6 +94,14 @@ heuristic_predict = _forecast_triad.heuristic_predict
 TriadPrediction = _forecast_triad.TriadPrediction
 FeedbackStore = _feedback.FeedbackStore
 
+_VOICE_ENABLED = os.environ.get("VOICE_ENABLED", "0") == "1"
+_VOICE = None
+if _VOICE_ENABLED:
+    try:
+        _VOICE = _load_service_package("voice", "dog_voice")
+    except (ImportError, ModuleNotFoundError):
+        _VOICE_ENABLED = False
+
 
 @dataclass
 class LiveState:
@@ -105,6 +114,7 @@ class LiveState:
     last_frame_jpeg: bytes | None = None
     subscribers: list[asyncio.Queue] = field(default_factory=list)
     store: FeedbackStore | None = None
+    voice: object | None = None
 
     def __post_init__(self) -> None:
         if self.store is None:
@@ -117,6 +127,27 @@ STATE = LiveState()
 def _load_coupling_matrix() -> dict:
     path = ROOT / "ethogram" / "coupling-matrix.json"
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _speak_for(pred: TriadPrediction) -> dict | None:
+    """Optionally synthesize a spoken response for a prediction.
+
+    No-op unless VOICE_ENABLED=1 and the deepiri-speech engine is reachable
+    (or offline fallback produces a silent clip). Cooldown is enforced by
+    the DogVoice instance so the runtime does not chatter every frame.
+    """
+    if not _VOICE_ENABLED or _VOICE is None:
+        return None
+    if STATE.voice is None:
+        STATE.voice = _VOICE.DogVoice(_VOICE.SpeechClient())
+    audio = STATE.voice.respond_to_prediction(pred)
+    if not audio:
+        return None
+    voice_dir = ROOT / "artifacts" / "voice"
+    voice_dir.mkdir(parents=True, exist_ok=True)
+    fp = voice_dir / f"utterance-{int(time.time() * 1000)}.wav"
+    fp.write_bytes(audio)
+    return {"phrase": STATE.voice.last_phrase, "saved": str(fp)}
 
 
 def gate_decision(pred: TriadPrediction) -> str:
@@ -150,6 +181,7 @@ def process_frame(frame_bgr: np.ndarray) -> dict[str, Any]:
         pred = heuristic_predict(features)
 
     gate = gate_decision(pred)
+    voice = _speak_for(pred) if float(features.get("dog_present", 0)) >= 0.5 else None
     pid = None
     if STATE.store:
         if not STATE.session_id:
@@ -174,6 +206,7 @@ def process_frame(frame_bgr: np.ndarray) -> dict[str, Any]:
         "confidence": pred.confidence,
         "intent_probs": pred.intent_probs or {},
         "gate": gate,
+        "voice": voice,
         "features": {k: features[k] for k in features if k != "bbox"},
         "dog_present": bool(features.get("dog_present", 0)),
     }

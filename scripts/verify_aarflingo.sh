@@ -27,7 +27,7 @@ trap cleanup EXIT
 step "unit tests (core + services + aarf-gate)"
 python3 core/metrics/test_anticipate.py
 PYTHONPATH="$ROOT" poetry run pytest -q core/tests
-for svc in ingest perception forecast feedback runtime; do
+for svc in ingest perception audio voice forecast feedback runtime; do
   PYTHONPATH="$ROOT:$ROOT/services/$svc" poetry run pytest -q "services/$svc/tests"
 done
 (cd lib/aarf-gate && npm test -s)
