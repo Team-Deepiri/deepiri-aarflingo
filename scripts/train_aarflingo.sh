@@ -62,7 +62,14 @@ fi
 if stage_enabled audio; then
   step "audio — vocal encoder (DogSpeak / Barkopedia-shaped)"
   export PYTHONPATH="$ROOT:$ROOT/services/audio"
-  run_stage_json "$STAGE_DIR/audio.json" poetry run aarflingo-audio train --epochs "$AUDIO_EPOCHS"
+  AUDIO_DATA="$ROOT/data/raw/barkopedia"
+  if [ -d "$AUDIO_DATA" ] && ls "$AUDIO_DATA"/*_labels.csv >/dev/null 2>&1; then
+    step "  using real Barkopedia clips from $AUDIO_DATA"
+    run_stage_json "$STAGE_DIR/audio.json" poetry run aarflingo-audio train --epochs "$AUDIO_EPOCHS" --data "$AUDIO_DATA"
+  else
+    step "  no real Barkopedia found ($AUDIO_DATA) — synthetic only"
+    run_stage_json "$STAGE_DIR/audio.json" poetry run aarflingo-audio train --epochs "$AUDIO_EPOCHS"
+  fi
 fi
 
 if stage_enabled physio; then
