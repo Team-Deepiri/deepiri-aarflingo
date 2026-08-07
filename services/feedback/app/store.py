@@ -64,6 +64,17 @@ class FeedbackStore:
                     corrected_emotion TEXT,
                     corrected_behavior TEXT
                 );
+                CREATE TABLE IF NOT EXISTS voice_outcomes (
+                    id TEXT PRIMARY KEY,
+                    ts_ms INTEGER,
+                    phrase TEXT,
+                    intent TEXT,
+                    emotion TEXT,
+                    responded INTEGER,
+                    bark_arousal TEXT,
+                    bark_valence TEXT,
+                    reward REAL
+                );
                 """
             )
 
@@ -176,13 +187,70 @@ class FeedbackStore:
             for r in rows
         ]
 
+    def log_voice_outcome(
+        self,
+        phrase: str,
+        intent: str = "",
+        emotion: str = "",
+        responded: bool = False,
+        bark_arousal: str | None = None,
+        bark_valence: str | None = None,
+        reward: float = 0.0,
+    ) -> str:
+        oid = str(uuid.uuid4())
+        with self._conn() as conn:
+            conn.execute(
+                """INSERT INTO voice_outcomes
+                (id, ts_ms, phrase, intent, emotion, responded, bark_arousal, bark_valence, reward)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    oid,
+                    int(time.time() * 1000),
+                    phrase,
+                    intent,
+                    emotion,
+                    int(responded),
+                    bark_arousal,
+                    bark_valence,
+                    reward,
+                ),
+            )
+        return oid
+
+    def recent_voice_outcomes(self, limit: int = 50) -> list[dict]:
+        with self._conn() as conn:
+            rows = conn.execute(
+                """SELECT id, ts_ms, phrase, intent, emotion, responded,
+                          bark_arousal, bark_valence, reward
+                   FROM voice_outcomes ORDER BY ts_ms DESC LIMIT ?""",
+                (limit,),
+            ).fetchall()
+        return [
+            {
+                "id": r[0],
+                "ts_ms": r[1],
+                "phrase": r[2],
+                "intent": r[3],
+                "emotion": r[4],
+                "responded": bool(r[5]),
+                "bark_arousal": r[6],
+                "bark_valence": r[7],
+                "reward": r[8],
+            }
+            for r in rows
+        ]
+
     def metrics(self) -> dict:
         with self._conn() as conn:
             preds = conn.execute("SELECT COUNT(*) FROM predictions").fetchone()[0]
             fbs = conn.execute("SELECT COUNT(*) FROM feedback").fetchone()[0]
             positive = conn.execute("SELECT COUNT(*) FROM feedback WHERE rating >= 1").fetchone()[0]
+            voice = conn.execute("SELECT COUNT(*) FROM voice_outcomes").fetchone()[0]
+            voice_responded = conn.execute("SELECT COUNT(*) FROM voice_outcomes WHERE responded = 1").fetchone()[0]
         return {
             "predictions": preds,
             "feedback_events": fbs,
             "positive_ratings": positive,
+            "voice_outcomes": voice,
+            "voice_responded": voice_responded,
         }

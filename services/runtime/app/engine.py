@@ -96,9 +96,11 @@ FeedbackStore = _feedback.FeedbackStore
 
 _VOICE_ENABLED = os.environ.get("VOICE_ENABLED", "0") == "1"
 _VOICE = None
+_VOICE_CONV = None
 if _VOICE_ENABLED:
     try:
         _VOICE = _load_service_package("voice", "dog_voice")
+        _VOICE_CONV = _load_service_package("voice", "conversation")
     except (ImportError, ModuleNotFoundError):
         _VOICE_ENABLED = False
 
@@ -115,6 +117,8 @@ class LiveState:
     subscribers: list[asyncio.Queue] = field(default_factory=list)
     store: FeedbackStore | None = None
     voice: object | None = None
+    conversation: object | None = None   # ConversationEngine when VOICE_ENABLED
+    mic_listener: object | None = None   # MicListener when VOICE_ENABLED
 
     def __post_init__(self) -> None:
         if self.store is None:
@@ -129,13 +133,72 @@ def _load_coupling_matrix() -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def _speak_for(pred: TriadPrediction) -> dict | None:
-    """Optionally synthesize a spoken response for a prediction.
+def _ensure_conversation() -> None:
+    """Lazily initialise DogVoice + ConversationEngine + MicListener."""
+    if not _VOICE_ENABLED or _VOICE is None or _VOICE_CONV is None:
+        return
+    if STATE.voice is None:
+        STATE.voice = _VOICE.DogVoice(_VOICE.SpeechClient())
+    if STATE.conversation is None:
+        STATE.conversation = _VOICE_CONV.ConversationEngine(
+            voice=STATE.voice,
+            store=STATE.store,
+        )
+    if STATE.mic_listener is None:
+        _mic_mod = _load_service_package("voice", "mic_listener")
+        import queue as _q
+        bark_queue: _q.Queue = _q.Queue(maxsize=32)
+        mic = _mic_mod.MicListener(bark_queue=bark_queue)
 
-    No-op unless VOICE_ENABLED=1 and the deepiri-speech engine is reachable
-    (or offline fallback produces a silent clip). Cooldown is enforced by
-    the DogVoice instance so the runtime does not chatter every frame.
+        # Wire the bark queue into the conversation engine via a drain thread
+        import threading
+
+        def _bark_drain() -> None:
+            while STATE.running or not bark_queue.empty():
+                try:
+                    evt = bark_queue.get(timeout=0.2)
+                    if STATE.conversation is not None:
+                        result = STATE.conversation.on_bark(evt)
+                        if result:
+                            asyncio.run_coroutine_threadsafe(
+                                broadcast({"type": "bark", **result}),
+                                asyncio.get_event_loop(),
+                            )
+                except Exception:
+                    pass
+
+        mic.start()
+        threading.Thread(target=_bark_drain, daemon=True, name="aarf-bark-drain").start()
+        STATE.mic_listener = mic
+
+
+def _conversation_speak(pred: TriadPrediction) -> dict | None:
+    """Speak via ConversationEngine (learns from bark responses) when VOICE_ENABLED.
+
+    Falls back to the legacy one-shot _speak_for when the conversation engine
+    is not initialised.
     """
+    if not _VOICE_ENABLED:
+        return None
+    _ensure_conversation()
+    if STATE.conversation is None:
+        return _speak_for_legacy(pred)
+    result = STATE.conversation.on_prediction(pred)
+    if not result:
+        return None
+    # save the audio file for playback / debugging
+    audio = STATE.voice.client.synthesize(result["phrase"]) if STATE.voice else b""
+    if audio:
+        voice_dir = ROOT / "artifacts" / "voice"
+        voice_dir.mkdir(parents=True, exist_ok=True)
+        fp = voice_dir / f"utterance-{int(time.time() * 1000)}.wav"
+        fp.write_bytes(audio)
+        result["saved"] = str(fp)
+    return result
+
+
+def _speak_for_legacy(pred: TriadPrediction) -> dict | None:
+    """Original one-shot speak (no learning). Kept as a fallback."""
     if not _VOICE_ENABLED or _VOICE is None:
         return None
     if STATE.voice is None:
@@ -181,7 +244,7 @@ def process_frame(frame_bgr: np.ndarray) -> dict[str, Any]:
         pred = heuristic_predict(features)
 
     gate = gate_decision(pred)
-    voice = _speak_for(pred) if float(features.get("dog_present", 0)) >= 0.5 else None
+    voice = _conversation_speak(pred) if float(features.get("dog_present", 0)) >= 0.5 else None
     pid = None
     if STATE.store:
         if not STATE.session_id:
@@ -256,6 +319,16 @@ async def webcam_loop(camera: int | str) -> None:
     finally:
         cap.release()
         STATE.running = False
+        if STATE.mic_listener is not None:
+            try:
+                STATE.mic_listener.stop()
+            except Exception:
+                pass
+        if STATE.conversation is not None:
+            try:
+                STATE.conversation.stop()
+            except Exception:
+                pass
 
 
 def process_jpeg(jpeg_bytes: bytes) -> dict[str, Any]:
