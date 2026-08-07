@@ -1,6 +1,6 @@
 # Aarflingo Roadmap
 
-Living plan for **deepiri-aarflingo**. Updated after multimodal training, WSL webcam bridge, and studio UI v2 (`f0392af`).
+Living plan for **deepiri-aarflingo**. Updated after v0.2 voice loop + mobile camera wiring (`c70af31`).
 
 ---
 
@@ -19,62 +19,105 @@ Living plan for **deepiri-aarflingo**. Updated after multimodal training, WSL we
 | **CI** | Lean 2-job Python + JS; CodeQL on `main` + weekly |
 | **Mobile** | SwiftUI + Compose pocket apps (UI shell), WSL Android emulator scripts, mobile CI |
 
-Docs: [WEBCAM.md](WEBCAM.md) · [DATASETS.md](DATASETS.md) · [DEPLOY.md](DEPLOY.md)
+---
+
+## Shipped (v0.2 — voice + real data + mobile camera)
+
+| Area | What shipped | PR |
+|------|-------------|-----|
+| **Vision real-data** | `RealDogImageStore` — Stanford Dogs → perception pipeline → JSONL feature rows | #18 |
+| **Perception CLI** | `collect-real` + `verify-real` commands | #18 |
+| **Dataset fetch** | `fetch_public_datasets.sh --dog-images` + `--dog-images-sample` | #18 |
+| **Speech client** | `deepiri-speech` HTTP client (TTS + STT) + offline silent-WAV fallback | #18 |
+| **Dog voice** | Phrase bank keyed by `(intent, emotion)`, bark→spoken response, DogVoice cooldown | #18 |
+| **Voice CLI** | `aarflingo-voice speak / listen / respond / status / play` | #18 |
+| **Mic listener** | Background thread: 300 ms chunks, bark energy detection, arousal/valence classify | #18 |
+| **Conversation engine** | `ConversationEngine`: speak → listen → EMA phrase weight update → persist weights | #18 |
+| **Voice outcomes DB** | `voice_outcomes` table, `log_voice_outcome`, `/voice/outcomes` + `/voice/weights` API | #18 |
+| **Runtime voice hook** | `VOICE_ENABLED=1` → `_conversation_speak(pred)` in `process_frame`; mic drain thread | #18 |
+| **setup.sh web mode** | `--web` flag: vite preview on `0.0.0.0`, LAN URL banner, headless auto-detect | #18 |
+| **Studio mobile detect** | `isMobileBrowser()` auto-selects browser-cam, hides WSL/server tabs on phone | #18 |
+| **iOS real camera** | `CameraManager` (AVCaptureSession, 5fps JPEG), `RuntimeClient` (WebSocket + HTTP), live `LiveView` | #18 |
+| **Android real camera** | CameraX RGBA→JPEG, `RuntimeClient.kt` (OkHttp WS + multipart), `AppViewModel` wired | #18 |
+| **Tests** | 48 Python tests (48 pass): core 11, perception 6, voice 26, audio 1, forecast 2, feedback 1, ingest 1 | #18 |
+| **Docs** | `docs/VOICE.md` — conversation loop, phrase weights, mic setup | #18 |
+
+Docs: [VOICE.md](VOICE.md) · [WEBCAM.md](WEBCAM.md) · [DATASETS.md](DATASETS.md) · [DEPLOY.md](DEPLOY.md)
 
 ---
 
-## Now → v0.2 (next 2–4 weeks)
+## Now → v0.3 (next 2–4 weeks)
 
-Priority: **make live inference use real multimodal signals**, not only synthetic training shapes.
+Priority: **close the remaining gaps so every signal is live, not synthetic.**
 
-### 1. Real dataset fine-tuning
+### 1. Live multimodal encoder wiring
 
-- [ ] Run `./scripts/fetch_public_datasets.sh --barkopedia` and wire Barkopedia clips into `services/audio` trainer (replace / augment synthetic barks)
-- [ ] Optional PhysioNet PhysioZoo dog ECG download + `lib/aarf-physio` loader for real HRV labels
-- [ ] Document minimum sample counts and expected val accuracy in [DATASETS.md](DATASETS.md)
+The studio modality bars (Audio arousal, ECG stress, IMU activity) show static zeros at
+inference time. The encoders exist and are trained — they just aren't loaded in the
+runtime's `process_frame` path.
 
-**Done when:** `vocal.pt` / `vitals.pt` metrics improve on held-out real clips; manifest records dataset version.
+- [ ] Load `vocal.pt` in runtime; feed mic audio chunks from `MicListener` → MFCC → encoder → feature dims
+- [ ] Load `vitals.pt` when BLE/serial IMU connected (stub with simulated 6-DoF first)
+- [ ] Merge encoder outputs into `core/modality_spec` features before TriadNet call
+- [ ] Studio modality bars animate from live mic and IMU signals
 
-### 2. Live runtime multimodal fusion
+**Done when:** studio shows non-zero Audio + IMU bars while dog is in frame.
 
-- [ ] Load `vocal.pt` in runtime when mic audio present (Web Audio → MFCC → encoder)
-- [ ] Load `vitals.pt` when BLE/serial IMU or ECG puck connected (stub OK with simulated feed first)
-- [ ] Merge encoder outputs into `core/modality_spec` features before TriadNet infer (today: synthetic dims at train time only)
+### 2. Real Barkopedia fine-tune
 
-**Done when:** studio modality bars move from live mic/IMU, not static zeros.
+- [ ] `./scripts/fetch_public_datasets.sh --barkopedia` → wire into `services/audio/app/train.py`
+- [ ] Replace / augment synthetic bark generation with real Barkopedia clips
+- [ ] Held-out val accuracy logged to manifest (`artifacts/manifests/`)
+- [ ] Optional: PhysioZoo dog ECG → `lib/aarf-physio` loader for real HRV labels
 
-### 3. Vision quality
+**Done when:** `vocal.pt` arousal/valence accuracy improves on real held-out clips.
 
-- [ ] Fine-tune YOLOv8 on home dog clips from `services/ingest` (label bbox in studio or export frames)
-- [ ] Replace motion-only fallback when `dog_yolo.onnx` confidence &lt; threshold
-- [ ] Optional: MediaPipe / YOLO-pose keypoints → gaze proxy upgrade ([LABELING.md](LABELING.md))
+### 3. YOLO fine-tune on your dog
 
-**Done when:** stable bbox on your dog at 5+ fps on WSL bridge stream.
+- [ ] Label home clips from `services/ingest` (export frames → bbox annotation in studio or Roboflow)
+- [ ] Fine-tune YOLOv8n on labelled frames; export updated `dog_yolo.onnx`
+- [ ] Replace motion-only fallback when YOLO confidence < threshold
+- [ ] Optional: YOLO-pose keypoints → gaze proxy upgrade
 
-### 4. Studio & active learning
+**Done when:** stable `dog_present=true` and bbox at 5+ fps in your room/lighting.
 
-- [ ] Surface low-confidence / `gate=review` frames in History tab with “label this” CTA
+### 4. Studio active learning UI
+
+- [ ] Surface low-confidence / `gate=review` frames in History tab with "label this" CTA
 - [ ] In-app gaze zone editor (drag rects on live preview → write `zones.default.yaml`)
 - [ ] Auto-reconnect WebSocket + bridge health indicator in header
+- [ ] Voice outcomes panel: show recent phrase → bark response pairs and learned weights
 
-**Done when:** one session produces ≥10 feedback rows and retrain improves val acc on next `make train`.
+**Done when:** one live session produces ≥10 feedback rows and the conversation engine
+shows measurable weight drift from baseline.
 
-### 5. Dev ergonomics
+### 5. iOS / Android polish
 
-- [ ] `setup.sh --run` optional flag to spawn Windows bridge hint / health check
-- [ ] Single `make dev` that starts runtime + Vite + prints WSL bridge instructions
-- [ ] Add runtime test for `/bridge/info` on WSL CI matrix (optional, `SKIP_VISION` pattern)
+- [ ] iOS: CoreML bundle export via `artifact-bridge` → on-device TriadNet inference (no server needed)
+- [ ] Android: same via ONNX Runtime Android
+- [ ] Both apps: display voice phrase spoken + bark response in Live tab
+- [ ] Settings: configure runtime URL + voice enable toggle
+
+**Done when:** iOS app runs basic intent prediction offline; Android runs at 5fps on-device.
+
+### 6. Dev ergonomics
+
+- [ ] `make dev` starts runtime + Vite + prints LAN URL (replaces `./setup.sh --run --web`)
+- [ ] `setup.sh` prints WSL bridge hint when DISPLAY is missing
+- [ ] CI: add `/voice/outcomes` endpoint smoke test
+- [ ] CI: add Android build to `mobile.yml`
 
 ---
 
-## v0.3 — collar & edge (Phase 2)
+## v0.4 — collar & edge (Phase 2)
 
 See [PHASE2_COLLAR.md](PHASE2_COLLAR.md).
 
 - [ ] BLE puck contract: 1 Hz triad summary (CBOR) + clip upload on trigger
 - [ ] `edge-runtime` consumes ONNX triad + vocal head on Jetson Orin Nano
 - [ ] ONNX → TensorRT INT8 with calibration frames from your home
-- [ ] IMU @ 100 Hz path aligned with Mendeley posture dataset labels
+- [ ] IMU @ 100 Hz aligned with Mendeley posture dataset labels
+- [ ] Collar sends bark events → runtime `on_bark` path (no laptop mic needed)
 
 **Done when:** collar dev kit streams intent to studio without USB webcam.
 
@@ -86,43 +129,67 @@ See [PHASE2_COLLAR.md](PHASE2_COLLAR.md).
 |-------|--------|
 | **Multi-dog** | Re-ID embedding + per-dog checkpoint or household graph |
 | **Federated ethogram** | Breed-specific coupling tweaks; export signed manifest bundles |
-| **On-device policy** | `lib/aarf-gate` + TTS speak intent; no aversive actuation ([ETHICS.md](ETHICS.md)) |
-| **iOS pocket** | CoreML bundle via `artifact-bridge`; Swift gate client |
+| **Phrase personalisation v2** | Full contextual bandit (LinUCB) replacing EMA weights |
 | **Active learning loop** | Labeler service queue ← runtime low-confidence harvest |
+| **Longitudinal dashboard** | Week-over-week intent distribution + conversation history |
+| **Privacy** | Local-only mode: all inference + voice on-device, no cloud calls |
 
 ---
 
-## Suggested work order
+## Work order for v0.3
 
 ```mermaid
 flowchart LR
-  A[Fetch real audio/ECG data] --> B[Wire live encoders in runtime]
-  B --> C[Fine-tune YOLO on your dog]
-  C --> D[Active learning in studio]
-  D --> E[Collar BLE + TensorRT edge]
+  A[Live mic → vocal encoder] --> B[Barkopedia fine-tune]
+  B --> C[YOLO fine-tune on your dog]
+  C --> D[Studio active learning UI]
+  D --> E[iOS/Android CoreML / ONNX offline]
+  E --> F[Collar BLE + TensorRT edge]
 ```
 
-1. **Fetch + train on real bark/ECG samples** — fastest signal that multimodal path is real  
-2. **Runtime encoder wiring** — studio bars and predictions reflect mic/IMU  
-3. **YOLO fine-tune** — perception accuracy for your room/lighting  
-4. **Active learning UI** — close the feedback → retrain loop with your dog  
-5. **Collar / Jetson** — hardware path in [DEPLOY.md](DEPLOY.md)
+1. **Wire live vocal encoder** — mic is already captured; feeding it into `process_frame` is one file change
+2. **Barkopedia fine-tune** — real bark data → better arousal/valence → better conversation responses
+3. **YOLO fine-tune** — your dog, your room, stable bbox
+4. **Active learning UI** — close the feedback → retrain loop visually
+5. **On-device CoreML / ONNX** — cut the WiFi dependency for iOS/Android
+6. **Collar** — full hardware path
 
 ---
 
-## How to validate each milestone
+## How to run everything today
 
 ```bash
-make verify                    # full stack: tests + train + runtime + studio build
-./scripts/train_aarflingo.sh     # produce all model artifacts
-./setup.sh --run               # studio + runtime (WSL: start bridge on Windows first)
-curl http://127.0.0.1:8765/bridge/info
+# Install + train + launch (desktop Electron)
+./setup.sh --run
+
+# Install + train + serve on LAN (phone browser, no Electron needed)
+./setup.sh --run --web
+
+# With voice loop (deepiri-speech engine required, or offline fallback)
+VOICE_ENABLED=1 SPEECH_URL=http://localhost:5020 ./setup.sh --run --web
+
+# iOS: open apps/aarf-pocket-ios in Xcode → run on device
+# Android: cd apps/aarf-pocket-android && ./gradlew installDebug
+# Both: set Runtime URL in Settings to http://<your-laptop-LAN-ip>:8765
+
+# Full test matrix
+make test
+
+# Train all models
+make train
+
+# Verify everything
+make verify
 ```
 
 ---
 
 ## Links
 
+- Voice loop: [VOICE.md](VOICE.md)
+- Datasets: [DATASETS.md](DATASETS.md)
 - Architecture: [ARCHITECTURE.md](ARCHITECTURE.md)
 - Training math: [MATH.md](MATH.md)
+- Webcam / WSL: [WEBCAM.md](WEBCAM.md)
 - Contributing / CI: [CONTRIBUTING.md](CONTRIBUTING.md)
+- Deploy / edge: [DEPLOY.md](DEPLOY.md)

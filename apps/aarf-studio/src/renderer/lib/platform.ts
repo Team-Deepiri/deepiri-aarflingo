@@ -14,6 +14,22 @@ export function isLikelyWsl(): boolean {
   return ua.includes("wsl") || ua.includes("microsoft-standard");
 }
 
+/** True when running in a mobile browser (iOS Safari, Android Chrome, etc.) */
+export function isMobileBrowser(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /android|iphone|ipad|ipod|mobile|opera mini|iemobile|wpdesktop/i.test(
+    navigator.userAgent
+  );
+}
+
+/** True when running inside Electron (desktop app, not a plain browser) */
+export function isElectron(): boolean {
+  return (
+    typeof navigator !== "undefined" &&
+    navigator.userAgent.toLowerCase().includes("electron")
+  );
+}
+
 export function defaultBridgeUrl(): string {
   return import.meta.env.VITE_WEBCAM_BRIDGE_URL || "http://127.0.0.1:8766/video/stream";
 }

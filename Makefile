@@ -20,6 +20,8 @@ test:
 	PYTHONPATH=. poetry run pytest -q core/tests
 	PYTHONPATH=.:services/ingest poetry run pytest -q services/ingest/tests
 	PYTHONPATH=.:services/perception poetry run pytest -q services/perception/tests
+	PYTHONPATH=.:services/audio poetry run pytest -q services/audio/tests
+	PYTHONPATH=.:services/voice poetry run pytest -q services/voice/tests
 	PYTHONPATH=.:services/forecast poetry run pytest -q services/forecast/tests
 	PYTHONPATH=.:services/feedback poetry run pytest -q services/feedback/tests
 	PYTHONPATH=.:services/runtime poetry run pytest -q services/runtime/tests

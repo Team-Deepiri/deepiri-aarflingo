@@ -3,33 +3,41 @@
 # Deepiri AARFLingo — one-shot setup.
 #
 #   ./setup.sh              Install system deps, Python services, model, studio.
-#   ./setup.sh --run        Install everything, then launch runtime + Electron.
+#   ./setup.sh --run        Install everything, then launch runtime + Electron (or web on headless).
+#   ./setup.sh --run --web  Always serve as a plain web page (LAN accessible, no Electron).
 #   ./setup.sh --skip-system  Skip apt/brew system package install.
 #   ./setup.sh --kill       Stop runtime / Electron / Vite for this repo.
 #   ./setup.sh --help       Show this help.
+#
+#  Mobile (same WiFi):
+#   ./setup.sh --run --web  then open the printed URL on your phone's browser.
+#   The studio auto-detects mobile and switches to browser-cam mode.
 #
 set -euo pipefail
 
 if [ -t 1 ]; then
   BOLD="$(printf '\033[1m')"; GREEN="$(printf '\033[32m')"
-  YELLOW="$(printf '\033[33m')"; RED="$(printf '\033[31m')"; RESET="$(printf '\033[0m')"
+  YELLOW="$(printf '\033[33m')"; RED="$(printf '\033[31m')"; CYAN="$(printf '\033[36m')"; RESET="$(printf '\033[0m')"
 else
-  BOLD=""; GREEN=""; YELLOW=""; RED=""; RESET=""
+  BOLD=""; GREEN=""; YELLOW=""; RED=""; CYAN=""; RESET=""
 fi
 info()  { printf '%s\n' "${GREEN}==>${RESET} ${BOLD}$*${RESET}"; }
 warn()  { printf '%s\n' "${YELLOW}warning:${RESET} $*"; }
 die()   { printf '%s\n' "${RED}error:${RESET} $*" >&2; exit 1; }
+banner(){ printf '%s\n' "${CYAN}${BOLD}$*${RESET}"; }
 
 RUN=0
 KILL=0
 SKIP_SYSTEM=0
+WEB=0
 for arg in "$@"; do
   case "$arg" in
     --run) RUN=1 ;;
+    --web) WEB=1 ;;
     --kill) KILL=1 ;;
     --skip-system) SKIP_SYSTEM=1 ;;
     --help|-h)
-      sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//'
+      sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//'
       exit 0 ;;
     *) die "unknown option: $arg (try --help)" ;;
   esac
@@ -38,6 +46,32 @@ done
 REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
 cd "$REPO_ROOT"
 
+# ── Auto-detect headless (no display) → force web mode ───────────────────
+has_display() {
+  if [ -n "${DISPLAY:-}" ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then return 0; fi
+  if [ "$(uname -s)" = "Darwin" ]; then return 0; fi
+  return 1
+}
+if [ "$RUN" -eq 1 ] && ! has_display; then
+  if [ "$WEB" -eq 0 ]; then
+    warn "No display detected (headless / WSL without X). Switching to --web mode."
+    WEB=1
+  fi
+fi
+
+# ── LAN IP detection ─────────────────────────────────────────────────────
+lan_ip() {
+  local ip
+  if command -v ip >/dev/null 2>&1; then
+    ip="$(ip route get 1.1.1.1 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="src") print $(i+1)}' | head -1)"
+  fi
+  if [ -z "${ip:-}" ] && command -v ifconfig >/dev/null 2>&1; then
+    ip="$(ifconfig 2>/dev/null | awk '/inet / && !/127\.0\.0\.1/{print $2; exit}')"
+  fi
+  printf '%s' "${ip:-127.0.0.1}"
+}
+
+# ── kill ──────────────────────────────────────────────────────────────────
 kill_repo_processes() {
   declare -A seen=()
   local -a pids=()
@@ -95,6 +129,7 @@ if [ "$KILL" -eq 1 ]; then
   exit 0
 fi
 
+# ── system deps ───────────────────────────────────────────────────────────
 install_system_deps() {
   if [ "$SKIP_SYSTEM" -eq 1 ]; then
     info "Skipping system package install (--skip-system)."
@@ -110,6 +145,9 @@ install_system_deps() {
       python3 python3-pip python3-venv python3-dev
       curl ca-certificates git build-essential
       libgl1 libglib2.0-0
+      # PortAudio (required by sounddevice for mic capture)
+      portaudio19-dev libportaudio2
+      # Electron / display
       libgtk-3-0 libgbm1 libnss3 libatk-bridge2.0-0 libdrm2
       libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2
       libasound2 libx11-xcb1 libxcb-dri3-0 libxshmfence1
@@ -124,7 +162,7 @@ install_system_deps() {
       warn "sudo not available; install manually: ${pkgs[*]}"
     fi
   elif [ "$os" = "Darwin" ] && command -v brew >/dev/null 2>&1; then
-    brew install python@3.11 node 2>/dev/null || brew install python node || true
+    brew install python@3.11 node portaudio 2>/dev/null || brew install python node portaudio || true
   fi
 }
 
@@ -157,8 +195,11 @@ ensure_poetry() {
 }
 
 install_python_services() {
-  info "Poetry install (root lock, YOLO extra)"
+  info "Poetry install (root lock, YOLO extra)..."
   poetry install --no-interaction --no-ansi -E yolo
+
+  info "Installing sounddevice (mic capture)..."
+  poetry run pip install --quiet sounddevice || warn "sounddevice install failed — mic listener will be disabled"
 }
 
 train_and_export() {
@@ -201,22 +242,87 @@ electron_linux_flags() {
   fi
 }
 
-run_stack() {
-  electron_linux_flags
-  mkdir -p "${TMPDIR:-/tmp}"
+build_studio_web() {
+  info "Building studio for web..."
+  (
+    cd apps/aarf-studio
+    export VITE_RUNTIME_URL="http://$(lan_ip):8765"
+    npm run build
+  )
+}
+
+run_web_server() {
+  local ip
+  ip="$(lan_ip)"
+  local web_port=5173
   local runtime_log="${TMPDIR:-/tmp}/deepiri-aarflingo-runtime.log"
 
   info "Starting AARF runtime in background..."
   (
     cd "$REPO_ROOT"
     export PYTHONPATH="$REPO_ROOT:$REPO_ROOT/services/runtime"
-    nohup poetry run aarflingo-runtime --host 127.0.0.1 --port 8765 \
+    nohup poetry run aarflingo-runtime --host 0.0.0.0 --port 8765 \
       >"$runtime_log" 2>&1 &
     echo $! > "${TMPDIR:-/tmp}/deepiri-aarflingo-runtime.pid"
   )
   wait_for_runtime
 
-  info "Launching Deepiri AARF Studio (Electron)..."
+  info "Building studio for web (VITE_RUNTIME_URL=http://${ip}:8765)..."
+  (
+    cd apps/aarf-studio
+    VITE_RUNTIME_URL="http://${ip}:8765" npm run build
+  )
+
+  banner ""
+  banner "╔══════════════════════════════════════════════════════════════╗"
+  banner "║  Aarflingo Studio — web mode                                 ║"
+  banner "║                                                              ║"
+  banner "║  Desktop:  http://localhost:${web_port}                            ║"
+  banner "║  Phone:    http://${ip}:${web_port}  (same WiFi)              ║"
+  banner "║                                                              ║"
+  banner "║  Mobile browser → camera auto-selected (browser-cam mode)   ║"
+  banner "║  iOS / Android apps → point to http://${ip}:8765       ║"
+  banner "║                                                              ║"
+  banner "║  Stop: ./setup.sh --kill                                     ║"
+  banner "╚══════════════════════════════════════════════════════════════╝"
+  banner ""
+
+  info "Runtime logs: $runtime_log"
+  info "Stop everything with: ${BOLD}./setup.sh --kill${RESET}"
+
+  # vite preview serves dist/ on 0.0.0.0 so LAN phones can reach it
+  cd apps/aarf-studio
+  npx vite preview --host 0.0.0.0 --port "$web_port"
+}
+
+run_electron_stack() {
+  electron_linux_flags
+  mkdir -p "${TMPDIR:-/tmp}"
+  local runtime_log="${TMPDIR:-/tmp}/deepiri-aarflingo-runtime.log"
+  local ip
+  ip="$(lan_ip)"
+
+  info "Starting AARF runtime in background..."
+  (
+    cd "$REPO_ROOT"
+    export PYTHONPATH="$REPO_ROOT:$REPO_ROOT/services/runtime"
+    nohup poetry run aarflingo-runtime --host 0.0.0.0 --port 8765 \
+      >"$runtime_log" 2>&1 &
+    echo $! > "${TMPDIR:-/tmp}/deepiri-aarflingo-runtime.pid"
+  )
+  wait_for_runtime
+
+  banner ""
+  banner "╔══════════════════════════════════════════════════════════════╗"
+  banner "║  Aarflingo Studio — Electron mode                            ║"
+  banner "║                                                              ║"
+  banner "║  Phone browser:  http://${ip}:5173  (after Vite starts) ║"
+  banner "║  iOS/Android apps → Runtime: http://${ip}:8765         ║"
+  banner "║                                                              ║"
+  banner "║  Stop: ./setup.sh --kill                                     ║"
+  banner "╚══════════════════════════════════════════════════════════════╝"
+  banner ""
+
   info "Runtime logs: $runtime_log"
   info "Stop everything with: ${BOLD}./setup.sh --kill${RESET}"
 
@@ -225,7 +331,15 @@ run_stack() {
   npm run electron:dev
 }
 
-# --- main -------------------------------------------------------------------
+run_stack() {
+  if [ "$WEB" -eq 1 ]; then
+    run_web_server
+  else
+    run_electron_stack
+  fi
+}
+
+# ── main ──────────────────────────────────────────────────────────────────
 install_system_deps
 ensure_node
 ensure_python
@@ -237,6 +351,9 @@ install_js
 if [ "$RUN" -eq 1 ]; then
   run_stack
 else
-  info "Done. Launch with: ${BOLD}./setup.sh --run${RESET}"
-  info "Or: make dev (web) · make electron · ./scripts/run_runtime.sh"
+  local_ip="$(lan_ip)"
+  info "Done. Launch with:"
+  info "  ${BOLD}./setup.sh --run${RESET}         Electron desktop app"
+  info "  ${BOLD}./setup.sh --run --web${RESET}    Web server — open on phone at http://${local_ip}:5173"
+  info "Or: make dev · make electron · ./scripts/run_runtime.sh"
 fi
