@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 
-const RUNTIME = import.meta.env.VITE_RUNTIME_URL || "http://127.0.0.1:8765";
+import { runtimeUrl } from "../lib/platform";
+
+const RUNTIME = runtimeUrl();
 
 type Row = {
   id: string;

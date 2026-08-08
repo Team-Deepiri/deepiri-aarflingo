@@ -2,16 +2,38 @@
 from __future__ import annotations
 
 import asyncio
+import socket
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, File, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-
-from pathlib import Path
 
 from app.engine import STATE, _load_service_package, broadcast, process_jpeg, update_audio_modality, webcam_loop
 from app.platform import default_bridge_stream_url, is_wsl, windows_host_ip
+
+
+def lan_ip() -> str:
+    """Best-effort primary LAN IPv4 address (e.g. 192.168.x.x)."""
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.settimeout(0.1)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except OSError:
+        pass
+    return "127.0.0.1"
+
+
+def web_root() -> Path:
+    """Built studio UI (`apps/aarf-studio/dist`); falls back to repo root if absent."""
+    root = Path(__file__).resolve().parents[3]
+    dist = root / "apps" / "aarf-studio" / "dist"
+    return dist if dist.exists() else root
 
 
 class AudioBody(BaseModel):
@@ -189,3 +211,8 @@ async def ws_live(ws: WebSocket) -> None:
     finally:
         if q in STATE.subscribers:
             STATE.subscribers.remove(q)
+
+
+_root = web_root()
+if (_root / "index.html").exists():
+    app.mount("/", StaticFiles(directory=_root, html=True), name="studio")

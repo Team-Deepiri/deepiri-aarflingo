@@ -35,7 +35,9 @@ export function defaultBridgeUrl(): string {
 }
 
 export function runtimeUrl(): string {
-  return import.meta.env.VITE_RUNTIME_URL || "http://127.0.0.1:8765";
+  // Same-origin by default: the runtime server serves both the UI and the API,
+  // so relative URLs work from any device on the LAN (rohomieo-style hosting).
+  return import.meta.env.VITE_RUNTIME_URL || "";
 }
 
 export async function fetchBridgeInfo(): Promise<BridgeInfo | null> {
