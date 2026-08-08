@@ -80,6 +80,20 @@ def recent() -> list:
     return STATE.store.recent_predictions(30) if STATE.store else []
 
 
+@app.get("/voice/outcomes")
+def voice_outcomes() -> list:
+    """Recent voice utterances + dog bark responses."""
+    return STATE.store.recent_voice_outcomes(50) if STATE.store else []
+
+
+@app.get("/voice/weights")
+def voice_weights() -> dict:
+    """Current learned phrase weights for this dog."""
+    if STATE.conversation is not None:
+        return STATE.conversation.phrase_weights()
+    return {}
+
+
 @app.post("/live/start")
 async def live_start(body: StartBody) -> dict:
     if STATE.running:

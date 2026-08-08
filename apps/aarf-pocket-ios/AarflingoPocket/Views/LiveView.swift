@@ -1,115 +1,141 @@
 import SwiftUI
+import AVFoundation
 
 struct LiveView: View {
     @EnvironmentObject private var appState: AppState
+    @StateObject private var camera = CameraManager()
+    @StateObject private var client: RuntimeClient = {
+        let stored = UserDefaults.standard.string(forKey: "runtimeURL") ?? "http://127.0.0.1:8765"
+        return RuntimeClient(baseURL: URL(string: stored)!)
+    }()
+
+    // Reconnect client when runtimeURL changes in settings
+    private var runtimeURL: String { appState.runtimeURL }
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
+
+                    // ── Status chips ────────────────────────────────────
                     HStack {
                         StatusChip(
-                            label: appState.connected ? "Runtime live" : "Runtime offline",
-                            tone: appState.connected ? .ok : .warn
+                            label: client.connected ? "Runtime live" : "Runtime offline",
+                            tone: client.connected ? .ok : .warn
                         )
                         StatusChip(
-                            label: appState.liveOn ? "Streaming" : "Idle",
-                            tone: appState.liveOn ? .info : .neutral
+                            label: camera.isRunning ? "Camera live" : "Camera off",
+                            tone: camera.isRunning ? .info : .neutral
                         )
                     }
 
-                    ZStack {
+                    // ── Camera preview ──────────────────────────────────
+                    ZStack(alignment: .bottomLeading) {
                         RoundedRectangle(cornerRadius: 16)
                             .fill(Color.black)
-                            .overlay(RoundedRectangle(cornerRadius: 16).stroke(AarflingoTheme.border, lineWidth: 1))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .stroke(AarflingoTheme.border, lineWidth: 1)
+                            )
                             .frame(height: 300)
-
-                        if appState.liveOn {
-                            VStack(spacing: 8) {
-                                Image(systemName: "dog.fill")
-                                    .font(.system(size: 64))
-                                    .foregroundStyle(AarflingoTheme.accent.opacity(0.8))
-                                Text("Camera preview active")
-                                    .font(.headline)
-                                Text("On-device ML ships in v0.2 — mock inference running")
-                                    .font(.caption)
-                                    .foregroundStyle(AarflingoTheme.muted)
-                                    .multilineTextAlignment(.center)
-                                    .padding(.horizontal)
-                                if appState.connected {
-                                    HStack(spacing: 12) {
-                                        LiveMetric(value: "\(Int(appState.prediction.confidence * 100))%", label: "Confidence")
-                                        LiveMetric(value: "\(appState.history.count)", label: "Readings")
-                                        LiveMetric(value: appState.prediction.gate.uppercased(), label: "Gate")
+                            .overlay(
+                                Group {
+                                    if camera.isRunning {
+                                        CameraPreviewView(session: camera.session)
+                                            .clipShape(RoundedRectangle(cornerRadius: 16))
+                                    } else {
+                                        VStack(spacing: 12) {
+                                            Image(systemName: camera.permissionDenied ? "video.slash" : "video.fill")
+                                                .font(.system(size: 48))
+                                                .foregroundStyle(AarflingoTheme.muted)
+                                            Text(camera.permissionDenied
+                                                 ? "Camera access denied — check Settings"
+                                                 : "Tap Start to begin")
+                                                .foregroundStyle(AarflingoTheme.muted)
+                                                .multilineTextAlignment(.center)
+                                                .padding(.horizontal)
+                                        }
                                     }
-                                    .padding(.top, 4)
                                 }
+                            )
+
+                        // Confidence badge overlay
+                        if camera.isRunning, let pred = client.prediction {
+                            HStack(spacing: 6) {
+                                Circle()
+                                    .fill(gateColor(pred.gate))
+                                    .frame(width: 8, height: 8)
+                                Text("\(Int(pred.confidence * 100))% · \(pred.gate)")
+                                    .font(.caption2.weight(.semibold))
+                                    .foregroundStyle(.white)
                             }
-                            .overlay(alignment: .center) {
-                                RoundedRectangle(cornerRadius: 10)
-                                    .stroke(AarflingoTheme.accent, lineWidth: 2)
-                                    .frame(width: 180, height: 140)
-                                    .opacity(0.6)
-                            }
-                        } else {
-                            VStack(spacing: 12) {
-                                Image(systemName: "video.slash")
-                                    .font(.system(size: 48))
-                                    .foregroundStyle(AarflingoTheme.muted)
-                                Text("Tap Start to preview")
-                                    .foregroundStyle(AarflingoTheme.muted)
-                                Text("Live dog intent inference")
-                                    .font(.caption2)
-                                    .foregroundStyle(AarflingoTheme.muted.opacity(0.6))
-                            }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(.ultraThinMaterial)
+                            .clipShape(Capsule())
+                            .padding(12)
                         }
                     }
 
-                    if appState.liveOn {
-                        IntentHeroCard(prediction: appState.prediction)
+                    // ── Intent card ─────────────────────────────────────
+                    if let pred = client.prediction, camera.isRunning {
+                        IntentHeroCard(prediction: .init(
+                            intent: pred.intent,
+                            emotion: pred.emotion,
+                            behavior: pred.behavior,
+                            confidence: pred.confidence,
+                            gate: pred.gate,
+                            dogPresent: pred.dogPresent
+                        ))
 
+                        // Live signal bars (from runtime features — placeholder ratios for now)
                         VStack(alignment: .leading, spacing: 12) {
-                            Text("Live signals")
-                                .font(.headline)
-                            LiveSignalBar(label: "Vision", value: 0.88, color: AarflingoTheme.info)
-                            LiveSignalBar(label: "Audio", value: 0.62, color: AarflingoTheme.warn)
-                            LiveSignalBar(label: "Heart rate", value: 0.35, color: AarflingoTheme.danger)
-                            LiveSignalBar(label: "Motion", value: 0.74, color: AarflingoTheme.accent)
+                            Text("Live signals").font(.headline)
+                            LiveSignalBar(label: "Confidence",
+                                          value: pred.confidence,
+                                          color: gateColor(pred.gate))
+                            LiveSignalBar(label: "Dog detected",
+                                          value: pred.dogPresent ? 1.0 : 0.0,
+                                          color: AarflingoTheme.info)
                         }
                         .aarflingoCard()
                     }
 
+                    // ── Controls ────────────────────────────────────────
                     HStack(spacing: 10) {
-                        Button(appState.liveOn ? "Stop session" : "Start session") {
-                            withAnimation(.easeInOut(duration: 0.3)) {
-                                appState.liveOn.toggle()
-                                if appState.liveOn {
-                                    appState.connected = true
-                                    appState.refreshMock()
-                                } else {
-                                    appState.connected = false
-                                }
+                        Button(camera.isRunning ? "Stop" : "Start") {
+                            if camera.isRunning {
+                                camera.stop()
+                                client.disconnect()
+                            } else {
+                                startSession()
                             }
                         }
                         .buttonStyle(PrimaryButtonStyle(accent: true))
 
-                        Button("Simulate") {
-                            withAnimation(.easeInOut(duration: 0.3)) {
-                                appState.refreshMock()
+                        if camera.isRunning {
+                            Button {
+                                camera.flip()
+                            } label: {
+                                Label("Flip", systemImage: "arrow.triangle.2.circlepath.camera")
                             }
+                            .buttonStyle(PrimaryButtonStyle(accent: false))
                         }
-                        .buttonStyle(PrimaryButtonStyle(accent: false))
                     }
 
-                    VStack(spacing: 4) {
-                        Text("TriadNet pipeline · v0.1 UI mock")
+                    // Error
+                    if let err = client.lastError {
+                        Text(err)
                             .font(.caption)
-                            .foregroundStyle(AarflingoTheme.muted)
-                        Text("Camera, CoreML, and runtime connect land in v0.2")
-                            .font(.caption2)
-                            .foregroundStyle(AarflingoTheme.muted.opacity(0.6))
+                            .foregroundStyle(AarflingoTheme.danger)
+                            .padding(.horizontal, 4)
                     }
-                    .frame(maxWidth: .infinity)
+
+                    // Footer
+                    Text("TriadNet · live inference via \(appState.runtimeURL)")
+                        .font(.caption2)
+                        .foregroundStyle(AarflingoTheme.muted.opacity(0.6))
+                        .frame(maxWidth: .infinity)
                 }
                 .padding()
             }
@@ -127,74 +153,64 @@ struct LiveView: View {
                     }
                 }
             }
-        }
-    }
-}
-
-struct LiveMetric: View {
-    let value: String
-    let label: String
-
-    var body: some View {
-        VStack(spacing: 2) {
-            Text(value)
-                .font(.headline.weight(.bold))
-                .foregroundStyle(AarflingoTheme.text)
-            Text(label)
-                .font(.system(size: 9))
-                .foregroundStyle(AarflingoTheme.muted)
-        }
-        .frame(minWidth: 60)
-        .padding(8)
-        .background(AarflingoTheme.card.opacity(0.6))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
-    }
-}
-
-struct LiveSignalBar: View {
-    let label: String
-    let value: Double
-    let color: Color
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Text(label).font(.caption).foregroundStyle(AarflingoTheme.muted)
-                Spacer()
-                Text("\(Int(value * 100))%")
-                    .font(.caption2)
-                    .foregroundStyle(AarflingoTheme.muted)
+            .onChange(of: appState.runtimeURL) { _, newURL in
+                // Reconnect to new URL when changed in Settings
+                guard let url = URL(string: newURL) else { return }
+                camera.stop()
+                client.disconnect()
             }
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(AarflingoTheme.border)
-                    Capsule()
-                        .fill(color)
-                        .frame(width: geo.size.width * value)
-                        .animation(.easeOut(duration: 0.4), value: value)
-                }
-            }
-            .frame(height: 6)
+        }
+        // Wire camera frames → runtime on start
+        .onDisappear {
+            camera.stop()
+            client.disconnect()
+        }
+    }
+
+    // MARK: – Private
+
+    private func startSession() {
+        guard let url = URL(string: appState.runtimeURL) else { return }
+
+        // Re-create client with current URL
+        let freshClient = RuntimeClient(baseURL: url)
+
+        // Wire camera → POST /infer/frame
+        camera.onFrame = { [weak freshClient] jpeg in
+            await freshClient?.inferFrame(jpeg)
+        }
+
+        camera.start(fps: 5)
+
+        // Also connect WebSocket for live prediction stream
+        freshClient.connect()
+
+        // Health check
+        Task {
+            _ = await freshClient.checkHealth()
+        }
+    }
+
+    private func gateColor(_ gate: String) -> Color {
+        switch gate {
+        case "pass":   return AarflingoTheme.accent
+        case "reject": return AarflingoTheme.danger
+        default:       return AarflingoTheme.warn
         }
     }
 }
 
-struct PrimaryButtonStyle: ButtonStyle {
-    let accent: Bool
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.headline)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 12)
-            .background(
-                accent
-                    ? AarflingoTheme.accentGradient
-                    : LinearGradient(colors: [AarflingoTheme.card, AarflingoTheme.border], startPoint: .leading, endPoint: .trailing)
-            )
-            .foregroundStyle(accent ? Color.black.opacity(0.85) : AarflingoTheme.text)
-            .clipShape(RoundedRectangle(cornerRadius: 10))
-            .scaleEffect(configuration.isPressed ? 0.97 : 1)
-            .animation(.easeInOut(duration: 0.15), value: configuration.isPressed)
+// MARK: – Convenience extension so TriadPrediction works with IntentHeroCard
+extension TriadPrediction {
+    init(intent: String, emotion: String, behavior: String,
+         confidence: Double, gate: String, dogPresent: Bool) {
+        self.init(
+            intent: intent,
+            emotion: emotion,
+            behavior: behavior,
+            confidence: confidence,
+            gate: gate,
+            dogPresent: dogPresent
+        )
     }
 }
