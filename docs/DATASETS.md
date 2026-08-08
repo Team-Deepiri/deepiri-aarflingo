@@ -9,10 +9,22 @@ recordings.
 
 | Source | What | URL |
 |--------|------|-----|
+| **Stanford Dogs** | 120 breeds, real dog photos (~750 MB) | http://vision.stanford.edu/aditya86/ImageNetDogs/ |
 | Ultralytics YOLOv8n | COCO-pretrained detector (class 16 = dog) | https://docs.ultralytics.com |
 | Home fine-tune (future) | Label clips from `services/ingest` | local |
 
 Artifact: `artifacts/models/vision/yolov8n.pt`, `artifacts/bundles/default/studio/dog_yolo.onnx`
+
+Real Stanford Dogs photos are run through the runtime perception pipeline
+(detection → tracking → pose → approach geometry) to produce **real feature
+rows** for audit / calibration / feedback-driven retraining:
+
+```bash
+./scripts/fetch_public_datasets.sh --dog-images          # full ~750 MB
+./scripts/fetch_public_datasets.sh --dog-images-sample   # a few breeds, fast
+poetry run aarflingo-perception collect-real --directory data/raw/dog_images
+poetry run aarflingo-perception verify-real --file artifacts/real/vision_features.jsonl
+```
 
 ## Audio — bark / whimper / arousal-valence
 
@@ -43,8 +55,31 @@ Artifact: `artifacts/models/default/vitals.pt`
 ```bash
 ./scripts/fetch_public_datasets.sh --list
 ./scripts/fetch_public_datasets.sh --barkopedia   # ~67 MB HF sample set
+./scripts/fetch_public_datasets.sh --dog-images   # real dog photos (~750 MB)
+./scripts/fetch_public_datasets.sh --dog-images-sample   # few breeds, fast
 # PhysioNet PhysioZoo requires account: https://physionet.org/settings/credentials/
 ```
+
+## Voice — deepiri-speech engine
+
+AARFLingo speaks to and listens for the dog through the **deepiri-speech**
+engine (deepiri-platform PR #302, FastAPI + Pipecat + LiveKit on `:5020`).
+
+```bash
+poetry run aarflingo-voice status
+poetry run aarflingo-voice speak --text "come here buddy" --play
+poetry run aarflingo-voice listen --audio bark.wav        # classify + respond
+poetry run aarflingo-voice respond                        # camera loop, speaks on intent change
+```
+
+Enable the runtime voice hook (speaks when the dog's intent changes):
+
+```bash
+VOICE_ENABLED=1 SPEECH_URL=http://localhost:5020 poetry run aarflingo-runtime
+```
+
+Offline: without the engine running, TTS falls back to a silent WAV and STT
+returns an empty transcript, so the voice CLI and runtime hook still work in dev.
 
 ## Train everything
 

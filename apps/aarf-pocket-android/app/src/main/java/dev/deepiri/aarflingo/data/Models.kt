@@ -90,6 +90,7 @@ class AppViewModel : ViewModel() {
     var autoConnect by mutableStateOf(false)
     var selectedIntentFilter by mutableStateOf<String?>(null)
     var showOnboarding by mutableStateOf(false)
+    var lastError by mutableStateOf<String?>(null)
 
     var history by mutableStateOf(
         listOf(
@@ -101,6 +102,67 @@ class AppViewModel : ViewModel() {
             HistoryItem(intent = "attention", emotion = "happy", behavior = "paw_raise", confidence = 0.82f),
         ),
     )
+
+    // ── Runtime client ─────────────────────────────────────────────────
+    private var _client: RuntimeClient = RuntimeClient(runtimeUrl)
+    val runtimeClient: RuntimeClient get() = _client
+
+    /** Rebuild the client when the URL changes in Settings. */
+    fun updateRuntimeUrl(url: String) {
+        runtimeUrl = url
+        _client.disconnect()
+        _client = RuntimeClient(url)
+        if (liveOn) connectWs()
+    }
+
+    /** Connect WebSocket and wire callbacks. */
+    fun connectWs() {
+        _client.onConnected = { ok -> connected = ok }
+        _client.onError = { msg -> lastError = msg }
+        _client.onPrediction = { pred ->
+            prediction = pred
+            connected = true
+            appendHistory(pred)
+        }
+        _client.connect(runtimeUrl)
+    }
+
+    fun disconnectWs() {
+        _client.disconnect()
+        connected = false
+    }
+
+    /** Upload a JPEG frame and update state from the response. */
+    suspend fun inferFrame(jpeg: ByteArray) {
+        val pred = _client.inferFrame(jpeg) ?: return
+        prediction = pred
+        connected = true
+        appendHistory(pred)
+    }
+
+    suspend fun checkHealth(): Boolean {
+        val ok = _client.checkHealth()
+        connected = ok
+        return ok
+    }
+
+    private fun appendHistory(pred: TriadPrediction) {
+        history = listOf(
+            HistoryItem(
+                intent = pred.intent,
+                emotion = pred.emotion,
+                behavior = pred.behavior,
+                confidence = pred.confidence,
+            )
+        ) + history.take(49)
+    }
+
+    // ── Mock (kept for offline / demo use) ──────────────────────────────
+    fun refreshMock() {
+        connected = true
+        prediction = TriadPrediction.randomDemo()
+        appendHistory(prediction)
+    }
 
     val uniqueIntents: List<String>
         get() = history.map { it.intent }.distinct().sorted()
@@ -114,20 +176,12 @@ class AppViewModel : ViewModel() {
     val averageConfidence: Float
         get() = if (history.isEmpty()) 0f else history.map { it.confidence }.average().toFloat()
 
-    fun refreshMock() {
-        connected = true
-        prediction = TriadPrediction.randomDemo()
-        history = listOf(
-            HistoryItem(
-                intent = prediction.intent,
-                emotion = prediction.emotion,
-                behavior = prediction.behavior,
-                confidence = prediction.confidence,
-            ),
-        ) + history.take(49)
-    }
-
     fun clearHistory() {
         history = emptyList()
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        _client.disconnect()
     }
 }

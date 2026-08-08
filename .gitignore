@@ -37,6 +37,7 @@ artifacts/manifests/*
 *.mlpackage
 artifacts/feedback/*.db
 artifacts/models/
+artifacts/voice/
 
 # Studio branding copies (source: assets/branding/)
 apps/aarf-studio/public/aarflingo-logo.png

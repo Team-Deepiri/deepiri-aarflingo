@@ -60,5 +60,9 @@ def audio() -> None:
     _run_app_cli("services", "audio")
 
 
+def voice() -> None:
+    _run_app_cli("services", "voice")
+
+
 def physio() -> None:
     _run_physio_cli()
