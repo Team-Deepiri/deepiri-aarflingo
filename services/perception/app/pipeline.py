@@ -15,8 +15,11 @@ from .gaze import load_zones, score_gaze
 from .pose import estimate_pose
 from .scene import classify_scene
 from .temporal import TemporalTracker
+from .tracker import MultiDogTracker
+from .tau import score_approach
 
 _TRACKER = TemporalTracker()
+_MULTI = MultiDogTracker()
 _DETECTOR = MotionDogDetector()
 _YOLO: object | None = None
 _ZONES = load_zones()
@@ -31,33 +34,11 @@ def _get_yolo() -> object | None:
     return _YOLO
 
 
-def run_pipeline_frame(frame_bgr: np.ndarray) -> dict:
-    global _TRACKER, _DETECTOR, _ZONES
-    gray_mean = float(np.mean(frame_bgr) / 255.0)
-    yolo = _get_yolo()
-    bbox = None
-    if yolo is not None:
-        bbox = yolo.detect(frame_bgr)  # type: ignore[union-attr]
-    if bbox is None:
-        bbox = detect_dog(frame_bgr, _DETECTOR)
-
-    if bbox is None:
-        motion, vx, vy = _TRACKER.update(None, gray_mean)
-        scene = classify_scene(frame_bgr, motion_level=motion)
-        return {
-            "dog_present": 0.0,
-            "motion": motion,
-            "velocity_x": vx,
-            "velocity_y": vy,
-            "brightness": scene.brightness,
-            "contrast": scene.contrast,
-            "scene": scene.tags,
-            "arousal_proxy": motion,
-        }
-
-    motion, vx, vy = _TRACKER.update(bbox, gray_mean)
+def _run_primary(primary, frame_bgr, motion: float, vx: float, vy: float) -> dict:
+    bbox = primary.bbox
     pose = estimate_pose(bbox)
     gaze = score_gaze(bbox, _ZONES)
+    approach = score_approach(bbox, vx, vy, _ZONES)
     scene = classify_scene(frame_bgr, motion_level=motion)
     face = estimate_face_signals(pose, arousal_proxy=scene.motion_level)
 
@@ -92,8 +73,62 @@ def run_pipeline_frame(frame_bgr: np.ndarray) -> dict:
         "arousal_proxy": max(scene.motion_level, face.lip_lick_likelihood),
         "whale_eye_likelihood": face.whale_eye_likelihood,
         "lip_lick_likelihood": face.lip_lick_likelihood,
+        "pose_head_y": pose.head_y,
+        "pose_head_gaze_x": pose.head_gaze_x,
+        "pose_body_stretch": pose.body_stretch,
+        "pose_play_bow": pose.play_bow,
+        "n_dogs": 1,
+        "track_stability": float(getattr(primary, "stability", 1.0)),
         "scene": scene.tags,
     }
+
+    for name in ("door", "toy", "bowl"):
+        base[f"tau_{name}"] = approach.tau.get(name, 0.0)
+        base[f"closing_{name}"] = approach.closing.get(name, 0.0)
+        base[f"heading_{name}"] = approach.heading.get(name, 0.0)
+    return base
+
+
+def run_pipeline_frame(frame_bgr: np.ndarray) -> dict:
+    global _TRACKER, _MULTI, _DETECTOR, _ZONES
+    gray_mean = float(np.mean(frame_bgr) / 255.0)
+    yolo = _get_yolo()
+    detections: list = []
+    if yolo is not None:
+        detections = yolo.detect_all(frame_bgr)  # type: ignore[union-attr]
+    if not detections:
+        single = detect_dog(frame_bgr, _DETECTOR)
+        if single is not None:
+            detections = [single]
+
+    if not detections:
+        motion, vx, vy = _TRACKER.update(None, gray_mean)
+        _MULTI.update([], frame_bgr)
+        scene = classify_scene(frame_bgr, motion_level=motion)
+        return {
+            "dog_present": 0.0,
+            "n_dogs": 0,
+            "track_stability": 0.0,
+            "pose_head_y": 0.5,
+            "pose_head_gaze_x": 0.5,
+            "pose_body_stretch": 0.0,
+            "pose_play_bow": 0.0,
+            "motion": motion,
+            "velocity_x": vx,
+            "velocity_y": vy,
+            "brightness": scene.brightness,
+            "contrast": scene.contrast,
+            "scene": scene.tags,
+            "arousal_proxy": motion,
+        }
+
+    tracks = _MULTI.update(detections, frame_bgr)
+    primary = _MULTI.primary()
+    motion, vx, vy = _TRACKER.update(primary.bbox if primary else detections[0], gray_mean)
+
+    base = _run_primary(primary, frame_bgr, motion, vx, vy)
+    base["n_dogs"] = min(len([t for t in tracks if t.alive]), 4)
+    return base
 
 
 def run_pipeline(frame_bytes: bytes, width: int = 64, height: int = 64) -> dict:

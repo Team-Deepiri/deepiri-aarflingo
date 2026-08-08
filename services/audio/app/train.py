@@ -1,4 +1,4 @@
-"""Vocal encoder trained on Barkopedia-shaped synthetic barks."""
+"""Vocal encoder trained on real Barkopedia clips + Barkopedia-shaped synthetic."""
 from __future__ import annotations
 
 import json
@@ -10,12 +10,13 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from .barkopedia import BarkSample, load_barkopedia
 from .mfcc import summarize_audio
 from .synth import AROUSAL_LEVELS, VALENCE_LEVELS, synthesize_bark
 
 SOURCES = (
-    "dogspeak",
     "barkopedia-emotion",
+    "dogspeak",
     "audioset-whimper-dog",
 )
 
@@ -53,21 +54,50 @@ def _feature_tensor(waveform: np.ndarray) -> torch.Tensor:
     )
 
 
+def _balanced_real_subset(samples: list[BarkSample], per_combo: int = 8, seed: int = 42) -> list[BarkSample]:
+    """Stratify real clips so every (arousal, valence) combo is represented."""
+    rng = random.Random(seed)
+    buckets: dict[tuple[str, str], list[BarkSample]] = {}
+    for s in samples:
+        buckets.setdefault((s.arousal, s.valence), []).append(s)
+    out: list[BarkSample] = []
+    for combo, items in sorted(buckets.items()):
+        rng.shuffle(items)
+        out.extend(items[:per_combo])
+    rng.shuffle(out)
+    return out
+
+
 def train_vocal(
     epochs: int = 25,
     lr: float = 1e-3,
     out_path: Path | None = None,
     seed: int = 42,
+    data_dir: Path | None = None,
+    synth_per_combo: int = 8,
 ) -> dict:
     torch.manual_seed(seed)
     random.seed(seed)
     rows: list[tuple[torch.Tensor, int, int]] = []
-    for i in range(300):
+
+    real_samples: list[BarkSample] = []
+    if data_dir is not None:
+        real_samples = load_barkopedia(data_dir)
+
+    for i in range(synth_per_combo * len(AROUSAL_LEVELS) * len(VALENCE_LEVELS)):
         arousal = random.choice(AROUSAL_LEVELS)
         valence = random.choice(VALENCE_LEVELS)
         wave = synthesize_bark(arousal, valence, seed=seed + i)
         rows.append((_feature_tensor(wave), *_label_indices(arousal, valence)))
 
+    n_real = 0
+    if real_samples:
+        balanced = _balanced_real_subset(real_samples, per_combo=synth_per_combo, seed=seed)
+        for s in balanced:
+            rows.append((_feature_tensor(s.waveform), *_label_indices(s.arousal, s.valence)))
+        n_real = len(balanced)
+
+    random.shuffle(rows)
     split = int(len(rows) * 0.8)
     train_rows, val_rows = rows[:split], rows[split:]
 
@@ -85,7 +115,7 @@ def train_vocal(
                 opt.zero_grad()
                 loss.backward()
                 opt.step()
-            loss_sum += float(loss)
+            loss_sum += float(loss.detach())
             correct += int(a_logits.argmax().item() == ai and v_logits.argmax().item() == vi)
         n = max(len(batch), 1)
         return loss_sum / n, correct / n
@@ -109,7 +139,18 @@ def train_vocal(
     out.parent.mkdir(parents=True, exist_ok=True)
     torch.save(model.state_dict(), out)
     metrics_path.write_text(
-        json.dumps({"history": history, "best_val_acc": best_acc, "sources": list(SOURCES)}, indent=2),
+        json.dumps(
+            {
+                "history": history,
+                "best_val_acc": best_acc,
+                "sources": list(SOURCES),
+                "real_clips": n_real,
+                "real_total_available": len(real_samples),
+                "synth_per_combo": synth_per_combo,
+                "data_dir": str(data_dir) if data_dir else None,
+            },
+            indent=2,
+        ),
         encoding="utf-8",
     )
     return {
@@ -119,6 +160,8 @@ def train_vocal(
         "epochs": epochs,
         "n_train": len(train_rows),
         "n_val": len(val_rows),
+        "real_clips": n_real,
+        "real_total_available": len(real_samples),
     }
 
 

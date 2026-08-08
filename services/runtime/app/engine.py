@@ -116,6 +116,7 @@ class LiveState:
     last_frame_jpeg: bytes | None = None
     subscribers: list[asyncio.Queue] = field(default_factory=list)
     store: FeedbackStore | None = None
+    latest_audio_modality: dict[str, float] = field(default_factory=dict)
     voice: object | None = None
     conversation: object | None = None   # ConversationEngine when VOICE_ENABLED
     mic_listener: object | None = None   # MicListener when VOICE_ENABLED
@@ -126,6 +127,16 @@ class LiveState:
 
 
 STATE = LiveState()
+
+
+def update_audio_modality(audio_arousal: float = 0.0, audio_valence: float = 0.0, audio_bark_prob: float = 0.0) -> dict[str, float]:
+    mod = {
+        "audio_arousal": float(audio_arousal),
+        "audio_valence": float(audio_valence),
+        "audio_bark_prob": float(audio_bark_prob),
+    }
+    STATE.latest_audio_modality = mod
+    return mod
 
 
 def _load_coupling_matrix() -> dict:
@@ -233,8 +244,12 @@ def gate_decision(pred: TriadPrediction) -> str:
     return "review"
 
 
-def process_frame(frame_bgr: np.ndarray) -> dict[str, Any]:
+def process_frame(frame_bgr: np.ndarray, audio_modality: dict[str, float] | None = None) -> dict[str, Any]:
     features = run_pipeline_frame(frame_bgr)
+    if audio_modality:
+        features.update(audio_modality)
+    elif STATE.latest_audio_modality:
+        features.update(STATE.latest_audio_modality)
     vec = vectorize(features)
     STATE.sequence.append(vec)
     seq = list(STATE.sequence)
@@ -267,6 +282,7 @@ def process_frame(frame_bgr: np.ndarray) -> dict[str, Any]:
         "emotion": pred.emotion_id,
         "behavior": pred.behavior_id,
         "confidence": pred.confidence,
+        "margin": pred.margin,
         "intent_probs": pred.intent_probs or {},
         "gate": gate,
         "voice": voice,

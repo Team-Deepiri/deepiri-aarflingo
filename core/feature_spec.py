@@ -37,6 +37,21 @@ BASE_FEATURE_NAMES: list[str] = [
     "contrast",
     "aspect_ratio",
     "arousal_proxy",
+    "pose_head_y",
+    "pose_head_gaze_x",
+    "pose_body_stretch",
+    "pose_play_bow",
+    "n_dogs",
+    "track_stability",
+    "tau_door",
+    "tau_toy",
+    "tau_bowl",
+    "closing_door",
+    "closing_toy",
+    "closing_bowl",
+    "heading_door",
+    "heading_toy",
+    "heading_bowl",
 ]
 
 FEATURE_NAMES: list[str] = BASE_FEATURE_NAMES + MODALITY_NAMES
