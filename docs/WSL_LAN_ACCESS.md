@@ -61,21 +61,32 @@ Windows-side portproxy can intervene. It's a real fix for the case where
 mirrored mode's LAN forwarding works but the app was proxying to the wrong
 listen IP, and a safe no-op attempt otherwise.
 
+## Resolution (2026-08-08): NAT mode, mirror not needed
+
+Applied on this machine — **mirrored networking is not required.** The fix
+that satisfies self-hosted + no-router + no-cloud for both apps on this box is
+**NAT mode + portproxy** (decided while fixing couchlink's Headscale control
+plane; same machine, same root cause):
+
+- `.wslconfig` sets `networkingMode=nat` (applies to the whole WSL2 VM).
+- `ensure_lan_access()` takes its NAT branch
+  (`0.0.0.0:<port> → <wsl-ip>:<port>` via `netsh portproxy`) — the reliable
+  path. It is active automatically once WSL restarts in NAT mode.
+- The mirrored-mode branch (`<real-lan-ip>:<port> → 127.0.0.1:<port>`) stays
+  as a best-effort fallback but is not relied on; mirrored inbound is broken
+  at the OS level on this machine.
+
+Nothing here needs mirrored networking. If a future machine requires it, the
+verification checklist below still applies.
+
 ## Remaining work / open questions
 
 1. **Not yet root-caused which specific thing breaks mirrored LAN forwarding**
-   on affected machines. Candidates, cheapest to test first:
-   - Temporarily disable any active VPN/virtual network adapters and retest
-     LAN-IP reachability from Windows itself.
-   - Confirm `wsl --shutdown` was actually run after `networkingMode=mirrored`
-     was set in `.wslconfig` (a stale WSL instance can silently keep running
-     the old network mode).
-2. **NAT-mode fallback not yet applied anywhere.** Switching
-   `networkingMode=nat` in `.wslconfig` is the documented-reliable path and
-   the existing NAT-mode portproxy code already handles it, but this
-   requires `wsl --shutdown` (kills any running WSL shells/sessions) and
-   is disruptive enough mid-session that it needs an explicit go-ahead
-   rather than being automated.
-3. If NAT mode is chosen on an affected machine, re-verify: firewall rule,
-   portproxy entry, and an actual remote-device connection test (not just a
-   same-box `Test-NetConnection`).
+   on affected machines. Moot here — NAT mode is the active path and needs no
+   mirroring. Left open only for machines that must stay mirrored.
+2. **DONE (2026-08-08): NAT-mode fallback applied.** `.wslconfig` is set to
+   `networkingMode=nat`; the existing NAT-mode portproxy code handles the rest.
+3. Re-verify after the next `wsl --shutdown` (applies the mode change):
+   firewall rule, portproxy entry (`0.0.0.0:8765 → <wsl-ip>:8765`), and an
+   actual remote-device connection test (not just a same-box
+   `Test-NetConnection`).
