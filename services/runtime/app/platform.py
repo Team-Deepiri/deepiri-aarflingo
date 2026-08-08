@@ -70,6 +70,35 @@ def wsl_primary_ip() -> str:
     return "127.0.0.1"
 
 
+def windows_lan_ip() -> str | None:
+    """Real Windows-side LAN IPv4, queried from Windows itself rather than
+    inferred from WSL's interface list — mirrored mode surfaces WSL-internal
+    gateway/DNS addresses alongside the real LAN IP, and naive first-match
+    can pick the wrong one. Resolved as the IP bound to whichever interface
+    owns the default route, so it works regardless of adapter names/count
+    (VPNs, virtual adapters, etc. are excluded automatically since they
+    aren't the lowest-metric default-route interface)."""
+    exe = shutil.which("powershell.exe")
+    if exe is None:
+        return None
+    cmd = (
+        "$if = (Get-NetRoute -DestinationPrefix '0.0.0.0/0' -ErrorAction SilentlyContinue "
+        "| Sort-Object RouteMetric | Select-Object -First 1 -ExpandProperty InterfaceIndex); "
+        "Get-NetIPAddress -AddressFamily IPv4 -InterfaceIndex $if -ErrorAction SilentlyContinue "
+        "| Where-Object { $_.PrefixOrigin -ne 'WellKnown' } "
+        "| Select-Object -First 1 -ExpandProperty IPAddress"
+    )
+    try:
+        proc = subprocess.run(
+            [exe, "-NoProfile", "-Command", cmd],
+            capture_output=True, text=True, timeout=10, check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    ip = proc.stdout.strip()
+    return ip or None
+
+
 def _win_powershell() -> str | None:
     return shutil.which("powershell.exe")
 
@@ -171,17 +200,16 @@ try {{
     return _run_ps_script(script, [str(port)])
 
 
-def _ensure_portproxy(port: int) -> tuple[bool, str]:
-    """Add a netsh portproxy host->WSL for NAT mode (returns ok, message)."""
-    wsl_ip = wsl_primary_ip()
+def _ensure_portproxy(port: int, listen_addr: str, connect_addr: str) -> tuple[bool, str]:
+    """Add a netsh portproxy listen_addr->connect_addr on Windows (returns ok, message)."""
     script = r"""
-param([int]$port, [string]$wslIp)
-$existing = netsh interface portproxy show v4tov4 | Select-String "$port"
+param([int]$port, [string]$listenAddr, [string]$connectAddr)
+$existing = netsh interface portproxy show v4tov4 | Select-String "$listenAddr\s+$port"
 if ($existing) {
     Write-Output "EXISTS"
     exit 0
 }
-netsh interface portproxy add v4tov4 listenaddress=0.0.0.0 listenport=$port connectaddress=$wslIp connectport=$port
+netsh interface portproxy add v4tov4 listenaddress=$listenAddr listenport=$port connectaddress=$connectAddr connectport=$port
 if ($LASTEXITCODE -ne 0) {
     Write-Output "FAILED: netsh portproxy add failed"
     exit 1
@@ -189,7 +217,29 @@ if ($LASTEXITCODE -ne 0) {
 Write-Output "ADDED"
 exit 0
 """
-    return _run_ps_script(script, [str(port), wsl_ip])
+    return _run_ps_script(script, [str(port), listen_addr, connect_addr])
+
+
+def _ensure_portproxy_elevated(port: int, listen_addr: str, connect_addr: str) -> tuple[bool, str]:
+    """Elevated fallback for _ensure_portproxy (netsh portproxy needs admin)."""
+    script = f"""
+$port = {port}
+$listenAddr = "{listen_addr}"
+$connectAddr = "{connect_addr}"
+$existing = netsh interface portproxy show v4tov4 | Select-String "$listenAddr\\s+$port"
+if ($existing) {{
+    Write-Output "EXISTS"
+    exit 0
+}}
+netsh interface portproxy add v4tov4 listenaddress=$listenAddr listenport=$port connectaddress=$connectAddr connectport=$port
+if ($LASTEXITCODE -ne 0) {{
+    Write-Output "FAILED: netsh portproxy add failed"
+    exit 1
+}}
+Write-Output "ADDED"
+exit 0
+"""
+    return _run_ps_script_elevated(script)
 
 
 def ensure_lan_access(port: int) -> str:
@@ -211,6 +261,21 @@ def ensure_lan_access(port: int) -> str:
         else:
             steps.append("firewall:needs-admin")
     if mode == "nat":
-        ok2, msg2 = _ensure_portproxy(port)
-        steps.append(f"portproxy:{msg2.splitlines()[0][:30].lower() if ok2 == 0 else 'needs-admin'}")
+        listen_addr, connect_addr = "0.0.0.0", wsl_primary_ip()
+    else:
+        # Mirrored mode: WSL's interface list includes the real Windows LAN
+        # IP, but Windows' mirrored inbound forwarding to that IP can be
+        # unreliable (observed broken on machines with active VPN/virtual
+        # adapters). localhostForwarding still works, so proxy the LAN IP
+        # to Windows' own loopback rather than trusting mirrored forwarding.
+        listen_addr, connect_addr = windows_lan_ip() or wsl_primary_ip(), "127.0.0.1"
+    ok2, msg2 = _ensure_portproxy(port, listen_addr, connect_addr)
+    if ok2 == 0 and "FAILED:" not in msg2:
+        steps.append(f"portproxy:{msg2.splitlines()[0][:30].lower()}")
+    else:
+        ok2, msg2 = _ensure_portproxy_elevated(port, listen_addr, connect_addr)
+        if ok2 == 0 and "FAILED:" not in msg2:
+            steps.append(f"portproxy:{msg2.splitlines()[0][:30].lower()} (elevated)")
+        else:
+            steps.append("portproxy:needs-admin")
     return " | ".join(steps)
