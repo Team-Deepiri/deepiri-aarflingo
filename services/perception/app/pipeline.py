@@ -10,6 +10,10 @@ try:
 except ImportError:
     YoloDogDetector = None  # type: ignore[misc, assignment]
     default_weights = None  # type: ignore[assignment]
+try:
+    from .breed import BreedClassifier
+except ImportError:
+    BreedClassifier = None  # type: ignore[misc, assignment]
 from .face import estimate_face_signals
 from .gaze import load_zones, score_gaze
 from .pose import estimate_pose
@@ -22,6 +26,7 @@ _TRACKER = TemporalTracker()
 _MULTI = MultiDogTracker()
 _DETECTOR = MotionDogDetector()
 _YOLO: object | None = None
+_BREED: object | None = None
 _ZONES = load_zones()
 
 
@@ -32,6 +37,50 @@ def _get_yolo() -> object | None:
     if _YOLO is None and default_weights().exists():
         _YOLO = YoloDogDetector()
     return _YOLO
+
+
+def _get_breed() -> object | None:
+    global _BREED
+    if BreedClassifier is None:
+        return None
+    if _BREED is None:
+        _BREED = BreedClassifier()
+    return _BREED if _BREED.available else None  # type: ignore[union-attr]
+
+
+def _crop_bbox(frame_bgr: np.ndarray, bbox) -> np.ndarray | None:
+    h, w = frame_bgr.shape[:2]
+    x1 = max(0, int(bbox.x * w))
+    y1 = max(0, int(bbox.y * h))
+    x2 = min(w, int((bbox.x + bbox.w) * w))
+    y2 = min(h, int((bbox.y + bbox.h) * h))
+    if x2 - x1 < 8 or y2 - y1 < 8:
+        return None
+    return frame_bgr[y1:y2, x1:x2]
+
+
+def _annotate_breed(frame_bgr: np.ndarray, bbox, base: dict) -> dict:
+    clf = _get_breed()
+    if clf is None:
+        base["breed"] = None
+        base["breed_conf"] = 0.0
+        base["breed_top3"] = []
+        return base
+    crop = _crop_bbox(frame_bgr, bbox)
+    if crop is None:
+        base["breed"] = None
+        base["breed_conf"] = 0.0
+        base["breed_top3"] = []
+        return base
+    top = clf.classify_crop(crop, top_k=3)  # type: ignore[union-attr]
+    base["breed_top3"] = [{"breed": name, "conf": round(conf, 3)} for name, conf in top]
+    if top:
+        base["breed"] = top[0][0]
+        base["breed_conf"] = round(top[0][1], 3)
+    else:
+        base["breed"] = None
+        base["breed_conf"] = 0.0
+    return base
 
 
 def _run_primary(primary, frame_bgr, motion: float, vx: float, vy: float) -> dict:
@@ -47,7 +96,7 @@ def _run_primary(primary, frame_bgr, motion: float, vx: float, vy: float) -> dic
     edge_top = bbox.y
     edge_bottom = 1.0 - (bbox.y + bbox.h)
 
-    return {
+    base = {
         "dog_present": 1.0,
         "bbox": bbox.__dict__,
         "bbox_cx": bbox.cx,
@@ -82,6 +131,8 @@ def _run_primary(primary, frame_bgr, motion: float, vx: float, vy: float) -> dic
         "scene": scene.tags,
     }
 
+    _annotate_breed(frame_bgr, bbox, base)
+
     for name in ("door", "toy", "bowl"):
         base[f"tau_{name}"] = approach.tau.get(name, 0.0)
         base[f"closing_{name}"] = approach.closing.get(name, 0.0)
@@ -107,6 +158,9 @@ def run_pipeline_frame(frame_bgr: np.ndarray) -> dict:
         scene = classify_scene(frame_bgr, motion_level=motion)
         return {
             "dog_present": 0.0,
+            "breed": None,
+            "breed_conf": 0.0,
+            "breed_top3": [],
             "n_dogs": 0,
             "track_stability": 0.0,
             "pose_head_y": 0.5,
