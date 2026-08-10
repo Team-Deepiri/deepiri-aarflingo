@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Debug-only override: the runtime server is typically reached over plain
+  HTTP on the local Wi-Fi LAN during development (see docs/WEBCAM.md).
+  Cleartext traffic is intentionally left disabled in the release manifest.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application android:usesCleartextTraffic="true" />
+</manifest>
