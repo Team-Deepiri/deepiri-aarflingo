@@ -83,7 +83,7 @@ def _annotate_breed(frame_bgr: np.ndarray, bbox, base: dict) -> dict:
     return base
 
 
-def _run_primary(primary, frame_bgr, motion: float, vx: float, vy: float) -> dict:
+def _run_primary(primary, frame_bgr, motion: float, vx: float, vy: float, confirmed: bool = True) -> dict:
     bbox = primary.bbox
     pose = estimate_pose(bbox)
     gaze = score_gaze(bbox, _ZONES)
@@ -97,7 +97,10 @@ def _run_primary(primary, frame_bgr, motion: float, vx: float, vy: float) -> dic
     edge_bottom = 1.0 - (bbox.y + bbox.h)
 
     base = {
-        "dog_present": 1.0,
+        # Motion-only detections have no object-class awareness (any moving
+        # blob qualifies), so they're reported as unconfirmed rather than a
+        # positive dog identification.
+        "dog_present": 1.0 if confirmed else min(float(bbox.confidence), 0.4),
         "bbox": bbox.__dict__,
         "bbox_cx": bbox.cx,
         "bbox_cy": bbox.cy,
@@ -131,7 +134,15 @@ def _run_primary(primary, frame_bgr, motion: float, vx: float, vy: float) -> dic
         "scene": scene.tags,
     }
 
-    _annotate_breed(frame_bgr, bbox, base)
+    if confirmed:
+        _annotate_breed(frame_bgr, bbox, base)
+    else:
+        # Don't guess a breed on an unconfirmed (motion-only) crop — the
+        # breed classifier has no "not a dog" class and will always return
+        # a confident-looking label for whatever object triggered motion.
+        base["breed"] = None
+        base["breed_conf"] = 0.0
+        base["breed_top3"] = []
 
     for name in ("door", "toy", "bowl"):
         base[f"tau_{name}"] = approach.tau.get(name, 0.0)
@@ -147,6 +158,7 @@ def run_pipeline_frame(frame_bgr: np.ndarray) -> dict:
     detections: list = []
     if yolo is not None:
         detections = yolo.detect_all(frame_bgr)  # type: ignore[union-attr]
+    confirmed = bool(detections)
     if not detections:
         single = detect_dog(frame_bgr, _DETECTOR)
         if single is not None:
@@ -180,7 +192,7 @@ def run_pipeline_frame(frame_bgr: np.ndarray) -> dict:
     primary = _MULTI.primary()
     motion, vx, vy = _TRACKER.update(primary.bbox if primary else detections[0], gray_mean)
 
-    base = _run_primary(primary, frame_bgr, motion, vx, vy)
+    base = _run_primary(primary, frame_bgr, motion, vx, vy, confirmed=confirmed)
     base["n_dogs"] = min(len([t for t in tracks if t.alive]), 4)
     return base
 
