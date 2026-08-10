@@ -75,8 +75,45 @@ def hrv_features(rr_ms: np.ndarray) -> dict[str, float]:
     }
 
 
+def lf_hf_ratio(rr_ms: np.ndarray, resample_hz: float = 4.0) -> dict[str, float]:
+    """Frequency-domain HRV: LF/HF power ratio (docs/ADVANCED_MATH.md §8).
+
+    RR intervals are unevenly spaced in time (one sample per heartbeat), so
+    they're first resampled onto an even time grid (the "tachogram") before
+    an FFT periodogram is meaningful. Dog frequency bands per the veterinary
+    HRV literature: LF 0.04-0.15 Hz, HF 0.15-0.40 Hz. `resample_hz=4.0` gives
+    a 2 Hz Nyquist limit, comfortably above the 0.40 Hz HF edge.
+    """
+    empty = {"lf_power": 0.0, "hf_power": 0.0, "lf_hf_ratio": 0.0}
+    if rr_ms.size < 4:
+        return empty
+    rr_s = rr_ms.astype(np.float64) / 1000.0
+    beat_times = np.cumsum(rr_s)
+    beat_times -= beat_times[0]
+    duration = float(beat_times[-1])
+    if duration <= 0:
+        return empty
+    even_times = np.arange(0.0, duration, 1.0 / resample_hz)
+    if even_times.size < 8:
+        return empty
+    tachogram = np.interp(even_times, beat_times, rr_s)
+    tachogram = tachogram - np.mean(tachogram)
+    windowed = tachogram * np.hanning(tachogram.size)
+    spectrum = np.fft.rfft(windowed)
+    psd = (np.abs(spectrum) ** 2) / (resample_hz * tachogram.size)
+    freqs = np.fft.rfftfreq(tachogram.size, d=1.0 / resample_hz)
+    lf_mask = (freqs >= 0.04) & (freqs < 0.15)
+    hf_mask = (freqs >= 0.15) & (freqs < 0.40)
+    lf_power = float(np.trapezoid(psd[lf_mask], freqs[lf_mask])) if lf_mask.any() else 0.0
+    hf_power = float(np.trapezoid(psd[hf_mask], freqs[hf_mask])) if hf_mask.any() else 0.0
+    ratio = lf_power / hf_power if hf_power > 1e-9 else 0.0
+    return {"lf_power": lf_power, "hf_power": hf_power, "lf_hf_ratio": ratio}
+
+
 def ecg_window_features(ecg: np.ndarray, sample_rate: float = DEFAULT_SAMPLE_RATE) -> dict[str, float]:
     peaks = detect_r_peaks(ecg, sample_rate)
-    feats = hrv_features(rr_intervals_ms(peaks, sample_rate))
+    rr_ms = rr_intervals_ms(peaks, sample_rate)
+    feats = hrv_features(rr_ms)
     feats["hr_norm"] = min(1.0, max(0.0, (feats["hr_bpm"] - DOG_HR_BPM_RANGE[0]) / (DOG_HR_BPM_RANGE[1] - DOG_HR_BPM_RANGE[0])))
+    feats.update(lf_hf_ratio(rr_ms))
     return feats

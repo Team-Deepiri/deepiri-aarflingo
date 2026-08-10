@@ -46,6 +46,12 @@ def modality_from_vitals(ecg_feats: dict[str, float], imu_feats: dict[str, float
         "ecg_stress": ecg_feats["stress_score"],
         "imu_activity": imu_feats["activity"],
         "imu_posture_static": imu_feats["posture_static"],
+        # docs/ADVANCED_MATH.md §8: low LF/HF -> parasympathetic (relaxed),
+        # high -> sympathetic (stress/arousal). Not yet wired into
+        # VitalsEncoder's fixed 6-dim input (features_to_tensor) — that
+        # requires a versioned checkpoint retrain, tracked separately.
+        "ecg_lfhf": ecg_feats.get("lf_hf_ratio", 0.0),
+        "ecg_rmssd_norm": min(1.0, ecg_feats.get("rmssd_ms", 0.0) / 100.0),
     }
 
 
