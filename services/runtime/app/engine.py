@@ -19,6 +19,15 @@ from app.paths import setup_paths
 
 ROOT = setup_paths()
 
+try:
+    from app.platform import bridge_stream_url, is_wsl
+except ImportError:
+    def is_wsl() -> bool:
+        return False
+
+    def bridge_stream_url() -> str:
+        return "http://127.0.0.1:8766/video/stream"
+
 
 def _load_service_package(service: str, module: str):
     """Load services/{service}/app as an isolated package (no clash with runtime app)."""
@@ -124,6 +133,8 @@ class LiveState:
     frame_count: int = 0                 # frames run through process_frame
     infer_count: int = 0                 # predictions produced
     infer_total_ms: float = 0.0          # cumulative inference latency
+    camera_task: object | None = None    # asyncio.Task running webcam_loop
+    camera_error: str | None = None      # last camera open/read error message
 
     def __post_init__(self) -> None:
         if self.store is None:
@@ -313,6 +324,7 @@ def live_status() -> dict:
         "session_id": STATE.session_id,
         "dog_id": STATE.dog_id,
         "camera": str(STATE.camera_index),
+        "camera_error": STATE.camera_error,
         "frames": STATE.frame_count,
         "predictions": STATE.infer_count,
         "fps": round(fps, 1),
@@ -334,6 +346,51 @@ async def broadcast(msg: dict) -> None:
         STATE.subscribers.remove(q)
 
 
+def list_cameras(limit: int = 8) -> list[dict]:
+    """Enumerate local camera indices OpenCV can open, plus bridge availability."""
+    import cv2
+
+    try:
+        cv2.utils.logging.setLogLevel(cv2.utils.logging.LOG_LEVEL_ERROR)
+    except Exception:
+        pass
+    cameras: list[dict] = []
+    for i in range(limit):
+        cap = cv2.VideoCapture(i)
+        ok = cap.isOpened()
+        if ok:
+            name = f"Camera {i}"
+            w = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
+            h = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
+            back = cap.get(cv2.CAP_PROP_BACKEND)
+            cameras.append({"index": i, "label": name, "w": int(w), "h": int(h), "backend": int(back)})
+        cap.release()
+    return cameras
+
+
+def switch_camera(camera: int | str, mode: str | None = None) -> str:
+    """Live-switch the capture source. Stops the current loop and restarts it."""
+    if mode == "bridge" or (is_wsl() and isinstance(camera, int) and mode != "server"):
+        camera = bridge_stream_url()
+    STATE.camera_index = camera
+    task = STATE.camera_task
+    if task is not None:
+        try:
+            task.cancel()
+        except Exception:
+            pass
+        STATE.camera_task = None
+    STATE.running = False
+    STATE.started_at = None
+    STATE.frame_count = 0
+    STATE.infer_count = 0
+    STATE.infer_total_ms = 0.0
+    import asyncio
+
+    STATE.camera_task = asyncio.create_task(webcam_loop(camera))
+    return str(camera)
+
+
 async def webcam_loop(camera: int | str) -> None:
     import cv2
 
@@ -342,13 +399,15 @@ async def webcam_loop(camera: int | str) -> None:
         hint = ""
         if isinstance(camera, int):
             hint = " On WSL, start scripts/webcam/start_webcam_bridge.ps1 on Windows and use bridge mode."
-        await broadcast({"type": "error", "message": f"Cannot open camera {camera}.{hint}"})
+        STATE.camera_error = f"Cannot open camera {camera}.{hint}"
+        await broadcast({"type": "error", "message": STATE.camera_error})
         STATE.running = False
         return
 
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
     STATE.running = True
+    STATE.camera_error = None
     source = "bridge" if isinstance(camera, str) else "webcam"
     STATE.session_id = STATE.store.start_session(dog_id=STATE.dog_id, source=source)
 

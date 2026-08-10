@@ -88,9 +88,10 @@ class _Preprocessor:
 
 
 class _BreedDataset(torch.utils.data.Dataset):
-    def __init__(self, split: list[tuple[Path, int]]) -> None:
+    def __init__(self, split: list[tuple[Path, int]], train: bool = False) -> None:
         self.split = split
         self.pre = _Preprocessor()
+        self.train = train
 
     def __len__(self) -> int:
         return len(self.split)
@@ -98,7 +99,18 @@ class _BreedDataset(torch.utils.data.Dataset):
     def __getitem__(self, i: int) -> tuple[torch.Tensor, torch.Tensor]:
         path, label = self.split[i]
         x = self.pre(load_image(path))
+        if self.train:
+            x = self._augment(x)
         return torch.from_numpy(x), torch.tensor(label, dtype=torch.long)
+
+    def _augment(self, x: np.ndarray) -> np.ndarray:
+        """Light train-time augmentation on the (3, 224, 224) normalized tensor."""
+        if np.random.rand() < 0.5:
+            x = x[:, :, ::-1].copy()  # horizontal flip (width axis on channel-first tensor)
+        # Random small brightness/contrast jitter.
+        jitter = 1.0 + float(np.random.rand() - 0.5) * 0.15
+        x = x * jitter
+        return np.clip(x, -3.0, 3.0)
 
 
 def _train_epoch(model, loader, criterion, optimizer, device, train=True) -> tuple[float, float]:
@@ -167,7 +179,7 @@ def train_breed(
 
     num_workers = min(8, max(1, (torch.get_num_threads() or 1)))
     train_dl = torch.utils.data.DataLoader(
-        _BreedDataset(train), batch_size=batch_size, shuffle=True, num_workers=num_workers, persistent_workers=True
+        _BreedDataset(train, train=True), batch_size=batch_size, shuffle=True, num_workers=num_workers, persistent_workers=True
     )
     val_dl = torch.utils.data.DataLoader(
         _BreedDataset(val), batch_size=batch_size, shuffle=False, num_workers=num_workers
@@ -176,22 +188,21 @@ def train_breed(
         _BreedDataset(test), batch_size=batch_size, shuffle=False, num_workers=num_workers
     )
 
-    criterion = torch.nn.CrossEntropyLoss()
+    criterion = torch.nn.CrossEntropyLoss(label_smoothing=0.1)
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs)
 
     best_val = 0.0
     best_state = None
     for epoch in range(1, epochs + 1):
-        if epoch > freeze_backbone:
+        if epoch == freeze_backbone + 1:
             for param in model.parameters():
                 param.requires_grad = True
             optimizer = torch.optim.AdamW(
                 [p for p in model.parameters() if p.requires_grad], lr=lr * 0.1
             )
             scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs - freeze_backbone)
-        loader = train_dl
-        loss, acc = _train_epoch(model, loader, criterion, optimizer, device, train=True)
+        loss, acc = _train_epoch(model, train_dl, criterion, optimizer, device, train=True)
         vloss, vacc = _train_epoch(model, val_dl, criterion, None, device, train=False)
         scheduler.step()
         print(

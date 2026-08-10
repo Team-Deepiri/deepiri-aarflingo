@@ -12,6 +12,7 @@ cd "$ROOT"
 EPOCHS="${EPOCHS:-30}"
 AUDIO_EPOCHS="${AUDIO_EPOCHS:-20}"
 PHYSIO_EPOCHS="${PHYSIO_EPOCHS:-20}"
+BREED_EPOCHS="${BREED_EPOCHS:-12}"
 STAGES="${STAGES:-vision,audio,physio,triad}"
 SKIP_VISION="${SKIP_VISION:-0}"
 
@@ -45,6 +46,7 @@ run_stage_json() {
 }
 
 echo '{"skipped":true}' >"$STAGE_DIR/vision.json"
+echo '{"skipped":true}' >"$STAGE_DIR/breed.json"
 echo '{"skipped":true}' >"$STAGE_DIR/audio.json"
 echo '{"skipped":true}' >"$STAGE_DIR/physio.json"
 echo '{}' >"$STAGE_DIR/triad_train.json"
@@ -57,6 +59,12 @@ if stage_enabled vision && [ "$SKIP_VISION" != "1" ]; then
   run_stage_json "$STAGE_DIR/vision.json" poetry run aarflingo-perception prepare-vision
 elif stage_enabled vision; then
   step "vision — skipped (SKIP_VISION=1)"
+fi
+
+if stage_enabled breed; then
+  step "breed — Stanford Dogs 120-way classifier (${BREED_EPOCHS} epochs)"
+  export PYTHONPATH="$ROOT:$ROOT/services/perception"
+  run_stage_json "$STAGE_DIR/breed.json" poetry run aarflingo-perception train-breed --epochs "$BREED_EPOCHS"
 fi
 
 if stage_enabled audio; then
@@ -89,19 +97,19 @@ if stage_enabled triad; then
   run_stage_json "$STAGE_DIR/verify.json" poetry run python "$ROOT/scripts/verify_artifacts.py"
 fi
 
-python3 - "$STAGE_DIR" "$MANIFEST" "$EPOCHS" "$AUDIO_EPOCHS" "$PHYSIO_EPOCHS" "$STAGES" "$ROOT" <<'PY'
+python3 - "$STAGE_DIR" "$MANIFEST" "$EPOCHS" "$AUDIO_EPOCHS" "$PHYSIO_EPOCHS" "$BREED_EPOCHS" "$STAGES" "$ROOT" <<'PY'
 import json
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-stage_dir, manifest_path, epochs, audio_e, physio_e, stages, root_s = sys.argv[1:8]
+stage_dir, manifest_path, epochs, audio_e, physio_e, breed_e, stages, root_s = sys.argv[1:9]
 root = Path(root_s)
 payload = {
     "bundle_id": "aarflingo-multimodal",
     "created_at": datetime.now(timezone.utc).isoformat(),
     "stages": stages.split(","),
-    "epochs": {"triad": int(epochs), "audio": int(audio_e), "physio": int(physio_e)},
+    "epochs": {"triad": int(epochs), "audio": int(audio_e), "physio": int(physio_e), "breed": int(breed_e)},
     "artifacts": {
         "triad_pt": str(root / "artifacts/models/default/triad.pt"),
         "triad_onnx": str(root / "artifacts/bundles/default/studio/triad.onnx"),
@@ -109,9 +117,11 @@ payload = {
         "vitals_pt": str(root / "artifacts/models/default/vitals.pt"),
         "dog_yolo_onnx": str(root / "artifacts/bundles/default/studio/dog_yolo.onnx"),
         "dog_yolo_weights": str(root / "artifacts/models/vision/yolov8n.pt"),
+        "breed_pt": str(root / "artifacts/models/vision/breed.pt"),
+        "breed_labels": str(root / "artifacts/models/vision/breed_labels.json"),
     },
 }
-for name in ("vision", "audio", "physio", "triad_train", "triad_export", "verify"):
+for name in ("vision", "breed", "audio", "physio", "triad_train", "triad_export", "verify"):
     p = Path(stage_dir) / f"{name}.json"
     if p.is_file():
         try:

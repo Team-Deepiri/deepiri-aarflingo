@@ -70,3 +70,33 @@ def test_infer_audio_endpoint() -> None:
     assert body["audio_modality"]["audio_arousal"] == 0.8
     assert body["audio_modality"]["audio_bark_prob"] == 0.95
 
+
+def test_cameras_endpoint_shape() -> None:
+    res = client.get("/cameras")
+    assert res.status_code == 200
+    body = res.json()
+    assert "cameras" in body
+    assert isinstance(body["cameras"], list)
+    assert "current" in body
+    assert "running" in body
+
+
+def test_live_camera_switch_rejects_while_stopped_safely() -> None:
+    # Live-switch should not crash and reports a resolved source string.
+    res = client.post(
+        "/live/camera",
+        json={"camera": 0, "mode": "server"},
+    )
+    assert res.status_code == 200
+    body = res.json()
+    assert body["status"] == "switched"
+    assert body["camera"]
+    client.post("/live/stop")
+
+
+def test_live_camera_accepts_string_index() -> None:
+    res = client.post("/live/camera", json={"camera": "0", "mode": "server"})
+    assert res.status_code == 200
+    assert res.json()["status"] == "switched"
+    client.post("/live/stop")
+

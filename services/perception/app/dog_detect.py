@@ -29,6 +29,7 @@ class MotionDogDetector:
 
         self._bg = cv2.createBackgroundSubtractorMOG2(history=120, varThreshold=32, detectShadows=False)
         self._last: BBox | None = None
+        self._warmup = 0
 
     def detect(self, frame_bgr: np.ndarray) -> BBox | None:
         import cv2
@@ -36,6 +37,12 @@ class MotionDogDetector:
         h, w = frame_bgr.shape[:2]
         gray = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2GRAY)
         fg = self._bg.apply(gray)
+        self._warmup += 1
+        # MOG2 returns an all-foreground mask on its very first frame while it
+        # initialises the background model. Skip the first frame or we always
+        # report a full-frame "dog".
+        if self._warmup < 2:
+            return self._last
         _, thresh = cv2.threshold(fg, 200, 255, cv2.THRESH_BINARY)
         kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
         thresh = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel)

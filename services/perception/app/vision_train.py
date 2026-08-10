@@ -1,9 +1,10 @@
-"""Prepare vision artifacts (YOLOv8 dog detector)."""
+"""Prepare vision artifacts (YOLOv8 dog detector + Stanford Dogs breed classifier)."""
 from __future__ import annotations
 
 import json
 from pathlib import Path
 
+from .breed import default_breed_labels, default_breed_weights
 from .yolo_detect import default_onnx, default_weights, export_dog_onnx, prepare_yolo_weights
 
 
@@ -17,7 +18,9 @@ def train_vision(out_dir: Path | None = None) -> dict:
         "class_id": 16,
         "weights": str(weights),
         "onnx": str(onnx_path),
-        "sources": ["coco-pretrained", "ultralytics-yolov8"],
+        "breed_weights": str(default_breed_weights(root)),
+        "breed_labels": str(default_breed_labels(root)),
+        "sources": ["coco-pretrained", "ultralytics-yolov8", "stanford-dogs"],
         "notes": "Fine-tune on home camera clips via services/perception when labeled data is available.",
     }
     out = out_dir or root / "artifacts" / "manifests"

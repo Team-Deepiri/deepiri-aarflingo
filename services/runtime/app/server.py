@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from app.engine import STATE, _load_service_package, broadcast, live_status, process_jpeg, update_audio_modality, webcam_loop
+from app.engine import STATE, _load_service_package, broadcast, list_cameras, live_status, process_jpeg, switch_camera, update_audio_modality, webcam_loop
 from app.dog_profile import PERSONALITIES, TRAIT_KEYS, DogProfile, load_profile, save_profile
 from app.platform import (
     bridge_stream_url,
@@ -62,6 +62,11 @@ class FeedbackBody(BaseModel):
 class StartBody(BaseModel):
     camera: int | str = 0
     dog_id: str = "default"
+    mode: str | None = None  # browser | server | bridge
+
+
+class CameraBody(BaseModel):
+    camera: int | str = 0
     mode: str | None = None  # browser | server | bridge
 
 
@@ -187,12 +192,38 @@ def voice_weights() -> dict:
     return {}
 
 
+@app.get("/cameras")
+def cameras_endpoint() -> dict:
+    """List local OpenCV-visible camera indices for the camera input switch."""
+    return {
+        "cameras": list_cameras(),
+        "current": str(STATE.camera_index),
+        "running": STATE.running,
+        "bridge_available": bridge_info()["wsl"] or True,
+        "mode_hint": "On WSL use bridge mode; the Windows host camera streams via MJPEG.",
+    }
+
+
+@app.post("/live/camera")
+async def live_camera(body: CameraBody) -> dict:
+    """Live-switch the capture source without restarting the server."""
+    camera: int | str = body.camera
+    if isinstance(camera, str) and camera.isdigit():
+        camera = int(camera)
+    resolved = switch_camera(camera, body.mode)
+    return {"status": "switched", "camera": resolved, "running": STATE.running}
+
+
 @app.post("/live/start")
 async def live_start(body: StartBody) -> dict:
     if STATE.running:
         return {"status": "already_running", "session_id": STATE.session_id}
     camera: int | str = body.camera
-    if body.mode in ("bridge", "server") or (is_wsl() and isinstance(camera, int)):
+    if isinstance(camera, str) and camera.isdigit():
+        camera = int(camera)
+    # Server mode reads a local OpenCV camera directly; only bridge mode (or
+    # WSL with no native webcam) should route through the MJPEG bridge URL.
+    if body.mode == "bridge" or (is_wsl() and isinstance(camera, int) and body.mode != "server"):
         camera = bridge_stream_url()
     STATE.camera_index = camera
     STATE.dog_id = body.dog_id
@@ -200,13 +231,20 @@ async def live_start(body: StartBody) -> dict:
     STATE.frame_count = 0
     STATE.infer_count = 0
     STATE.infer_total_ms = 0.0
-    asyncio.create_task(webcam_loop(camera))
+    STATE.camera_task = asyncio.create_task(webcam_loop(camera))
     return {"status": "started", "camera": camera, "mode": body.mode or "server", "wsl": is_wsl()}
 
 
 @app.post("/live/stop")
 async def live_stop() -> dict:
     STATE.running = False
+    task = STATE.camera_task
+    if task is not None:
+        try:
+            task.cancel()
+        except Exception:
+            pass
+        STATE.camera_task = None
     return {"status": "stopping"}
 
 

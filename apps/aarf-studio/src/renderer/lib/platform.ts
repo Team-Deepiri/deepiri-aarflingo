@@ -34,6 +34,7 @@ export type LiveStatus = {
   session_id: string | null;
   dog_id: string;
   camera: string;
+  camera_error: string | null;
   frames: number;
   predictions: number;
   fps: number;
@@ -41,6 +42,22 @@ export type LiveStatus = {
   sequence_len: number;
   sequence_capacity: number;
   uptime_s: number;
+};
+
+export type CameraDevice = {
+  index: number;
+  label: string;
+  w: number;
+  h: number;
+  backend: number;
+};
+
+export type CamerasInfo = {
+  cameras: CameraDevice[];
+  current: string;
+  running: boolean;
+  bridge_available: boolean;
+  mode_hint: string;
 };
 
 export type VoiceOutcome = {
@@ -160,6 +177,40 @@ export async function fetchLiveStatus(): Promise<LiveStatus | null> {
     return res.json();
   } catch {
     return null;
+  }
+}
+
+export async function fetchCameras(): Promise<CamerasInfo | null> {
+  try {
+    const res = await fetch(`${runtimeUrl()}/cameras`);
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
+}
+
+export async function switchLiveCamera(camera: number | string, mode?: CaptureMode): Promise<boolean> {
+  try {
+    const res = await fetch(`${runtimeUrl()}/live/camera`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ camera, mode: mode ?? undefined }),
+    });
+    if (!res.ok) return false;
+    const data = await res.json();
+    return data.status === "switched";
+  } catch {
+    return false;
+  }
+}
+
+export async function stopLive(): Promise<boolean> {
+  try {
+    const res = await fetch(`${runtimeUrl()}/live/stop`, { method: "POST" });
+    return res.ok;
+  } catch {
+    return false;
   }
 }
 
