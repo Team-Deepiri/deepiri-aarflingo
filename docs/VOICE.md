@@ -16,6 +16,7 @@ Camera ──► TriadNet prediction
                 │ best_phrase_for(pred)        ← weighted by past outcomes
                 ▼
         DogVoice.speak()  ──►  deepiri-speech TTS  ──►  speaker
+                │   (background worker — never blocks the 15 fps frame loop)
                 │
                 │  (response window: 8 s)
                 │
@@ -36,8 +37,9 @@ Microphone ──► MicListener
 ## Quick start
 
 ```bash
-# 1. Start the deepiri-speech engine (or skip — offline fallback works)
-#    See deepiri-platform PR #302
+# 1. Start the deepiri-speech engine — 100% local-first (Kokoro TTS + faster-whisper
+#    STT, no cloud/OpenAI required). Models auto-download on first boot.
+#    cd ../deepiri-speech && poetry install -E engines && poetry run uvicorn deepiri_speech.main:app --port 5020
 
 # 2. Start the runtime with voice + mic enabled
 VOICE_ENABLED=1 SPEECH_URL=http://localhost:5020 poetry run aarflingo-runtime

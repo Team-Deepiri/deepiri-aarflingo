@@ -50,6 +50,7 @@ on still frames (YOLO weights shipped) + 120-breed classification + live camera 
 | **Conversation engine** | `ConversationEngine`: speak → listen → EMA phrase weight update → persist weights | #18 |
 | **Voice outcomes DB** | `voice_outcomes` table, `log_voice_outcome`, `/voice/outcomes` + `/voice/weights` API | #18 |
 | **Runtime voice hook** | `VOICE_ENABLED=1` → `_conversation_speak(pred)` in `process_frame`; mic drain thread | #18 |
+| **Non-blocking TTS** | Speak+save dispatched to background worker (never stalls 15 fps loop); `voice` event broadcast to studio | #18 |
 | **setup.sh web mode** | `--web` flag: vite preview on `0.0.0.0`, LAN URL banner, headless auto-detect | #18 |
 | **Studio mobile detect** | `isMobileBrowser()` auto-selects browser-cam, hides WSL/server tabs on phone | #18 |
 | **iOS real camera** | `CameraManager` (AVCaptureSession, 5fps JPEG), `RuntimeClient` (WebSocket + HTTP), live `LiveView` | #18 |
@@ -154,7 +155,7 @@ See [PHASE2_COLLAR.md](PHASE2_COLLAR.md).
 | **Phrase personalisation v2** | Full contextual bandit (LinUCB) replacing EMA weights |
 | **Active learning loop** | Labeler service queue ← runtime low-confidence harvest |
 | **Longitudinal dashboard** | Week-over-week intent distribution + conversation history |
-| **Privacy** | Local-only mode: all inference + voice on-device, no cloud calls |
+| **Privacy** | ✅ Local-first by default: vision + voice run on-device (Kokoro TTS, faster-whisper STT); no cloud calls unless OpenAI explicitly opted in |
 
 ---
 
