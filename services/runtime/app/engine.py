@@ -120,6 +120,10 @@ class LiveState:
     voice: object | None = None
     conversation: object | None = None   # ConversationEngine when VOICE_ENABLED
     mic_listener: object | None = None   # MicListener when VOICE_ENABLED
+    started_at: float | None = None      # monotonic time live session began
+    frame_count: int = 0                 # frames run through process_frame
+    infer_count: int = 0                 # predictions produced
+    infer_total_ms: float = 0.0          # cumulative inference latency
 
     def __post_init__(self) -> None:
         if self.store is None:
@@ -245,6 +249,9 @@ def gate_decision(pred: TriadPrediction) -> str:
 
 
 def process_frame(frame_bgr: np.ndarray, audio_modality: dict[str, float] | None = None) -> dict[str, Any]:
+    if STATE.started_at is None:
+        STATE.started_at = time.monotonic()
+    STATE.frame_count += 1
     features = run_pipeline_frame(frame_bgr)
     if audio_modality:
         features.update(audio_modality)
@@ -253,10 +260,13 @@ def process_frame(frame_bgr: np.ndarray, audio_modality: dict[str, float] | None
     vec = vectorize(features)
     STATE.sequence.append(vec)
     seq = list(STATE.sequence)
+    t0 = time.perf_counter()
     try:
         pred = infer_sequence(seq)
     except Exception:
         pred = heuristic_predict(features)
+    STATE.infer_total_ms += (time.perf_counter() - t0) * 1000
+    STATE.infer_count += 1
 
     gate = gate_decision(pred)
     voice = _conversation_speak(pred) if float(features.get("dog_present", 0)) >= 0.5 else None
@@ -287,7 +297,29 @@ def process_frame(frame_bgr: np.ndarray, audio_modality: dict[str, float] | None
         "gate": gate,
         "voice": voice,
         "features": {k: features[k] for k in features if k != "bbox"},
+        "sequence": seq[-10:],
         "dog_present": bool(features.get("dog_present", 0)),
+    }
+
+
+def live_status() -> dict:
+    """Streaming telemetry for the studio's live metrics rail."""
+    now = time.monotonic()
+    elapsed = (now - STATE.started_at) if STATE.started_at else 0.0
+    fps = (STATE.frame_count / elapsed) if elapsed > 0 else 0.0
+    avg_infer_ms = (STATE.infer_total_ms / STATE.infer_count) if STATE.infer_count else 0.0
+    return {
+        "running": STATE.running,
+        "session_id": STATE.session_id,
+        "dog_id": STATE.dog_id,
+        "camera": str(STATE.camera_index),
+        "frames": STATE.frame_count,
+        "predictions": STATE.infer_count,
+        "fps": round(fps, 1),
+        "avg_infer_ms": round(avg_infer_ms, 1),
+        "sequence_len": len(STATE.sequence),
+        "sequence_capacity": STATE.sequence.maxlen,
+        "uptime_s": round(elapsed, 1),
     }
 
 

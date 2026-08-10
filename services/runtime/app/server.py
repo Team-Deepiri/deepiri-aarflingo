@@ -11,8 +11,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from app.engine import STATE, _load_service_package, broadcast, process_jpeg, update_audio_modality, webcam_loop
-from app.platform import default_bridge_stream_url, is_wsl, windows_host_ip
+from app.engine import STATE, _load_service_package, broadcast, live_status, process_jpeg, update_audio_modality, webcam_loop
+from app.dog_profile import PERSONALITIES, TRAIT_KEYS, DogProfile, load_profile, save_profile
+from app.platform import (
+    bridge_stream_url,
+    client_bridge_stream_url,
+    ensure_webcam_bridge,
+    is_wsl,
+    local_lan_ip,
+    platform_name,
+    windows_host_ip,
+)
 
 
 def lan_ip() -> str:
@@ -77,24 +86,86 @@ def health() -> dict:
         "running": STATE.running,
         "session_id": STATE.session_id,
         "wsl": is_wsl(),
-        "bridge_url": default_bridge_stream_url(),
+        "bridge_url": bridge_stream_url(),
     }
 
 
 @app.get("/bridge/info")
 def bridge_info() -> dict:
     return {
+        "platform": platform_name(),
         "wsl": is_wsl(),
         "windows_host": windows_host_ip(),
-        "stream_url": default_bridge_stream_url(),
-        "health_url": default_bridge_stream_url().replace("/video/stream", "/health"),
+        "lan_ip": local_lan_ip(),
+        "stream_url": client_bridge_stream_url(),
+        "health_url": client_bridge_stream_url().replace("/video/stream", "/health"),
+        "internal_stream_url": bridge_stream_url(),
         "start_windows": "powershell -File scripts/webcam/start_webcam_bridge.ps1",
+    }
+
+
+@app.post("/bridge/start")
+def bridge_start() -> dict:
+    """Auto-detect the platform/OS and ensure the webcam bridge is running."""
+    status = ensure_webcam_bridge()
+    return {
+        "status": status,
+        "health_url": client_bridge_stream_url().replace("/video/stream", "/health"),
+        "ok": status == "bridge:ok" or "auto-started" in status or "auto-start-sent" in status,
     }
 
 
 @app.get("/metrics")
 def metrics() -> dict:
     return STATE.store.metrics() if STATE.store else {}
+
+
+@app.get("/live/status")
+def live_status_endpoint() -> dict:
+    """Streaming telemetry: fps, avg inference latency, sequence window, uptime."""
+    return live_status()
+
+
+class DogProfileBody(BaseModel):
+    name: str | None = None
+    breed: str | None = None
+    age_years: float | None = None
+    weight_kg: float | None = None
+    traits: dict[str, int] | None = None
+    personality: str | None = None
+    baseline_hr_bpm: float | None = None
+    baseline_tail_deg: float | None = None
+    notes: str | None = None
+
+
+@app.get("/dog/profile")
+def dog_profile_get() -> dict:
+    """Current dog profile (traits + personality) for STATE.dog_id."""
+    profile = load_profile(STATE.dog_id)
+    return {
+        **{
+            k: getattr(profile, k)
+            for k in ("dog_id", "name", "breed", "age_years", "weight_kg", "personality", "baseline_hr_bpm", "baseline_tail_deg", "notes", "updated_ms")
+        },
+        "traits": profile.traits,
+        "trait_keys": TRAIT_KEYS,
+        "personalities": PERSONALITIES,
+    }
+
+
+@app.post("/dog/profile")
+def dog_profile_post(body: DogProfileBody) -> dict:
+    profile = load_profile(STATE.dog_id)
+    for k in ("name", "breed", "age_years", "weight_kg", "personality", "baseline_hr_bpm", "baseline_tail_deg", "notes"):
+        v = getattr(body, k)
+        if v is not None:
+            setattr(profile, k, v)
+    if body.traits is not None:
+        for k, v in body.traits.items():
+            if k in TRAIT_KEYS:
+                profile.traits[k] = max(1, min(10, int(v)))
+    save_profile(profile)
+    return {"ok": True, "profile": dog_profile_get()}
 
 
 @app.get("/predictions/recent")
@@ -122,9 +193,13 @@ async def live_start(body: StartBody) -> dict:
         return {"status": "already_running", "session_id": STATE.session_id}
     camera: int | str = body.camera
     if body.mode in ("bridge", "server") or (is_wsl() and isinstance(camera, int)):
-        camera = default_bridge_stream_url()
+        camera = bridge_stream_url()
     STATE.camera_index = camera
     STATE.dog_id = body.dog_id
+    STATE.started_at = None
+    STATE.frame_count = 0
+    STATE.infer_count = 0
+    STATE.infer_total_ms = 0.0
     asyncio.create_task(webcam_loop(camera))
     return {"status": "started", "camera": camera, "mode": body.mode or "server", "wsl": is_wsl()}
 

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { runtimeUrl } from "../lib/platform";
+import type { LiveStatus } from "../lib/platform";
+import { fetchLiveStatus, runtimeUrl } from "../lib/platform";
 
 export type LivePrediction = {
   type?: string;
@@ -9,10 +10,23 @@ export type LivePrediction = {
   emotion: string;
   behavior: string;
   confidence: number;
+  margin?: number;
   gate: string;
   intent_probs?: Record<string, number>;
   dog_present?: boolean;
   features?: Record<string, number>;
+  sequence?: number[][];
+  voice?: { phrase?: string; saved?: string } | null;
+  ts_ms?: number;
+};
+
+export type BarkEvent = {
+  type: string;
+  bark_id?: string;
+  phrase?: string;
+  arousal?: string;
+  valence?: string;
+  reward?: number;
   ts_ms?: number;
 };
 
@@ -20,9 +34,11 @@ const RUNTIME = runtimeUrl();
 
 export function useRuntimeLive() {
   const [prediction, setPrediction] = useState<LivePrediction | null>(null);
+  const [bark, setBark] = useState<BarkEvent | null>(null);
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [health, setHealth] = useState<Record<string, unknown>>({});
+  const [liveStatus, setLiveStatus] = useState<LiveStatus | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const retryRef = useRef<number>(0);
 
@@ -46,6 +62,7 @@ export function useRuntimeLive() {
     ws.onmessage = (ev) => {
       const data = JSON.parse(ev.data);
       if (data.type === "prediction") setPrediction(data);
+      if (data.type === "bark") setBark(data);
       if (data.type === "error") setError(data.message);
     };
   }, []);
@@ -57,6 +74,11 @@ export function useRuntimeLive() {
     } catch {
       setHealth({});
     }
+  }, []);
+
+  const refreshLiveStatus = useCallback(async () => {
+    const s = await fetchLiveStatus();
+    if (s) setLiveStatus(s);
   }, []);
 
   const startWebcam = useCallback(
@@ -113,12 +135,15 @@ export function useRuntimeLive() {
 
   return {
     prediction,
+    bark,
     connected,
     error,
     health,
+    liveStatus,
     startWebcam,
     stopWebcam,
     sendFeedback,
     refreshHealth,
+    refreshLiveStatus,
   };
 }

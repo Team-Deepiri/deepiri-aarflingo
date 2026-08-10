@@ -40,6 +40,7 @@ export default defineConfig({
       "/infer": "http://127.0.0.1:8765",
       "/feedback": "http://127.0.0.1:8765",
       "/voice": "http://127.0.0.1:8765",
+      "/dog": "http://127.0.0.1:8765",
       "/ws": {
         target: "ws://127.0.0.1:8765",
         ws: true,

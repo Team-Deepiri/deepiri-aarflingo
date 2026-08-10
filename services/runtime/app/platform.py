@@ -1,12 +1,19 @@
 """WSL / bridge helpers for runtime."""
 from __future__ import annotations
 
+import os
 import shutil
+import socket
 import subprocess
+import sys
 import tempfile
+import time
 from pathlib import Path
 
 DEFAULT_BRIDGE_PORT = 8766
+
+# Root of the repo (parents: app -> runtime -> services -> repo root).
+_REPO_ROOT: Path = Path(__file__).resolve().parents[3]
 
 
 def is_wsl() -> bool:
@@ -16,7 +23,35 @@ def is_wsl() -> bool:
         return False
 
 
+def platform_name() -> str:
+    """'wsl' | 'windows' | 'macos' | 'linux' | 'unknown'."""
+    if is_wsl():
+        return "wsl"
+    if sys.platform == "win32":
+        return "windows"
+    if sys.platform == "darwin":
+        return "macos"
+    if sys.platform.startswith("linux"):
+        return "linux"
+    return "unknown"
+
+
+def local_lan_ip() -> str:
+    """Best-effort primary LAN IPv4 (e.g. 192.168.x.x) for this machine."""
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.settimeout(0.1)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except OSError:
+        pass
+    return "127.0.0.1"
+
+
 def windows_host_ip() -> str:
+    """IP the Windows host is reachable at from inside WSL (nameserver/gateway)."""
     try:
         for line in Path("/etc/resolv.conf").read_text(encoding="utf-8").splitlines():
             line = line.strip()
@@ -27,9 +62,145 @@ def windows_host_ip() -> str:
     return "127.0.0.1"
 
 
-def default_bridge_stream_url(port: int = DEFAULT_BRIDGE_PORT) -> str:
-    host = windows_host_ip() if is_wsl() else "127.0.0.1"
-    return f"http://{host}:{port}/video/stream"
+def windows_bridge_host_ip() -> str:
+    """IP WSL uses to reach a service bound on the Windows host.
+
+    Mirrored mode shares the Windows loopback into WSL, so 127.0.0.1 is the
+    reliable address (the nameserver gateway can be unroutable for host-bound
+    listeners in that mode). NAT mode reaches the host at the nameserver IP."""
+    if not is_wsl():
+        return "127.0.0.1"
+    if wsl_mode() == "mirrored":
+        return "127.0.0.1"
+    return windows_host_ip()
+
+
+def bridge_stream_url(port: int = DEFAULT_BRIDGE_PORT) -> str:
+    """URL of the MJPEG bridge stream as reachable from this process.
+
+    On WSL the bridge runs on the Windows host, addressed by the address that
+    actually routes to it (loopback in mirrored mode, nameserver in NAT mode).
+    On native OSes it listens on 0.0.0.0 so localhost works from this machine."""
+    if is_wsl():
+        return f"http://{windows_bridge_host_ip()}:{port}/video/stream"
+    return f"http://127.0.0.1:{port}/video/stream"
+
+
+def client_bridge_stream_url(port: int = DEFAULT_BRIDGE_PORT) -> str:
+    """URL the browser/phone on the LAN can use for the bridge MJPEG stream.
+
+    For WSL the phone reaches the bridge at the Windows LAN IP directly
+    (the bridge binds 0.0.0.0 on the Windows host), not the WSL-internal
+    nameserver address."""
+    if is_wsl():
+        host = windows_lan_ip() or local_lan_ip()
+        return f"http://{host}:{port}/video/stream"
+    return f"http://{local_lan_ip()}:{port}/video/stream"
+
+
+def bridge_health_url(port: int = DEFAULT_BRIDGE_PORT) -> str:
+    return bridge_stream_url(port).replace("/video/stream", "/health")
+
+
+def probe_bridge(port: int = DEFAULT_BRIDGE_PORT, timeout: float = 2.5) -> bool:
+    """True when the MJPEG bridge health endpoint responds ok."""
+    import urllib.request
+
+    url = bridge_health_url(port)
+    try:
+        with urllib.request.urlopen(url, timeout=timeout) as r:
+            if r.status != 200:
+                return False
+            return b"\"status\": \"ok\"" in r.read(4096)
+    except Exception:
+        return False
+
+
+def _start_bridge_windows(port: int) -> str:
+    """Auto-start the webcam bridge on the Windows host from WSL.
+
+    WSL cannot enumerate USB webcams, so the bridge (Flask + OpenCV MJPEG)
+    must run on the Windows side. Launched detached via powershell.exe so the
+    runtime doesn't block; the ps1 handles python + pip install itself."""
+    exe = _win_powershell()
+    if exe is None:
+        return "auto-start-failed (no powershell.exe from WSL)"
+    ps1 = _REPO_ROOT / "scripts" / "webcam" / "start_webcam_bridge.ps1"
+    if not ps1.exists():
+        return f"auto-start-failed (missing {ps1})"
+    wpath = subprocess.run(
+        ["wslpath", "-w", str(ps1)], capture_output=True, text=True, check=False
+    )
+    win_ps1 = wpath.stdout.strip() if wpath.returncode == 0 else str(ps1)
+    cmd = (
+        "Start-Process -FilePath 'powershell.exe' -WindowStyle Hidden -ArgumentList "
+        f"'-NoProfile','-ExecutionPolicy','Bypass','-File','{win_ps1}','-Port',{port}"
+    )
+    try:
+        proc = subprocess.run(
+            [exe, "-NoProfile", "-Command", cmd], capture_output=True, text=True, timeout=15, check=False
+        )
+    except (OSError, subprocess.SubprocessError):
+        return "auto-start-failed (powershell launch error)"
+    # The phone hits the bridge at the Windows LAN IP:<port>, so make sure
+    # Windows Firewall doesn't drop that inbound traffic either.
+    _ensure_firewall_rule(port)
+    time.sleep(1.5)
+    # Give the bridge (and its pip install) a few seconds to come up.
+    seen = None
+    for _ in range(6):
+        if probe_bridge(port):
+            seen = "ok"
+            break
+    return "auto-started-windows" if seen else "auto-start-sent (bridge still starting)"
+
+
+def _start_bridge_native() -> str:
+    """Auto-start the bridge locally on Linux/macOS/Windows using the repo script."""
+    sh_path = _REPO_ROOT / "scripts" / "wsl-webcam-bridge.sh"
+    py_path = _REPO_ROOT / "scripts" / "webcam" / "webcam_bridge.py"
+    if sh_path.exists():
+        argv = ["bash", str(sh_path)]
+    else:
+        argv = [sys.executable, str(py_path), "--source", "0", "--port", str(DEFAULT_BRIDGE_PORT), "--host", "0.0.0.0"]
+    try:
+        log = open(_REPO_ROOT / "artifacts" / "webcam-bridge.log", "a", encoding="utf-8")
+    except OSError:
+        log = open(os.devnull, "w", encoding="utf-8")
+    try:
+        subprocess.Popen(
+            argv,
+            stdout=log,
+            stderr=log,
+            start_new_session=True,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return "auto-start-failed"
+    time.sleep(2.0)
+    seen = None
+    for _ in range(6):
+        if probe_bridge():
+            seen = "ok"
+            break
+        time.sleep(1.0)
+    return "auto-started-native" if seen else "auto-start-sent (bridge starting)"
+
+
+def ensure_webcam_bridge(port: int = DEFAULT_BRIDGE_PORT) -> str:
+    """Auto-detect platform/OS and make sure the webcam bridge is running.
+
+    Returns a status string like 'bridge:ok', 'bridge:auto-started-windows',
+    'bridge:not-reachable'. Idempotent — no-op when already reachable."""
+    if probe_bridge(port):
+        return "bridge:ok"
+    platform = platform_name()
+    if platform == "wsl":
+        status = _start_bridge_windows(port)
+    else:
+        status = _start_bridge_native()
+    if "sent" in status or "started" in status:
+        return f"bridge:{status}"
+    return f"bridge:{status}"
 
 
 def wsl_mode() -> str | None:

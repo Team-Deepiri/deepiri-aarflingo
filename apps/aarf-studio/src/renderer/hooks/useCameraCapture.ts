@@ -1,11 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { CaptureMode } from "../lib/platform";
-import { defaultBridgeUrl, fetchBridgeInfo, probeBridgeHealth, runtimeUrl } from "../lib/platform";
+import { defaultBridgeUrl, fetchBridgeInfo, probeBridgeHealth, runtimeUrl, startBridgeOnServer } from "../lib/platform";
 import type { LivePrediction } from "./useRuntimeLive";
 
 export type CameraStatus = "idle" | "starting" | "live" | "error";
 
+/**
+ * Camera acquisition + inference toggle.
+ *
+ * Preview (browser / bridge feed) auto-starts when the hook mounts so the user
+ * never has to press Start just to see the camera. `inferencing` controls the
+ * frame-push loop that drives /infer/frame — Start/Stop only gate that.
+ */
 export function useCameraCapture(
   onFrame: (blob: Blob) => Promise<void>,
   prediction: LivePrediction | null
@@ -22,6 +29,7 @@ export function useCameraCapture(
   const [bridgeUrl, setBridgeUrl] = useState(defaultBridgeUrl());
   const [bridgeOk, setBridgeOk] = useState(false);
   const [wsl, setWsl] = useState(false);
+  const [inferencing, setInferencing] = useState(false);
 
   useEffect(() => {
     fetchBridgeInfo().then((info) => {
@@ -89,13 +97,24 @@ export function useCameraCapture(
     setStatus("starting");
     setError(null);
     const info = await fetchBridgeInfo();
-    const url = info?.stream_url || bridgeUrl;
-    const health = info?.health_url || url.replace("/video/stream", "/health");
-    const ok = await probeBridgeHealth(health);
+    let url = info?.stream_url || bridgeUrl;
+    let health = info?.health_url || url.replace("/video/stream", "/health");
+    let ok = await probeBridgeHealth(health);
+    if (!ok) {
+      // Auto-start the bridge on the server (it detects platform/OS) and retry.
+      await startBridgeOnServer();
+      await new Promise((r) => setTimeout(r, 800));
+      const info2 = await fetchBridgeInfo();
+      if (info2) {
+        url = info2.stream_url;
+        health = info2.health_url;
+      }
+      ok = await probeBridgeHealth(health);
+    }
     setBridgeOk(ok);
     if (!ok) {
       const hint = wsl || info?.wsl
-        ? "Start scripts/webcam/start_webcam_bridge.ps1 in Windows PowerShell, then retry."
+        ? "Couldn't auto-start the Windows bridge. Run scripts/webcam/start_webcam_bridge.ps1 in an elevated PowerShell, then retry."
         : "Run ./scripts/wsl-webcam-bridge.sh or the Windows PowerShell bridge script.";
       setError(`Bridge not reachable at ${health}. ${hint}`);
       setStatus("error");
@@ -105,7 +124,8 @@ export function useCameraCapture(
     setStatus("live");
   }, [bridgeUrl, wsl]);
 
-  const start = useCallback(
+  /** Start the preview feed for the given capture mode. */
+  const startPreview = useCallback(
     async (nextMode: CaptureMode) => {
       setMode(nextMode);
       if (nextMode === "server") {
@@ -124,21 +144,43 @@ export function useCameraCapture(
     if (videoRef.current) videoRef.current.srcObject = null;
     setStatus("idle");
     setError(null);
+    setInferencing(false);
   }, [stopTracks]);
 
-  // Frame push loop (browser + bridge client-side infer)
+  // Auto-start preview on mount (best-effort; bridge on WSL else browser).
   useEffect(() => {
-    if (status !== "live" || mode === "server") return;
+    let cancelled = false;
+    (async () => {
+      const info = await fetchBridgeInfo();
+      if (cancelled) return;
+      if (info?.wsl) {
+        setWsl(true);
+        setBridgeUrl(info.stream_url);
+        setMode("bridge");
+        await startPreview("bridge");
+      } else {
+        await startPreview("browser");
+      }
+    })();
+    return () => {
+      cancelled = true;
+      stopTracks();
+    };
+  }, [startPreview, stopTracks]);
+
+  // Frame push loop — only while inference is active.
+  useEffect(() => {
+    if (status !== "live" || !inferencing || mode === "server") return;
     const id = window.setInterval(async () => {
       const blob = await captureToBlob();
       if (blob) await onFrame(blob);
     }, 180);
     return () => window.clearInterval(id);
-  }, [status, mode, captureToBlob, onFrame]);
+  }, [status, mode, inferencing, captureToBlob, onFrame]);
 
-  // Keep overlay synced with visible feed
+  // Keep overlay synced with visible feed while inferencing.
   useEffect(() => {
-    if (status !== "live") return;
+    if (status !== "live" || !inferencing) return;
     const id = window.setInterval(() => {
       const overlay = overlayRef.current;
       const video = mode === "browser" ? videoRef.current : bridgeImgRef.current;
@@ -161,7 +203,7 @@ export function useCameraCapture(
       ctx.strokeRect(cx - bw / 2, cy - bh / 2, bw, bh);
     }, 150);
     return () => window.clearInterval(id);
-  }, [prediction, mode, status]);
+  }, [prediction, mode, status, inferencing]);
 
   return {
     videoRef,
@@ -175,7 +217,9 @@ export function useCameraCapture(
     bridgeUrl,
     bridgeOk,
     wsl,
-    start,
+    inferencing,
+    setInferencing,
+    startPreview,
     stop,
   };
 }

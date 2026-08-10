@@ -4,7 +4,7 @@ from __future__ import annotations
 import typer
 import uvicorn
 
-from app.platform import ensure_lan_access, is_wsl, wsl_mode
+from app.platform import ensure_lan_access, ensure_webcam_bridge, is_wsl, platform_name, wsl_mode
 from app.server import lan_ip
 
 app = typer.Typer(help="AARFLingo live runtime")
@@ -17,6 +17,7 @@ def serve(
 ) -> None:
     """Serve the live API + built studio UI. Binds all interfaces so any
     device on the same Wi-Fi can open http://<lan-ip>:<port> (rohomieo-style)."""
+    typer.echo(f"  Platform:          {platform_name()}")
     if is_wsl():
         status = ensure_lan_access(port)
         typer.echo(f"  WSL LAN setup ({status})")
@@ -27,6 +28,13 @@ def serve(
                 f"      New-NetFirewallRule -DisplayName AARFLingo-{port} -Direction"
                 f" Inbound -Protocol TCP -LocalPort {port} -Action Allow\n"
             )
+    bridge_status = ensure_webcam_bridge()
+    typer.echo(f"  Webcam bridge:    {bridge_status}")
+    if "auto-start-failed" in bridge_status:
+        typer.echo(
+            f"  \u26a0 Could not auto-start the webcam bridge.\n"
+            f"      WSL: run scripts/webcam/start_webcam_bridge.ps1 in Windows PowerShell once."
+        )
     if host in ("0.0.0.0", "::"):
         typer.echo(f"  Hosting on Wi-Fi:  http://{lan_ip()}:{port}   (LAN)")
         typer.echo(f"  Local:             http://127.0.0.1:{port}")

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 
 import { runtimeUrl } from "../lib/platform";
+import { EMOTION_LABELS, INTENT_LABELS } from "../lib/labels";
 
 const RUNTIME = runtimeUrl();
 
@@ -38,16 +39,22 @@ export function HistoryView() {
             <th>Emotion</th>
             <th>Behavior</th>
             <th>Conf</th>
+            <th>Signal</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((r) => (
             <tr key={r.id}>
               <td>{new Date(r.ts_ms).toLocaleTimeString()}</td>
-              <td>{r.intent}</td>
-              <td>{r.emotion}</td>
+              <td>{INTENT_LABELS[r.intent] || r.intent}</td>
+              <td>{EMOTION_LABELS[r.emotion] || r.emotion}</td>
               <td>{r.behavior}</td>
               <td>{(r.confidence * 100).toFixed(0)}%</td>
+              <td>
+                <div className="history-bar">
+                  <div style={{ width: `${Math.min(100, r.confidence * 100)}%` }} />
+                </div>
+              </td>
             </tr>
           ))}
         </tbody>
