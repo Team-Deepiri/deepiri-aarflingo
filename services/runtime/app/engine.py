@@ -135,6 +135,9 @@ class LiveState:
     infer_total_ms: float = 0.0          # cumulative inference latency
     camera_task: object | None = None    # asyncio.Task running webcam_loop
     camera_error: str | None = None      # last camera open/read error message
+    tts_latency_ms: list[float] = field(default_factory=list)  # rolling window
+    tts_cache_hits: int = 0
+    tts_cache_misses: int = 0
 
     def __post_init__(self) -> None:
         if self.store is None:
@@ -198,29 +201,64 @@ def _ensure_conversation() -> None:
         STATE.mic_listener = mic
 
 
+_voice_thread_pool: list[threading.Thread] = []
+
+
 def _conversation_speak(pred: TriadPrediction) -> dict | None:
     """Speak via ConversationEngine (learns from bark responses) when VOICE_ENABLED.
 
     Falls back to the legacy one-shot _speak_for when the conversation engine
-    is not initialised.
+    is not initialised. Never blocks the frame loop: the whole speak + save
+    runs in a background thread and the result is broadcast to the studio.
     """
     if not _VOICE_ENABLED:
         return None
     _ensure_conversation()
     if STATE.conversation is None:
         return _speak_for_legacy(pred)
-    result = STATE.conversation.on_prediction(pred)
-    if not result:
-        return None
-    # save the audio file for playback / debugging
-    audio = STATE.voice.client.synthesize(result["phrase"]) if STATE.voice else b""
-    if audio:
-        voice_dir = ROOT / "artifacts" / "voice"
-        voice_dir.mkdir(parents=True, exist_ok=True)
-        fp = voice_dir / f"utterance-{int(time.time() * 1000)}.wav"
-        fp.write_bytes(audio)
-        result["saved"] = str(fp)
-    return result
+
+    def _speak_worker():
+        try:
+            result = STATE.conversation.on_prediction(pred)
+            if not result:
+                return
+            audio = STATE.voice.last_audio if STATE.voice else None
+            payload = dict(result)
+            if audio:
+                voice_dir = ROOT / "artifacts" / "voice"
+                voice_dir.mkdir(parents=True, exist_ok=True)
+                fp = voice_dir / f"utterance-{int(time.time() * 1000)}.wav"
+                fp.write_bytes(audio)
+                payload["saved"] = str(fp)
+            if STATE.voice is not None:
+                client = getattr(STATE.voice, "client", None)
+                if client is not None:
+                    lat = getattr(client, "last_latency_ms", None)
+                    if lat is not None:
+                        STATE.tts_latency_ms.append(lat)
+                        STATE.tts_latency_ms[:] = STATE.tts_latency_ms[-50:]
+                    payload["tts_latency_ms"] = lat
+            try:
+                import asyncio as _asyncio
+                _asyncio.run_coroutine_threadsafe(
+                    broadcast({"type": "voice", **payload}),
+                    _asyncio.get_event_loop(),
+                )
+            except Exception:
+                pass
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("voice speak worker skipped: %s", exc)
+
+    thread = threading.Thread(target=_speak_worker, daemon=True, name="aarf-voice-speak")
+    thread.start()
+    _voice_thread_pool.append(thread)
+    _voice_thread_pool[:] = [t for t in _voice_thread_pool if t.is_alive()]
+    return {
+        "intent": getattr(pred, "intent_id", ""),
+        "emotion": getattr(pred, "emotion_id", ""),
+        "queued": True,
+        "saved": None,
+    }
 
 
 def _speak_for_legacy(pred: TriadPrediction) -> dict | None:
@@ -319,6 +357,8 @@ def live_status() -> dict:
     elapsed = (now - STATE.started_at) if STATE.started_at else 0.0
     fps = (STATE.frame_count / elapsed) if elapsed > 0 else 0.0
     avg_infer_ms = (STATE.infer_total_ms / STATE.infer_count) if STATE.infer_count else 0.0
+    tts = STATE.tts_latency_ms
+    tts_p50 = sorted(tts)[len(tts) // 2] if tts else 0.0
     return {
         "running": STATE.running,
         "session_id": STATE.session_id,
@@ -332,6 +372,13 @@ def live_status() -> dict:
         "sequence_len": len(STATE.sequence),
         "sequence_capacity": STATE.sequence.maxlen,
         "uptime_s": round(elapsed, 1),
+        "voice": {
+            "enabled": bool(_VOICE_ENABLED),
+            "tts_last_ms": round(tts[-1], 1) if tts else None,
+            "tts_avg_ms": round(sum(tts) / len(tts), 1) if tts else None,
+            "tts_p50_ms": round(tts_p50, 1),
+            "utterances": len(tts),
+        },
     }
 
 

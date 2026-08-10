@@ -92,6 +92,7 @@ def health() -> dict:
         "session_id": STATE.session_id,
         "wsl": is_wsl(),
         "bridge_url": bridge_stream_url(),
+        "voice": live_status().get("voice", {}),
     }
 
 
