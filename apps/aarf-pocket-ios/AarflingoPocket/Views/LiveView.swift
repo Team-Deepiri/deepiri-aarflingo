@@ -200,17 +200,4 @@ struct LiveView: View {
     }
 }
 
-// MARK: – Convenience extension so TriadPrediction works with IntentHeroCard
-extension TriadPrediction {
-    init(intent: String, emotion: String, behavior: String,
-         confidence: Double, gate: String, dogPresent: Bool) {
-        self.init(
-            intent: intent,
-            emotion: emotion,
-            behavior: behavior,
-            confidence: confidence,
-            gate: gate,
-            dogPresent: dogPresent
-        )
-    }
-}
+
