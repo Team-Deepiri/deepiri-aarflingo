@@ -6,11 +6,14 @@ can show (and the user can edit) a stable identity across sessions.
 from __future__ import annotations
 
 import json
+import threading
 import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 ARTIFACTS = Path(__file__).resolve().parents[3] / "artifacts" / "dog"
+
+DOG_PROFILE_LOCK = threading.Lock()
 
 TRAIT_KEYS: list[str] = [
     "energy",

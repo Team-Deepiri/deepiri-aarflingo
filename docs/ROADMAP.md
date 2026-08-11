@@ -96,12 +96,13 @@ hybrid ImageNet ensemble for natural photos; breed annotations flow through the 
 - [ ] Label home clips from `services/ingest` (export frames → bbox annotation in studio or Roboflow)
 - [ ] Fine-tune YOLOv8n on labelled frames; export updated `dog_yolo.onnx`
 - [ ] **Breed fine-tune on your dog**: capture his stills from the live box → add to a personal breed/trait set; retrain with `aarflingo-perception train-breed`
-- [ ] Studio camera-view overlay draws the breed label + confidence on the bbox
-- [ ] Dog profile auto-fill: detected breed pre-fills `DogProfile.breed` on first match
+- [x] Studio camera-view overlay draws the breed label + confidence on the bbox (overlay chip above the box; `bbox`/`breed` fields now in WS payload)
+- [x] Dog profile auto-fill: detected breed pre-fills `DogProfile.breed` on first match (conf ≥ 0.5, never overwrites a user-set breed)
 - [ ] Optional: YOLO-pose keypoints → gaze proxy upgrade
 
 **Done when:** stable `dog_present=true` and bbox at 5+ fps in your room/lighting, with
-the breed label drawn on the box.
+the breed label drawn on the box. (Overlay + autofill shipped; the remaining gap is
+capturing your dog's frames for the fine-tune.)
 
 ### 4. Studio active learning UI
 

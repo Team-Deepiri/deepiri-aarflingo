@@ -201,6 +201,20 @@ export function useCameraCapture(
       ctx.strokeStyle = prediction?.gate === "pass" ? "#3dd68c" : "#f0c674";
       ctx.lineWidth = 3;
       ctx.strokeRect(cx - bw / 2, cy - bh / 2, bw, bh);
+      const breed = prediction?.breed;
+      const breedConf = prediction?.breed_conf ?? 0;
+      if (breed) {
+        ctx.font = "600 13px system-ui, sans-serif";
+        const label = `${breed} ${Math.round(breedConf * 100)}%`;
+        const tw = ctx.measureText(label).width;
+        const lx = cx - bw / 2;
+        const ly = cy - bh / 2 - 20;
+        const by = Math.max(ly, 0);
+        ctx.fillStyle = "rgba(10, 12, 16, 0.75)";
+        ctx.fillRect(lx, by, tw + 12, 18);
+        ctx.fillStyle = prediction?.gate === "pass" ? "#3dd68c" : "#f0c674";
+        ctx.fillText(label, lx + 6, by + 13);
+      }
     }, 150);
     return () => window.clearInterval(id);
   }, [prediction, mode, status, inferencing]);

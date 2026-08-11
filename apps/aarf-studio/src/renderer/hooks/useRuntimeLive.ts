@@ -14,6 +14,10 @@ export type LivePrediction = {
   gate: string;
   intent_probs?: Record<string, number>;
   dog_present?: boolean;
+  bbox?: { x: number; y: number; w: number; h: number };
+  breed?: string | null;
+  breed_conf?: number;
+  breed_top3?: { breed: string; conf: number }[];
   features?: Record<string, number>;
   sequence?: number[][];
   voice?: { phrase?: string; saved?: string } | null;

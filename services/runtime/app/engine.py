@@ -157,6 +157,33 @@ def update_audio_modality(audio_arousal: float = 0.0, audio_valence: float = 0.0
     return mod
 
 
+BREED_AUTOFILL_CONF = 0.5  # min breed confidence to pre-fill the dog profile
+
+
+def _maybe_autofill_breed(features: dict) -> None:
+    """Pre-fill DogProfile.breed once when a confident breed is detected.
+
+    Only writes when the profile hasn't got a breed yet, so a user-set breed
+    is never overwritten and autofill happens exactly once.
+    """
+    try:
+        from app.dog_profile import DOG_PROFILE_LOCK, load_profile, save_profile
+    except (ImportError, ModuleNotFoundError):
+        return
+    if float(features.get("dog_present", 0)) < 0.5:
+        return
+    breed = features.get("breed")
+    breed_conf = float(features.get("breed_conf", 0.0))
+    if not breed or breed_conf < BREED_AUTOFILL_CONF:
+        return
+    with DOG_PROFILE_LOCK:
+        profile = load_profile(STATE.dog_id or "default")
+        if profile.breed:
+            return  # user-set or already filled — never overwrite
+        profile.breed = str(breed)
+        save_profile(profile)
+
+
 def _load_coupling_matrix() -> dict:
     path = ROOT / "ethogram" / "coupling-matrix.json"
     return json.loads(path.read_text(encoding="utf-8"))
@@ -330,6 +357,7 @@ def process_frame(frame_bgr: np.ndarray, audio_modality: dict[str, float] | None
 
     gate = gate_decision(pred)
     voice = _conversation_speak(pred) if float(features.get("dog_present", 0)) >= 0.5 else None
+    _maybe_autofill_breed(features)
     pid = None
     if STATE.store:
         if not STATE.session_id:
@@ -357,6 +385,10 @@ def process_frame(frame_bgr: np.ndarray, audio_modality: dict[str, float] | None
         "gate": gate,
         "voice": voice,
         "features": {k: features[k] for k in features if k != "bbox"},
+        "bbox": features.get("bbox"),
+        "breed": features.get("breed"),
+        "breed_conf": float(features.get("breed_conf", 0.0)),
+        "breed_top3": features.get("breed_top3") or [],
         "sequence": seq[-10:],
         "dog_present": bool(features.get("dog_present", 0)),
     }
