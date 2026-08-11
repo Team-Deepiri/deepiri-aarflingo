@@ -96,7 +96,7 @@ struct HistoryView: View {
             .navigationTitle("History")
             .searchable(text: $searchText, prompt: "Search intents, emotions...")
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .navigationBarTrailing) {
                     if !appState.history.isEmpty {
                         Button(action: { appState.clearHistory() }) {
                             Image(systemName: "trash")

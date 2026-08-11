@@ -153,9 +153,9 @@ struct LiveView: View {
                     }
                 }
             }
-            .onChange(of: appState.runtimeURL) { _, newURL in
+            .onChange(of: appState.runtimeURL) { newURL in
                 // Reconnect to new URL when changed in Settings
-                guard let url = URL(string: newURL) else { return }
+                guard URL(string: newURL) != nil else { return }
                 camera.stop()
                 client.disconnect()
             }
