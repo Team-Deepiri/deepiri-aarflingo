@@ -73,7 +73,7 @@ jobs:
           xcodebuild \
             -project AarflingoPocket.xcodeproj \
             -scheme AarflingoPocket \
-            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            -destination 'generic/platform=iOS Simulator' \
             -configuration Debug \
             build \
             CODE_SIGNING_ALLOWED=NO
