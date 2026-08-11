@@ -64,6 +64,16 @@ class YoloDogDetector:
         self._model = YOLO(str(w))
         self._motion_fallback = MotionDogDetector()
 
+    def _to_bbox(self, xyxy, conf: float, w: int, h: int) -> BBox:
+        x1, y1, x2, y2 = xyxy
+        return BBox(
+            x=float(x1 / w),
+            y=float(y1 / h),
+            w=float((x2 - x1) / w),
+            h=float((y2 - y1) / h),
+            confidence=conf,
+        )
+
     def detect(self, frame_bgr: np.ndarray) -> BBox | None:
         h, w = frame_bgr.shape[:2]
         results = self._model.predict(frame_bgr, verbose=False, classes=[YOLO_DOG_CLASS_ID])
@@ -78,16 +88,25 @@ class YoloDogDetector:
             conf = float(box.conf[0])
             if conf > best_conf:
                 best_conf = conf
-                xyxy = box.xyxy[0].cpu().numpy()
-                x1, y1, x2, y2 = xyxy
-                best = BBox(
-                    x=float(x1 / w),
-                    y=float(y1 / h),
-                    w=float((x2 - x1) / w),
-                    h=float((y2 - y1) / h),
-                    confidence=conf,
-                )
+                best = self._to_bbox(box.xyxy[0].cpu().numpy(), conf, w, h)
         return best
+
+    def detect_all(self, frame_bgr: np.ndarray, min_conf: float = 0.35) -> list[BBox]:
+        """Return every dog detection above min_conf (multi-dog support)."""
+        h, w = frame_bgr.shape[:2]
+        results = self._model.predict(frame_bgr, verbose=False, classes=[YOLO_DOG_CLASS_ID])
+        if not results:
+            return []
+        boxes = results[0].boxes
+        if boxes is None or len(boxes) == 0:
+            return []
+        out: list[BBox] = []
+        for box in boxes:
+            conf = float(box.conf[0])
+            if conf < min_conf:
+                continue
+            out.append(self._to_bbox(box.xyxy[0].cpu().numpy(), conf, w, h))
+        return out
 
 
 def detect_dog_yolo(frame_bgr: np.ndarray, detector: YoloDogDetector | None = None) -> BBox | None:

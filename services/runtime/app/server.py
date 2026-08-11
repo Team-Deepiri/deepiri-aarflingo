@@ -2,16 +2,53 @@
 from __future__ import annotations
 
 import asyncio
+import socket
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, File, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from pathlib import Path
+from app.engine import STATE, _load_service_package, broadcast, list_cameras, live_status, process_jpeg, switch_camera, update_audio_modality, webcam_loop
+from app.dog_profile import PERSONALITIES, TRAIT_KEYS, DogProfile, load_profile, save_profile
+from app.platform import (
+    bridge_stream_url,
+    client_bridge_stream_url,
+    ensure_webcam_bridge,
+    is_wsl,
+    local_lan_ip,
+    platform_name,
+    windows_host_ip,
+)
 
-from app.engine import STATE, _load_service_package, broadcast, process_jpeg, webcam_loop
-from app.platform import default_bridge_stream_url, is_wsl, windows_host_ip
+
+def lan_ip() -> str:
+    """Best-effort primary LAN IPv4 address (e.g. 192.168.x.x)."""
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.settimeout(0.1)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except OSError:
+        pass
+    return "127.0.0.1"
+
+
+def web_root() -> Path:
+    """Built studio UI (`apps/aarf-studio/dist`); falls back to repo root if absent."""
+    root = Path(__file__).resolve().parents[3]
+    dist = root / "apps" / "aarf-studio" / "dist"
+    return dist if dist.exists() else root
+
+
+class AudioBody(BaseModel):
+    audio_arousal: float = 0.0
+    audio_valence: float = 0.0
+    audio_bark_prob: float = 0.0
 
 
 class FeedbackBody(BaseModel):
@@ -25,6 +62,11 @@ class FeedbackBody(BaseModel):
 class StartBody(BaseModel):
     camera: int | str = 0
     dog_id: str = "default"
+    mode: str | None = None  # browser | server | bridge
+
+
+class CameraBody(BaseModel):
+    camera: int | str = 0
     mode: str | None = None  # browser | server | bridge
 
 
@@ -49,24 +91,87 @@ def health() -> dict:
         "running": STATE.running,
         "session_id": STATE.session_id,
         "wsl": is_wsl(),
-        "bridge_url": default_bridge_stream_url(),
+        "bridge_url": bridge_stream_url(),
+        "voice": live_status().get("voice", {}),
     }
 
 
 @app.get("/bridge/info")
 def bridge_info() -> dict:
     return {
+        "platform": platform_name(),
         "wsl": is_wsl(),
         "windows_host": windows_host_ip(),
-        "stream_url": default_bridge_stream_url(),
-        "health_url": default_bridge_stream_url().replace("/video/stream", "/health"),
+        "lan_ip": local_lan_ip(),
+        "stream_url": client_bridge_stream_url(),
+        "health_url": client_bridge_stream_url().replace("/video/stream", "/health"),
+        "internal_stream_url": bridge_stream_url(),
         "start_windows": "powershell -File scripts/webcam/start_webcam_bridge.ps1",
+    }
+
+
+@app.post("/bridge/start")
+def bridge_start() -> dict:
+    """Auto-detect the platform/OS and ensure the webcam bridge is running."""
+    status = ensure_webcam_bridge()
+    return {
+        "status": status,
+        "health_url": client_bridge_stream_url().replace("/video/stream", "/health"),
+        "ok": status == "bridge:ok" or "auto-started" in status or "auto-start-sent" in status,
     }
 
 
 @app.get("/metrics")
 def metrics() -> dict:
     return STATE.store.metrics() if STATE.store else {}
+
+
+@app.get("/live/status")
+def live_status_endpoint() -> dict:
+    """Streaming telemetry: fps, avg inference latency, sequence window, uptime."""
+    return live_status()
+
+
+class DogProfileBody(BaseModel):
+    name: str | None = None
+    breed: str | None = None
+    age_years: float | None = None
+    weight_kg: float | None = None
+    traits: dict[str, int] | None = None
+    personality: str | None = None
+    baseline_hr_bpm: float | None = None
+    baseline_tail_deg: float | None = None
+    notes: str | None = None
+
+
+@app.get("/dog/profile")
+def dog_profile_get() -> dict:
+    """Current dog profile (traits + personality) for STATE.dog_id."""
+    profile = load_profile(STATE.dog_id)
+    return {
+        **{
+            k: getattr(profile, k)
+            for k in ("dog_id", "name", "breed", "age_years", "weight_kg", "personality", "baseline_hr_bpm", "baseline_tail_deg", "notes", "updated_ms")
+        },
+        "traits": profile.traits,
+        "trait_keys": TRAIT_KEYS,
+        "personalities": PERSONALITIES,
+    }
+
+
+@app.post("/dog/profile")
+def dog_profile_post(body: DogProfileBody) -> dict:
+    profile = load_profile(STATE.dog_id)
+    for k in ("name", "breed", "age_years", "weight_kg", "personality", "baseline_hr_bpm", "baseline_tail_deg", "notes"):
+        v = getattr(body, k)
+        if v is not None:
+            setattr(profile, k, v)
+    if body.traits is not None:
+        for k, v in body.traits.items():
+            if k in TRAIT_KEYS:
+                profile.traits[k] = max(1, min(10, int(v)))
+    save_profile(profile)
+    return {"ok": True, "profile": dog_profile_get()}
 
 
 @app.get("/predictions/recent")
@@ -88,22 +193,59 @@ def voice_weights() -> dict:
     return {}
 
 
+@app.get("/cameras")
+def cameras_endpoint() -> dict:
+    """List local OpenCV-visible camera indices for the camera input switch."""
+    return {
+        "cameras": list_cameras(),
+        "current": str(STATE.camera_index),
+        "running": STATE.running,
+        "bridge_available": bridge_info()["wsl"] or True,
+        "mode_hint": "On WSL use bridge mode; the Windows host camera streams via MJPEG.",
+    }
+
+
+@app.post("/live/camera")
+async def live_camera(body: CameraBody) -> dict:
+    """Live-switch the capture source without restarting the server."""
+    camera: int | str = body.camera
+    if isinstance(camera, str) and camera.isdigit():
+        camera = int(camera)
+    resolved = switch_camera(camera, body.mode)
+    return {"status": "switched", "camera": resolved, "running": STATE.running}
+
+
 @app.post("/live/start")
 async def live_start(body: StartBody) -> dict:
     if STATE.running:
         return {"status": "already_running", "session_id": STATE.session_id}
     camera: int | str = body.camera
-    if body.mode in ("bridge", "server") or (is_wsl() and isinstance(camera, int)):
-        camera = default_bridge_stream_url()
+    if isinstance(camera, str) and camera.isdigit():
+        camera = int(camera)
+    # Server mode reads a local OpenCV camera directly; only bridge mode (or
+    # WSL with no native webcam) should route through the MJPEG bridge URL.
+    if body.mode == "bridge" or (is_wsl() and isinstance(camera, int) and body.mode != "server"):
+        camera = bridge_stream_url()
     STATE.camera_index = camera
     STATE.dog_id = body.dog_id
-    asyncio.create_task(webcam_loop(camera))
+    STATE.started_at = None
+    STATE.frame_count = 0
+    STATE.infer_count = 0
+    STATE.infer_total_ms = 0.0
+    STATE.camera_task = asyncio.create_task(webcam_loop(camera))
     return {"status": "started", "camera": camera, "mode": body.mode or "server", "wsl": is_wsl()}
 
 
 @app.post("/live/stop")
 async def live_stop() -> dict:
     STATE.running = False
+    task = STATE.camera_task
+    if task is not None:
+        try:
+            task.cancel()
+        except Exception:
+            pass
+        STATE.camera_task = None
     return {"status": "stopping"}
 
 
@@ -114,6 +256,12 @@ async def infer_frame(file: UploadFile = File(...)) -> dict:
     result["type"] = "prediction"
     await broadcast(result)
     return result
+
+
+@app.post("/infer/audio")
+def infer_audio(body: AudioBody) -> dict:
+    mod = update_audio_modality(body.audio_arousal, body.audio_valence, body.audio_bark_prob)
+    return {"status": "ok", "audio_modality": mod}
 
 
 @app.post("/live/retrain")
@@ -159,14 +307,26 @@ async def ws_live(ws: WebSocket) -> None:
                 continue
             if data.get("type") == "ping":
                 await ws.send_json({"type": "pong"})
-            elif data.get("type") == "feedback":
-                STATE.store.add_feedback(
-                    data["prediction_id"],
-                    rating=data.get("rating"),
-                    corrected_intent=data.get("corrected_intent"),
+            elif data.get("type") == "audio":
+                update_audio_modality(
+                    audio_arousal=float(data.get("audio_arousal", 0.0)),
+                    audio_valence=float(data.get("audio_valence", 0.0)),
+                    audio_bark_prob=float(data.get("audio_bark_prob", 0.0)),
                 )
+            elif data.get("type") == "feedback":
+                if STATE.store:
+                    STATE.store.add_feedback(
+                        data["prediction_id"],
+                        rating=data.get("rating"),
+                        corrected_intent=data.get("corrected_intent"),
+                    )
     except WebSocketDisconnect:
         pass
     finally:
         if q in STATE.subscribers:
             STATE.subscribers.remove(q)
+
+
+_root = web_root()
+if (_root / "index.html").exists():
+    app.mount("/", StaticFiles(directory=_root, html=True), name="studio")

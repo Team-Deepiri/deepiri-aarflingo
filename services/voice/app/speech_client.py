@@ -64,6 +64,16 @@ class SpeechClient:
         self.timeout = timeout
         self.offline_ok = offline_ok
         self._http = httpx.Client(base_url=self.base_url, timeout=timeout)
+        self._last_latency_ms: float | None = None
+        self._last_engine_ms: float | None = None
+
+    @property
+    def last_latency_ms(self) -> float | None:
+        return self._last_latency_ms
+
+    @property
+    def last_engine_ms(self) -> float | None:
+        return self._last_engine_ms
 
     # ------------------------------------------------------------------ #
     # engine state
@@ -99,11 +109,22 @@ class SpeechClient:
         payload: dict[str, str] = {"text": text}
         if voice:
             payload["voice"] = voice
+        started = time.monotonic()
         try:
             resp = self._http.post("/v1/tts", json=payload)
             resp.raise_for_status()
+            latency_ms = (time.monotonic() - started) * 1000
+            hdr = resp.headers.get("x-processing-ms")
+            self._last_latency_ms = latency_ms
+            if hdr is not None:
+                try:
+                    self._last_engine_ms = float(hdr)
+                except ValueError:
+                    self._last_engine_ms = None
             return resp.content
         except httpx.HTTPError:
+            self._last_latency_ms = (time.monotonic() - started) * 1000
+            self._last_engine_ms = None
             if self.offline_ok:
                 return _silent_wav()
             raise

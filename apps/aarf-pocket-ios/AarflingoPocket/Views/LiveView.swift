@@ -91,10 +91,10 @@ struct LiveView: View {
                         // Live signal bars (from runtime features — placeholder ratios for now)
                         VStack(alignment: .leading, spacing: 12) {
                             Text("Live signals").font(.headline)
-                            LiveSignalBar(label: "Confidence",
+                            SignalBar(label: "Confidence",
                                           value: pred.confidence,
                                           color: gateColor(pred.gate))
-                            LiveSignalBar(label: "Dog detected",
+                            SignalBar(label: "Dog detected",
                                           value: pred.dogPresent ? 1.0 : 0.0,
                                           color: AarflingoTheme.info)
                         }
@@ -153,9 +153,9 @@ struct LiveView: View {
                     }
                 }
             }
-            .onChange(of: appState.runtimeURL) { _, newURL in
+            .onChange(of: appState.runtimeURL) { newURL in
                 // Reconnect to new URL when changed in Settings
-                guard let url = URL(string: newURL) else { return }
+                guard URL(string: newURL) != nil else { return }
                 camera.stop()
                 client.disconnect()
             }
@@ -200,17 +200,4 @@ struct LiveView: View {
     }
 }
 
-// MARK: – Convenience extension so TriadPrediction works with IntentHeroCard
-extension TriadPrediction {
-    init(intent: String, emotion: String, behavior: String,
-         confidence: Double, gate: String, dogPresent: Bool) {
-        self.init(
-            intent: intent,
-            emotion: emotion,
-            behavior: behavior,
-            confidence: confidence,
-            gate: gate,
-            dogPresent: dogPresent
-        )
-    }
-}
+

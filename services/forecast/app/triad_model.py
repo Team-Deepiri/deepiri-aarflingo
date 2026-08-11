@@ -14,7 +14,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from core.feature_spec import FEATURE_DIM, SEQUENCE_LEN  # noqa: E402
-from core.triad_torch import flatten_sequence_tensor, triad_confidence
+from core.triad_torch import flatten_sequence_tensor, triad_confidence, triad_margin  # noqa: E402
 
 
 @dataclass
@@ -23,6 +23,7 @@ class TriadPrediction:
     emotion_id: str
     behavior_id: str
     confidence: float
+    margin: float = 0.0
     intent_probs: dict[str, float] | None = None
 
 
@@ -73,11 +74,13 @@ def predict_from_model(
     ei = int(pe.argmax())
     bi = int(pb.argmax())
     conf = triad_confidence(pi, pe, pb, ii, ei, bi)
+    margin = triad_margin(pi, pe, pb)
     return TriadPrediction(
         intent_id=model.intent_labels[ii],
         emotion_id=model.emotion_labels[ei],
         behavior_id=model.behavior_labels[bi],
         confidence=conf,
+        margin=margin,
         intent_probs={model.intent_labels[j]: float(pi[j]) for j in range(len(model.intent_labels))},
     )
 

@@ -73,3 +73,27 @@ def triad_confidence_scalar(
     behavior_prob: float,
 ) -> float:
     return (intent_prob + emotion_prob + behavior_prob) / 3.0
+
+
+def margin_confidence(probs: Sequence[float]) -> float:
+    """Honest confidence: gap between top-1 and top-2 probability.
+
+    Max-probability alone overstates confidence — a dog equidistant between
+    door and toy yields two near-equal probabilities and a small margin.
+    """
+    sorted_p = sorted(float(p) for p in probs)
+    if len(sorted_p) < 2:
+        return 1.0 if len(sorted_p) == 1 else 0.0
+    return sorted_p[-1] - sorted_p[-2]
+
+
+def triad_margin_scalar(
+    intent_probs: Sequence[float],
+    emotion_probs: Sequence[float],
+    behavior_probs: Sequence[float],
+) -> float:
+    return (
+        margin_confidence(intent_probs)
+        + margin_confidence(emotion_probs)
+        + margin_confidence(behavior_probs)
+    ) / 3.0

@@ -16,6 +16,7 @@ Camera ──► TriadNet prediction
                 │ best_phrase_for(pred)        ← weighted by past outcomes
                 ▼
         DogVoice.speak()  ──►  deepiri-speech TTS  ──►  speaker
+                │   (background worker — never blocks the 15 fps frame loop)
                 │
                 │  (response window: 8 s)
                 │
@@ -36,8 +37,9 @@ Microphone ──► MicListener
 ## Quick start
 
 ```bash
-# 1. Start the deepiri-speech engine (or skip — offline fallback works)
-#    See deepiri-platform PR #302
+# 1. Start the deepiri-speech engine — 100% local-first (Kokoro TTS + faster-whisper
+#    STT, no cloud/OpenAI required). Models auto-download on first boot.
+#    cd ../deepiri-speech && poetry install -E engines && poetry run uvicorn deepiri_speech.main:app --port 5020
 
 # 2. Start the runtime with voice + mic enabled
 VOICE_ENABLED=1 SPEECH_URL=http://localhost:5020 poetry run aarflingo-runtime
@@ -140,6 +142,11 @@ when:
 If the vocal encoder checkpoint (`artifacts/models/default/vocal.pt`) is
 present, arousal/valence are classified by the neural model. Otherwise a
 spectral heuristic is used (works well enough for learning).
+
+Every chunk (bark or not) also emits a continuous audio modality sample —
+`audio_arousal`, `audio_valence`, `audio_bark_prob` (RMS-scaled 0–1) — which
+the runtime fuses into `process_frame` via `update_audio_modality`, so the
+vision pipeline always sees live audio, not just bark events.
 
 A **debounce window of 400 ms** suppresses repeated detections from a single
 bark burst.

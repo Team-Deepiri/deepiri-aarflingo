@@ -80,8 +80,10 @@ final class CameraManager: NSObject, ObservableObject {
 
         // Portrait orientation
         if let conn = output.connection(with: .video) {
-            if conn.isVideoRotationAngleSupported(90) {
-                conn.videoRotationAngle = 90
+            if #available(iOS 17.0, *) {
+                if conn.isVideoRotationAngleSupported(90) {
+                    conn.videoRotationAngle = 90
+                }
             }
         }
 

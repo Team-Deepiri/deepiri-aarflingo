@@ -114,6 +114,7 @@ class DogVoice:
         self.cooldown_s = cooldown_s
         self._last_spoken_at: float = 0.0
         self._last_phrase: str | None = None
+        self._last_audio: bytes | None = None
 
     def speak(self, text: str, voice: str | None = None, force: bool = False) -> bytes | None:
         """Synthesize + return audio bytes, respecting the cooldown unless forced."""
@@ -123,6 +124,7 @@ class DogVoice:
         if audio:
             self._last_spoken_at = time.monotonic()
             self._last_phrase = text
+            self._last_audio = audio
         return audio
 
     def respond_to_prediction(self, pred: Any, voice: str | None = None, force: bool = False) -> bytes | None:
@@ -139,3 +141,7 @@ class DogVoice:
     @property
     def last_phrase(self) -> str | None:
         return self._last_phrase
+
+    @property
+    def last_audio(self) -> bytes | None:
+        return self._last_audio

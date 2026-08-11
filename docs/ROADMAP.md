@@ -1,6 +1,21 @@
 # Aarflingo Roadmap
 
-Living plan for **deepiri-aarflingo**. Updated after v0.2 voice loop + mobile camera wiring (`c70af31`).
+Living plan for **deepiri-aarflingo**. Updated after v0.3 vision work — dog detection
+on still frames (YOLO weights shipped) + 120-breed classification + live camera switching.
+
+---
+
+## Shipped (v0.3 — real dog detection, breed ID, camera switching)
+
+| Area | What shipped |
+|------|-------------|
+| **YOLO detection live** | `yolov8n.pt` weights now ship/download via `prepare-vision`; pipeline uses YOLO (COCO class 16) when weights exist instead of silently falling back to motion-only — a still dog now gets a bounding box |
+| **Breed classifier** | `services/perception/app/breed.py` — MobileNetV3-Large fine-tuned on Stanford Dogs (120 breeds, 20,580 images) → `artifacts/models/vision/breed.pt` + `breed_labels.json`; 74.6% held-out top-1 accuracy |
+| **Hybrid breed ensemble** | Max-rule between fine-tuned 120-way head and ImageNet dog-only head — fine-tuned wins on dataset photos, ImageNet wins on natural/out-of-distribution photos (e.g. a real yellow-lab photo → "Labrador retriever") |
+| **Breed annotation** | Pipeline emits `breed`, `breed_conf`, `breed_top3` features per frame; flows through runtime `process_frame` → WebSocket payload → studio overlay can draw breed on the box |
+| **Breed training CLI** | `aarflingo-perception train-breed` + `breed` stage in `train_aarflingo.sh` (`BREED_EPOCHS`) + manifest artifacts |
+| **Camera input switch** | `/cameras` (enumerate OpenCV devices), `/live/camera` (live-switch source without restart), `/live/start` accepts `mode=server` to read local camera directly; runtime tracks loop task + reports `camera_error` |
+| **Studio contract** | `platform.ts`: `CameraDevice`, `CamerasInfo`, `fetchCameras()`, `switchLiveCamera()`, `stopLive()`, `LiveStatus.camera_error` |
 
 ---
 
@@ -35,6 +50,7 @@ Living plan for **deepiri-aarflingo**. Updated after v0.2 voice loop + mobile ca
 | **Conversation engine** | `ConversationEngine`: speak → listen → EMA phrase weight update → persist weights | #18 |
 | **Voice outcomes DB** | `voice_outcomes` table, `log_voice_outcome`, `/voice/outcomes` + `/voice/weights` API | #18 |
 | **Runtime voice hook** | `VOICE_ENABLED=1` → `_conversation_speak(pred)` in `process_frame`; mic drain thread | #18 |
+| **Non-blocking TTS** | Speak+save dispatched to background worker (never stalls 15 fps loop); `voice` event broadcast to studio | #18 |
 | **setup.sh web mode** | `--web` flag: vite preview on `0.0.0.0`, LAN URL banner, headless auto-detect | #18 |
 | **Studio mobile detect** | `isMobileBrowser()` auto-selects browser-cam, hides WSL/server tabs on phone | #18 |
 | **iOS real camera** | `CameraManager` (AVCaptureSession, 5fps JPEG), `RuntimeClient` (WebSocket + HTTP), live `LiveView` | #18 |
@@ -46,7 +62,7 @@ Docs: [VOICE.md](VOICE.md) · [WEBCAM.md](WEBCAM.md) · [DATASETS.md](DATASETS.m
 
 ---
 
-## Now → v0.3 (next 2–4 weeks)
+## Now → v0.4 (next 2–4 weeks)
 
 Priority: **close the remaining gaps so every signal is live, not synthetic.**
 
@@ -56,7 +72,7 @@ The studio modality bars (Audio arousal, ECG stress, IMU activity) show static z
 inference time. The encoders exist and are trained — they just aren't loaded in the
 runtime's `process_frame` path.
 
-- [ ] Load `vocal.pt` in runtime; feed mic audio chunks from `MicListener` → MFCC → encoder → feature dims
+- [x] Load `vocal.pt` in runtime; feed mic audio chunks from `MicListener` → MFCC → encoder → feature dims (heuristic fallback when no checkpoint; continuous `audio_arousal`/`audio_valence`/`audio_bark_prob` fused into `process_frame` via `STATE.latest_audio_modality`)
 - [ ] Load `vitals.pt` when BLE/serial IMU connected (stub with simulated 6-DoF first)
 - [ ] Merge encoder outputs into `core/modality_spec` features before TriadNet call
 - [ ] Studio modality bars animate from live mic and IMU signals
@@ -65,28 +81,36 @@ runtime's `process_frame` path.
 
 ### 2. Real Barkopedia fine-tune
 
-- [ ] `./scripts/fetch_public_datasets.sh --barkopedia` → wire into `services/audio/app/train.py`
-- [ ] Replace / augment synthetic bark generation with real Barkopedia clips
-- [ ] Held-out val accuracy logged to manifest (`artifacts/manifests/`)
+- [x] `./scripts/fetch_public_datasets.sh --barkopedia` → wire into `services/audio/app/train.py` (loader + CLI `--data` + `train_aarflingo.sh` audio stage)
+- [x] Replace / augment synthetic bark generation with real Barkopedia clips (all 298 real clips now used; checkpoint selected by **real** held-out acc when present)
+- [x] Held-out val accuracy logged to manifest (`artifacts/manifests/`) — `vocal_metrics.json` now carries `best_val_acc_by_source` split (`real` vs `synth`)
 - [ ] Optional: PhysioZoo dog ECG → `lib/aarf-physio` loader for real HRV labels
 
-**Done when:** `vocal.pt` arousal/valence accuracy improves on real held-out clips.
+**Done when:** `vocal.pt` arousal/valence accuracy improves on real held-out clips. ✔️ real held-out 0.107 → **0.345** (3.1× chance, chance 0.111); training script defaults bumped (AUDIO_EPOCHS 20→50, all real clips used).
 
-### 3. YOLO fine-tune on your dog
+### 3. Vision → dog-communication (YOLO + breed live in your home)
+
+**Shipped:** YOLO weights download + use on still frames; 120-breed classifier (74.6% held-out);
+hybrid ImageNet ensemble for natural photos; breed annotations flow through the runtime.
 
 - [ ] Label home clips from `services/ingest` (export frames → bbox annotation in studio or Roboflow)
 - [ ] Fine-tune YOLOv8n on labelled frames; export updated `dog_yolo.onnx`
-- [ ] Replace motion-only fallback when YOLO confidence < threshold
+- [ ] **Breed fine-tune on your dog**: capture his stills from the live box → add to a personal breed/trait set; retrain with `aarflingo-perception train-breed`
+- [x] Studio camera-view overlay draws the breed label + confidence on the bbox (overlay chip above the box; `bbox`/`breed` fields now in WS payload)
+- [x] Dog profile auto-fill: detected breed pre-fills `DogProfile.breed` on first match (conf ≥ 0.5, never overwrites a user-set breed)
 - [ ] Optional: YOLO-pose keypoints → gaze proxy upgrade
 
-**Done when:** stable `dog_present=true` and bbox at 5+ fps in your room/lighting.
+**Done when:** stable `dog_present=true` and bbox at 5+ fps in your room/lighting, with
+the breed label drawn on the box. (Overlay + autofill shipped; the remaining gap is
+capturing your dog's frames for the fine-tune.)
 
 ### 4. Studio active learning UI
 
-- [ ] Surface low-confidence / `gate=review` frames in History tab with "label this" CTA
+- [x] Surface low-confidence / `gate=review` frames in History tab with "label this" CTA (highlight <80% unlabelled rows; intent+emotion picker posts to `/feedback`)
 - [ ] In-app gaze zone editor (drag rects on live preview → write `zones.default.yaml`)
-- [ ] Auto-reconnect WebSocket + bridge health indicator in header
-- [ ] Voice outcomes panel: show recent phrase → bark response pairs and learned weights
+- [ ] Auto-reconnect WebSocket + bridge health indicator in header (WS auto-reconnect ✅ shipped; header health indicator pending)
+- [x] Voice outcomes panel: show recent phrase → bark response pairs and learned weights (VoiceView tab ✅)
+- [x] Camera input switch UI: device dropdown fed by `/cameras`, live-switch via `/live/camera` (dropdown in camera toolbar when >1 device)
 
 **Done when:** one live session produces ≥10 feedback rows and the conversation engine
 shows measurable weight drift from baseline.
@@ -132,25 +156,25 @@ See [PHASE2_COLLAR.md](PHASE2_COLLAR.md).
 | **Phrase personalisation v2** | Full contextual bandit (LinUCB) replacing EMA weights |
 | **Active learning loop** | Labeler service queue ← runtime low-confidence harvest |
 | **Longitudinal dashboard** | Week-over-week intent distribution + conversation history |
-| **Privacy** | Local-only mode: all inference + voice on-device, no cloud calls |
+| **Privacy** | ✅ Local-first by default: vision + voice run on-device (Kokoro TTS, faster-whisper STT); no cloud calls unless OpenAI explicitly opted in |
 
 ---
 
-## Work order for v0.3
+## Work order for v0.4
 
 ```mermaid
 flowchart LR
   A[Live mic → vocal encoder] --> B[Barkopedia fine-tune]
-  B --> C[YOLO fine-tune on your dog]
-  C --> D[Studio active learning UI]
+  B --> C[YOLO + breed fine-tune on your dog]
+  C --> D[Studio active learning UI + camera switch]
   D --> E[iOS/Android CoreML / ONNX offline]
   E --> F[Collar BLE + TensorRT edge]
 ```
 
-1. **Wire live vocal encoder** — mic is already captured; feeding it into `process_frame` is one file change
-2. **Barkopedia fine-tune** — real bark data → better arousal/valence → better conversation responses
-3. **YOLO fine-tune** — your dog, your room, stable bbox
-4. **Active learning UI** — close the feedback → retrain loop visually
+1. **Wire live vocal encoder** — ✅ DONE: `MicListener` emits continuous audio modality (arousal/valence/bark_prob) every chunk → `update_audio_modality` → fused into `process_frame` features (heuristic fallback when `vocal.pt` absent)
+2. **Barkopedia fine-tune** — ✅ DONE: all 298 real clips train the encoder; real held-out 0.345 (3.1× chance); checkpoint selection + metrics now real-driven
+3. **YOLO + breed fine-tune** — your dog, your room, stable bbox + breed label on the box
+4. **Active learning UI + camera switch** — ✅ DONE: "label this" CTA in History, camera device dropdown via `/cameras` + `/live/camera`; remaining polish = gaze zone editor + header WS/bridge health
 5. **On-device CoreML / ONNX** — cut the WiFi dependency for iOS/Android
 6. **Collar** — full hardware path
 
@@ -177,6 +201,10 @@ make test
 
 # Train all models
 make train
+
+# Train just the vision stack (YOLO weights + 120-breed classifier)
+./scripts/fetch_public_datasets.sh --dog-images
+STAGES=vision,breed ./scripts/train_aarflingo.sh
 
 # Verify everything
 make verify

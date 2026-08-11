@@ -1,12 +1,85 @@
 export type CaptureMode = "browser" | "bridge" | "server";
 
+export type DetectedPlatform = "mobile" | "electron" | "wsl" | "native";
+
 export type BridgeInfo = {
+  platform: string;
   wsl: boolean;
   windows_host: string;
+  lan_ip: string;
   stream_url: string;
   health_url: string;
+  internal_stream_url: string;
   start_windows: string;
 };
+
+export type DogProfile = {
+  dog_id: string;
+  name: string;
+  breed: string;
+  age_years: number;
+  weight_kg: number;
+  traits: Record<string, number>;
+  personality: string;
+  baseline_hr_bpm: number;
+  baseline_tail_deg: number;
+  notes: string;
+  updated_ms: number;
+  trait_keys?: string[];
+  personalities?: string[];
+};
+
+export type LiveStatus = {
+  running: boolean;
+  session_id: string | null;
+  dog_id: string;
+  camera: string;
+  camera_error: string | null;
+  frames: number;
+  predictions: number;
+  fps: number;
+  avg_infer_ms: number;
+  sequence_len: number;
+  sequence_capacity: number;
+  uptime_s: number;
+};
+
+export type CameraDevice = {
+  index: number;
+  label: string;
+  w: number;
+  h: number;
+  backend: number;
+};
+
+export type CamerasInfo = {
+  cameras: CameraDevice[];
+  current: string;
+  running: boolean;
+  bridge_available: boolean;
+  mode_hint: string;
+};
+
+export type VoiceOutcome = {
+  id: string;
+  ts_ms: number;
+  phrase: string;
+  intent: string;
+  emotion: string;
+  responded: boolean;
+  bark_arousal: string | null;
+  bark_valence: string | null;
+  reward: number;
+};
+
+export function detectPlatform(): DetectedPlatform {
+  if (typeof navigator === "undefined") return "native";
+  const ua = navigator.userAgent.toLowerCase();
+  if (isMobileBrowser()) return "mobile";
+  if (ua.includes("electron")) return "electron";
+  if (ua.includes("wsl") || ua.includes("microsoft-standard")) return "wsl";
+  return "native";
+}
 
 export function isLikelyWsl(): boolean {
   if (typeof navigator === "undefined") return false;
@@ -35,7 +108,9 @@ export function defaultBridgeUrl(): string {
 }
 
 export function runtimeUrl(): string {
-  return import.meta.env.VITE_RUNTIME_URL || "http://127.0.0.1:8765";
+  // Same-origin by default: the runtime server serves both the UI and the API,
+  // so relative URLs work from any device on the LAN (rohomieo-style hosting).
+  return import.meta.env.VITE_RUNTIME_URL || "";
 }
 
 export async function fetchBridgeInfo(): Promise<BridgeInfo | null> {
@@ -48,6 +123,17 @@ export async function fetchBridgeInfo(): Promise<BridgeInfo | null> {
   }
 }
 
+export async function startBridgeOnServer(): Promise<boolean> {
+  try {
+    const res = await fetch(`${runtimeUrl()}/bridge/start`, { method: "POST" });
+    if (!res.ok) return false;
+    const data = await res.json();
+    return Boolean(data.ok);
+  } catch {
+    return false;
+  }
+}
+
 export async function probeBridgeHealth(healthUrl: string): Promise<boolean> {
   try {
     const res = await fetch(healthUrl, { signal: AbortSignal.timeout(2500) });
@@ -56,5 +142,94 @@ export async function probeBridgeHealth(healthUrl: string): Promise<boolean> {
     return Boolean(data.video_available ?? data.status === "ok");
   } catch {
     return false;
+  }
+}
+
+export async function fetchDogProfile(): Promise<DogProfile | null> {
+  try {
+    const res = await fetch(`${runtimeUrl()}/dog/profile`);
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
+}
+
+export async function saveDogProfile(patch: Partial<DogProfile>): Promise<DogProfile | null> {
+  try {
+    const res = await fetch(`${runtimeUrl()}/dog/profile`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.profile ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchLiveStatus(): Promise<LiveStatus | null> {
+  try {
+    const res = await fetch(`${runtimeUrl()}/live/status`);
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchCameras(): Promise<CamerasInfo | null> {
+  try {
+    const res = await fetch(`${runtimeUrl()}/cameras`);
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
+}
+
+export async function switchLiveCamera(camera: number | string, mode?: CaptureMode): Promise<boolean> {
+  try {
+    const res = await fetch(`${runtimeUrl()}/live/camera`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ camera, mode: mode ?? undefined }),
+    });
+    if (!res.ok) return false;
+    const data = await res.json();
+    return data.status === "switched";
+  } catch {
+    return false;
+  }
+}
+
+export async function stopLive(): Promise<boolean> {
+  try {
+    const res = await fetch(`${runtimeUrl()}/live/stop`, { method: "POST" });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+export async function fetchVoiceWeights(): Promise<Record<string, number>> {
+  try {
+    const res = await fetch(`${runtimeUrl()}/voice/weights`);
+    if (!res.ok) return {};
+    return res.json();
+  } catch {
+    return {};
+  }
+}
+
+export async function fetchVoiceOutcomes(): Promise<VoiceOutcome[]> {
+  try {
+    const res = await fetch(`${runtimeUrl()}/voice/outcomes`);
+    if (!res.ok) return [];
+    return res.json();
+  } catch {
+    return [];
   }
 }

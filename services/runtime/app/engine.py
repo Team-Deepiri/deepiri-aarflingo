@@ -19,6 +19,15 @@ from app.paths import setup_paths
 
 ROOT = setup_paths()
 
+try:
+    from app.platform import bridge_stream_url, is_wsl
+except ImportError:
+    def is_wsl() -> bool:
+        return False
+
+    def bridge_stream_url() -> str:
+        return "http://127.0.0.1:8766/video/stream"
+
 
 def _load_service_package(service: str, module: str):
     """Load services/{service}/app as an isolated package (no clash with runtime app)."""
@@ -116,9 +125,19 @@ class LiveState:
     last_frame_jpeg: bytes | None = None
     subscribers: list[asyncio.Queue] = field(default_factory=list)
     store: FeedbackStore | None = None
+    latest_audio_modality: dict[str, float] = field(default_factory=dict)
     voice: object | None = None
     conversation: object | None = None   # ConversationEngine when VOICE_ENABLED
     mic_listener: object | None = None   # MicListener when VOICE_ENABLED
+    started_at: float | None = None      # monotonic time live session began
+    frame_count: int = 0                 # frames run through process_frame
+    infer_count: int = 0                 # predictions produced
+    infer_total_ms: float = 0.0          # cumulative inference latency
+    camera_task: object | None = None    # asyncio.Task running webcam_loop
+    camera_error: str | None = None      # last camera open/read error message
+    tts_latency_ms: list[float] = field(default_factory=list)  # rolling window
+    tts_cache_hits: int = 0
+    tts_cache_misses: int = 0
 
     def __post_init__(self) -> None:
         if self.store is None:
@@ -126,6 +145,43 @@ class LiveState:
 
 
 STATE = LiveState()
+
+
+def update_audio_modality(audio_arousal: float = 0.0, audio_valence: float = 0.0, audio_bark_prob: float = 0.0) -> dict[str, float]:
+    mod = {
+        "audio_arousal": float(audio_arousal),
+        "audio_valence": float(audio_valence),
+        "audio_bark_prob": float(audio_bark_prob),
+    }
+    STATE.latest_audio_modality = mod
+    return mod
+
+
+BREED_AUTOFILL_CONF = 0.5  # min breed confidence to pre-fill the dog profile
+
+
+def _maybe_autofill_breed(features: dict) -> None:
+    """Pre-fill DogProfile.breed once when a confident breed is detected.
+
+    Only writes when the profile hasn't got a breed yet, so a user-set breed
+    is never overwritten and autofill happens exactly once.
+    """
+    try:
+        from app.dog_profile import DOG_PROFILE_LOCK, load_profile, save_profile
+    except (ImportError, ModuleNotFoundError):
+        return
+    if float(features.get("dog_present", 0)) < 0.5:
+        return
+    breed = features.get("breed")
+    breed_conf = float(features.get("breed_conf", 0.0))
+    if not breed or breed_conf < BREED_AUTOFILL_CONF:
+        return
+    with DOG_PROFILE_LOCK:
+        profile = load_profile(STATE.dog_id or "default")
+        if profile.breed:
+            return  # user-set or already filled — never overwrite
+        profile.breed = str(breed)
+        save_profile(profile)
 
 
 def _load_coupling_matrix() -> dict:
@@ -148,7 +204,18 @@ def _ensure_conversation() -> None:
         _mic_mod = _load_service_package("voice", "mic_listener")
         import queue as _q
         bark_queue: _q.Queue = _q.Queue(maxsize=32)
-        mic = _mic_mod.MicListener(bark_queue=bark_queue)
+
+        def _on_audio_modality(mod: dict[str, float]) -> None:
+            update_audio_modality(
+                audio_arousal=float(mod.get("audio_arousal", 0.0)),
+                audio_valence=float(mod.get("audio_valence", 0.0)),
+                audio_bark_prob=float(mod.get("audio_bark_prob", 0.0)),
+            )
+
+        mic = _mic_mod.MicListener(
+            bark_queue=bark_queue,
+            modality_callback=_on_audio_modality,
+        )
 
         # Wire the bark queue into the conversation engine via a drain thread
         import threading
@@ -172,29 +239,64 @@ def _ensure_conversation() -> None:
         STATE.mic_listener = mic
 
 
+_voice_thread_pool: list[threading.Thread] = []
+
+
 def _conversation_speak(pred: TriadPrediction) -> dict | None:
     """Speak via ConversationEngine (learns from bark responses) when VOICE_ENABLED.
 
     Falls back to the legacy one-shot _speak_for when the conversation engine
-    is not initialised.
+    is not initialised. Never blocks the frame loop: the whole speak + save
+    runs in a background thread and the result is broadcast to the studio.
     """
     if not _VOICE_ENABLED:
         return None
     _ensure_conversation()
     if STATE.conversation is None:
         return _speak_for_legacy(pred)
-    result = STATE.conversation.on_prediction(pred)
-    if not result:
-        return None
-    # save the audio file for playback / debugging
-    audio = STATE.voice.client.synthesize(result["phrase"]) if STATE.voice else b""
-    if audio:
-        voice_dir = ROOT / "artifacts" / "voice"
-        voice_dir.mkdir(parents=True, exist_ok=True)
-        fp = voice_dir / f"utterance-{int(time.time() * 1000)}.wav"
-        fp.write_bytes(audio)
-        result["saved"] = str(fp)
-    return result
+
+    def _speak_worker():
+        try:
+            result = STATE.conversation.on_prediction(pred)
+            if not result:
+                return
+            audio = STATE.voice.last_audio if STATE.voice else None
+            payload = dict(result)
+            if audio:
+                voice_dir = ROOT / "artifacts" / "voice"
+                voice_dir.mkdir(parents=True, exist_ok=True)
+                fp = voice_dir / f"utterance-{int(time.time() * 1000)}.wav"
+                fp.write_bytes(audio)
+                payload["saved"] = str(fp)
+            if STATE.voice is not None:
+                client = getattr(STATE.voice, "client", None)
+                if client is not None:
+                    lat = getattr(client, "last_latency_ms", None)
+                    if lat is not None:
+                        STATE.tts_latency_ms.append(lat)
+                        STATE.tts_latency_ms[:] = STATE.tts_latency_ms[-50:]
+                    payload["tts_latency_ms"] = lat
+            try:
+                import asyncio as _asyncio
+                _asyncio.run_coroutine_threadsafe(
+                    broadcast({"type": "voice", **payload}),
+                    _asyncio.get_event_loop(),
+                )
+            except Exception:
+                pass
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("voice speak worker skipped: %s", exc)
+
+    thread = threading.Thread(target=_speak_worker, daemon=True, name="aarf-voice-speak")
+    thread.start()
+    _voice_thread_pool.append(thread)
+    _voice_thread_pool[:] = [t for t in _voice_thread_pool if t.is_alive()]
+    return {
+        "intent": getattr(pred, "intent_id", ""),
+        "emotion": getattr(pred, "emotion_id", ""),
+        "queued": True,
+        "saved": None,
+    }
 
 
 def _speak_for_legacy(pred: TriadPrediction) -> dict | None:
@@ -233,18 +335,29 @@ def gate_decision(pred: TriadPrediction) -> str:
     return "review"
 
 
-def process_frame(frame_bgr: np.ndarray) -> dict[str, Any]:
+def process_frame(frame_bgr: np.ndarray, audio_modality: dict[str, float] | None = None) -> dict[str, Any]:
+    if STATE.started_at is None:
+        STATE.started_at = time.monotonic()
+    STATE.frame_count += 1
     features = run_pipeline_frame(frame_bgr)
+    if audio_modality:
+        features.update(audio_modality)
+    elif STATE.latest_audio_modality:
+        features.update(STATE.latest_audio_modality)
     vec = vectorize(features)
     STATE.sequence.append(vec)
     seq = list(STATE.sequence)
+    t0 = time.perf_counter()
     try:
         pred = infer_sequence(seq)
     except Exception:
         pred = heuristic_predict(features)
+    STATE.infer_total_ms += (time.perf_counter() - t0) * 1000
+    STATE.infer_count += 1
 
     gate = gate_decision(pred)
     voice = _conversation_speak(pred) if float(features.get("dog_present", 0)) >= 0.5 else None
+    _maybe_autofill_breed(features)
     pid = None
     if STATE.store:
         if not STATE.session_id:
@@ -267,11 +380,48 @@ def process_frame(frame_bgr: np.ndarray) -> dict[str, Any]:
         "emotion": pred.emotion_id,
         "behavior": pred.behavior_id,
         "confidence": pred.confidence,
+        "margin": pred.margin,
         "intent_probs": pred.intent_probs or {},
         "gate": gate,
         "voice": voice,
         "features": {k: features[k] for k in features if k != "bbox"},
+        "bbox": features.get("bbox"),
+        "breed": features.get("breed"),
+        "breed_conf": float(features.get("breed_conf", 0.0)),
+        "breed_top3": features.get("breed_top3") or [],
+        "sequence": seq[-10:],
         "dog_present": bool(features.get("dog_present", 0)),
+    }
+
+
+def live_status() -> dict:
+    """Streaming telemetry for the studio's live metrics rail."""
+    now = time.monotonic()
+    elapsed = (now - STATE.started_at) if STATE.started_at else 0.0
+    fps = (STATE.frame_count / elapsed) if elapsed > 0 else 0.0
+    avg_infer_ms = (STATE.infer_total_ms / STATE.infer_count) if STATE.infer_count else 0.0
+    tts = STATE.tts_latency_ms
+    tts_p50 = sorted(tts)[len(tts) // 2] if tts else 0.0
+    return {
+        "running": STATE.running,
+        "session_id": STATE.session_id,
+        "dog_id": STATE.dog_id,
+        "camera": str(STATE.camera_index),
+        "camera_error": STATE.camera_error,
+        "frames": STATE.frame_count,
+        "predictions": STATE.infer_count,
+        "fps": round(fps, 1),
+        "avg_infer_ms": round(avg_infer_ms, 1),
+        "sequence_len": len(STATE.sequence),
+        "sequence_capacity": STATE.sequence.maxlen,
+        "uptime_s": round(elapsed, 1),
+        "voice": {
+            "enabled": bool(_VOICE_ENABLED),
+            "tts_last_ms": round(tts[-1], 1) if tts else None,
+            "tts_avg_ms": round(sum(tts) / len(tts), 1) if tts else None,
+            "tts_p50_ms": round(tts_p50, 1),
+            "utterances": len(tts),
+        },
     }
 
 
@@ -286,6 +436,51 @@ async def broadcast(msg: dict) -> None:
         STATE.subscribers.remove(q)
 
 
+def list_cameras(limit: int = 8) -> list[dict]:
+    """Enumerate local camera indices OpenCV can open, plus bridge availability."""
+    import cv2
+
+    try:
+        cv2.utils.logging.setLogLevel(cv2.utils.logging.LOG_LEVEL_ERROR)
+    except Exception:
+        pass
+    cameras: list[dict] = []
+    for i in range(limit):
+        cap = cv2.VideoCapture(i)
+        ok = cap.isOpened()
+        if ok:
+            name = f"Camera {i}"
+            w = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
+            h = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
+            back = cap.get(cv2.CAP_PROP_BACKEND)
+            cameras.append({"index": i, "label": name, "w": int(w), "h": int(h), "backend": int(back)})
+        cap.release()
+    return cameras
+
+
+def switch_camera(camera: int | str, mode: str | None = None) -> str:
+    """Live-switch the capture source. Stops the current loop and restarts it."""
+    if mode == "bridge" or (is_wsl() and isinstance(camera, int) and mode != "server"):
+        camera = bridge_stream_url()
+    STATE.camera_index = camera
+    task = STATE.camera_task
+    if task is not None:
+        try:
+            task.cancel()
+        except Exception:
+            pass
+        STATE.camera_task = None
+    STATE.running = False
+    STATE.started_at = None
+    STATE.frame_count = 0
+    STATE.infer_count = 0
+    STATE.infer_total_ms = 0.0
+    import asyncio
+
+    STATE.camera_task = asyncio.create_task(webcam_loop(camera))
+    return str(camera)
+
+
 async def webcam_loop(camera: int | str) -> None:
     import cv2
 
@@ -294,13 +489,15 @@ async def webcam_loop(camera: int | str) -> None:
         hint = ""
         if isinstance(camera, int):
             hint = " On WSL, start scripts/webcam/start_webcam_bridge.ps1 on Windows and use bridge mode."
-        await broadcast({"type": "error", "message": f"Cannot open camera {camera}.{hint}"})
+        STATE.camera_error = f"Cannot open camera {camera}.{hint}"
+        await broadcast({"type": "error", "message": STATE.camera_error})
         STATE.running = False
         return
 
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
     STATE.running = True
+    STATE.camera_error = None
     source = "bridge" if isinstance(camera, str) else "webcam"
     STATE.session_id = STATE.store.start_session(dog_id=STATE.dog_id, source=source)
 

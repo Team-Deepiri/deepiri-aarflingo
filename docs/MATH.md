@@ -4,13 +4,34 @@ Reference for `core/triad_math.py` and `services/forecast` training.
 
 ## Feature sequence
 
-Per-frame perception vector \(x_t \in \mathbb{R}^D\) with \(D=20\) (see `core/feature_spec.py`).
+Per-frame perception vector \(x_t \in \mathbb{R}^D\) with \(D=43\)
+(35 base features + 8 modality features, see `core/feature_spec.py`).
 
 Stack \(T=15\) frames, left-pad with zeros if shorter:
 
 \[
 \tilde{X} \in \mathbb{R}^{T \times D}, \quad x = \mathrm{vec}(\tilde{X}) \in \mathbb{R}^{TD}
 \]
+
+## Approach geometry (τ, closing, heading)
+
+Intent is a *destination*: approaching the door means "outside", the toy
+means "play". Per frame, for each zone \(z\) with center \(c_z\) and the
+dog at \(p\) with velocity \(v\):
+
+\[
+d_z = \|c_z - p\|, \qquad \hat u_z = \frac{c_z - p}{d_z}, \qquad \dot d_z = v \cdot \hat u_z
+\]
+
+- Closing rate: \(\mathrm{closing}_z = \mathrm{clamp}(\dot d_z / v_{\max}, 0, 1)\)
+- Lee's time-to-contact: \(\tau_z = d_z / \max(\dot d_z, \varepsilon)\),
+  normalized against a contact horizon \(H=60\) frames
+  \(\mathrm{tau}_z = \mathrm{clamp}(1 - \tau_z / H, 0, 1)\) — high means imminent arrival.
+- Heading cosine: \(\mathrm{heading}_z = \cos\angle(v, \hat u_z) = \hat v \cdot \hat u_z\).
+
+All three depend only on the *relative* geometry dog↔zone, so they are
+invariant under camera translation; absolute coordinates (`bbox_cx`,
+`edge_*`) are not. The model should learn to weight the invariant set.
 
 ## TriadNet forward
 
@@ -55,9 +76,21 @@ Total training loss (default \(\lambda = 0.3\)):
 
 where \(\hat{y}\) are argmax indices.
 
+Max-probability overstates certainty when two hypotheses are nearly tied.
+The honest confidence is the **margin** — the top-1 minus top-2 gap, meaned
+across heads:
+
+\[
+m(\pi) = \pi_{(1)} - \pi_{(2)}, \qquad
+\mathrm{margin} = \frac{m(\pi^I) + m(\pi^E) + m(\pi^B)}{3}
+\]
+
+A dog equidistant between door and toy has a small intent margin; the gate
+should treat small margins as "review" even when \(\mathrm{conf}\) is high.
+
 ## Gate (runtime)
 
-`gate_decision` in `services/runtime/app/engine.py` applies `forbidden_pairs` and coupling triples with confidence threshold 0.55.
+`gate_decision` in `services/runtime/app/engine.py` applies `forbidden_pairs` and coupling triples with confidence threshold 0.55; per-frame `margin` is exposed alongside `confidence` for ambiguity-aware review.
 
 ## Training pipeline
 
