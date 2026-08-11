@@ -43,3 +43,23 @@ struct CardStyle: ViewModifier {
 extension View {
     func aarflingoCard() -> some View { modifier(CardStyle()) }
 }
+
+struct PrimaryButtonStyle: ButtonStyle {
+    let accent: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.headline)
+            .foregroundStyle(accent ? Color.black : AarflingoTheme.text)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 10)
+            .background(
+                accent
+                    ? LinearGradient(colors: [AarflingoTheme.accent, Color(red: 0.18, green: 0.70, blue: 0.45)], startPoint: .leading, endPoint: .trailing)
+                    : AarflingoTheme.card
+            )
+            .overlay(RoundedRectangle(cornerRadius: 10).stroke(AarflingoTheme.border, lineWidth: 1))
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .opacity(configuration.isPressed ? 0.85 : 1)
+    }
+}

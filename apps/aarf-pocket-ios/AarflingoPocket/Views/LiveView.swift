@@ -91,10 +91,10 @@ struct LiveView: View {
                         // Live signal bars (from runtime features — placeholder ratios for now)
                         VStack(alignment: .leading, spacing: 12) {
                             Text("Live signals").font(.headline)
-                            LiveSignalBar(label: "Confidence",
+                            SignalBar(label: "Confidence",
                                           value: pred.confidence,
                                           color: gateColor(pred.gate))
-                            LiveSignalBar(label: "Dog detected",
+                            SignalBar(label: "Dog detected",
                                           value: pred.dogPresent ? 1.0 : 0.0,
                                           color: AarflingoTheme.info)
                         }
