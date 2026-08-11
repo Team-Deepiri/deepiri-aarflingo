@@ -48,8 +48,11 @@ class BreedClassifier:
     # -- model loading -----------------------------------------------------
 
     def _load_finetuned(self) -> bool:
-        import torch
-        import torchvision.transforms as T
+        try:
+            import torch
+            import torchvision.transforms as T
+        except ImportError:
+            return False
 
         w = self._weights
         if not w.exists():
@@ -81,7 +84,14 @@ class BreedClassifier:
             return False
 
     def _load_imagenet(self) -> None:
-        import torchvision.transforms as T
+        try:
+            import torchvision.transforms as T
+        except ImportError:
+            self._names = _imagenet_names()
+            self._labels = self._names
+            self._imagenet_model = None  # type: ignore[assignment]
+            self._transform = None
+            return
 
         self._names = _imagenet_names()
         self._labels = self._names
