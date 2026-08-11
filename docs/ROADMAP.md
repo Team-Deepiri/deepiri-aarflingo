@@ -106,11 +106,11 @@ capturing your dog's frames for the fine-tune.)
 
 ### 4. Studio active learning UI
 
-- [ ] Surface low-confidence / `gate=review` frames in History tab with "label this" CTA
+- [x] Surface low-confidence / `gate=review` frames in History tab with "label this" CTA (highlight <80% unlabelled rows; intent+emotion picker posts to `/feedback`)
 - [ ] In-app gaze zone editor (drag rects on live preview → write `zones.default.yaml`)
-- [ ] Auto-reconnect WebSocket + bridge health indicator in header
-- [ ] Voice outcomes panel: show recent phrase → bark response pairs and learned weights
-- [ ] Camera input switch UI: device dropdown fed by `/cameras`, live-switch via `/live/camera`
+- [ ] Auto-reconnect WebSocket + bridge health indicator in header (WS auto-reconnect ✅ shipped; header health indicator pending)
+- [x] Voice outcomes panel: show recent phrase → bark response pairs and learned weights (VoiceView tab ✅)
+- [x] Camera input switch UI: device dropdown fed by `/cameras`, live-switch via `/live/camera` (dropdown in camera toolbar when >1 device)
 
 **Done when:** one live session produces ≥10 feedback rows and the conversation engine
 shows measurable weight drift from baseline.
@@ -174,7 +174,7 @@ flowchart LR
 1. **Wire live vocal encoder** — ✅ DONE: `MicListener` emits continuous audio modality (arousal/valence/bark_prob) every chunk → `update_audio_modality` → fused into `process_frame` features (heuristic fallback when `vocal.pt` absent)
 2. **Barkopedia fine-tune** — ✅ DONE: all 298 real clips train the encoder; real held-out 0.345 (3.1× chance); checkpoint selection + metrics now real-driven
 3. **YOLO + breed fine-tune** — your dog, your room, stable bbox + breed label on the box
-4. **Active learning UI + camera switch** — close the feedback → retrain loop visually; device dropdown via `/cameras`
+4. **Active learning UI + camera switch** — ✅ DONE: "label this" CTA in History, camera device dropdown via `/cameras` + `/live/camera`; remaining polish = gaze zone editor + header WS/bridge health
 5. **On-device CoreML / ONNX** — cut the WiFi dependency for iOS/Android
 6. **Collar** — full hardware path
 

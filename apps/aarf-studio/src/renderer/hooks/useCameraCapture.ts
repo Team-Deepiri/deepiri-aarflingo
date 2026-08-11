@@ -1,7 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { CaptureMode } from "../lib/platform";
-import { defaultBridgeUrl, fetchBridgeInfo, probeBridgeHealth, runtimeUrl, startBridgeOnServer } from "../lib/platform";
+import {
+  defaultBridgeUrl,
+  fetchBridgeInfo,
+  fetchCameras,
+  probeBridgeHealth,
+  runtimeUrl,
+  startBridgeOnServer,
+  switchLiveCamera,
+} from "../lib/platform";
+import type { CameraDevice } from "../lib/platform";
 import type { LivePrediction } from "./useRuntimeLive";
 
 export type CameraStatus = "idle" | "starting" | "live" | "error";
@@ -30,6 +39,30 @@ export function useCameraCapture(
   const [bridgeOk, setBridgeOk] = useState(false);
   const [wsl, setWsl] = useState(false);
   const [inferencing, setInferencing] = useState(false);
+  const [cameras, setCameras] = useState<CameraDevice[]>([]);
+  const [currentIndex, setCurrentIndex] = useState<number | null>(null);
+
+  const refreshCameras = useCallback(async () => {
+    const info = await fetchCameras();
+    if (info) {
+      setCameras(info.cameras);
+      const cur = Number(info.current);
+      setCurrentIndex(Number.isInteger(cur) ? cur : null);
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshCameras();
+  }, [refreshCameras]);
+
+  const switchDevice = useCallback(async (index: number) => {
+    const ok = await switchLiveCamera(index);
+    if (ok) {
+      setCurrentIndex(index);
+      await refreshCameras();
+    }
+    return ok;
+  }, [refreshCameras]);
 
   useEffect(() => {
     fetchBridgeInfo().then((info) => {
@@ -233,6 +266,10 @@ export function useCameraCapture(
     wsl,
     inferencing,
     setInferencing,
+    cameras,
+    currentIndex,
+    refreshCameras,
+    switchDevice,
     startPreview,
     stop,
   };

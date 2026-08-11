@@ -241,6 +241,25 @@ export function LiveView() {
             <button type="button" className="btn ghost" onClick={() => void config.redetect()}>
               Re-detect
             </button>
+            {cam.cameras.length > 1 ? (
+              <label className="cam-switch">
+                Camera
+                <select
+                  value={cam.currentIndex ?? ""}
+                  onChange={(e) => {
+                    const idx = Number(e.target.value);
+                    if (Number.isInteger(idx) && idx >= 0) void cam.switchDevice(idx);
+                  }}
+                  title="Live-switch the runtime capture device (server mode)"
+                >
+                  {cam.cameras.map((c) => (
+                    <option key={c.index} value={c.index}>
+                      {c.label || `Camera ${c.index}`}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
           </div>
           {retrainMsg ? <pre className="code-block">{retrainMsg}</pre> : null}
         </section>

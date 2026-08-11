@@ -929,6 +929,42 @@ th {
   border-radius: 999px;
 }
 
+.row-review {
+  background: rgba(240, 198, 116, 0.06);
+}
+
+.label-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.label-inline select {
+  background: var(--bg-card);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 2px 4px;
+  font-size: 0.8em;
+  max-width: 110px;
+}
+
+.cam-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85em;
+  color: var(--fg-dim);
+}
+
+.cam-switch select {
+  background: var(--bg-card);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 6px;
+}
+
 code {
   font-family: ui-monospace, monospace;
   font-size: 0.82em;
