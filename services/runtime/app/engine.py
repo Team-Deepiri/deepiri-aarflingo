@@ -177,7 +177,18 @@ def _ensure_conversation() -> None:
         _mic_mod = _load_service_package("voice", "mic_listener")
         import queue as _q
         bark_queue: _q.Queue = _q.Queue(maxsize=32)
-        mic = _mic_mod.MicListener(bark_queue=bark_queue)
+
+        def _on_audio_modality(mod: dict[str, float]) -> None:
+            update_audio_modality(
+                audio_arousal=float(mod.get("audio_arousal", 0.0)),
+                audio_valence=float(mod.get("audio_valence", 0.0)),
+                audio_bark_prob=float(mod.get("audio_bark_prob", 0.0)),
+            )
+
+        mic = _mic_mod.MicListener(
+            bark_queue=bark_queue,
+            modality_callback=_on_audio_modality,
+        )
 
         # Wire the bark queue into the conversation engine via a drain thread
         import threading

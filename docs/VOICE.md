@@ -143,6 +143,11 @@ If the vocal encoder checkpoint (`artifacts/models/default/vocal.pt`) is
 present, arousal/valence are classified by the neural model. Otherwise a
 spectral heuristic is used (works well enough for learning).
 
+Every chunk (bark or not) also emits a continuous audio modality sample —
+`audio_arousal`, `audio_valence`, `audio_bark_prob` (RMS-scaled 0–1) — which
+the runtime fuses into `process_frame` via `update_audio_modality`, so the
+vision pipeline always sees live audio, not just bark events.
+
 A **debounce window of 400 ms** suppresses repeated detections from a single
 bark burst.
 

@@ -39,6 +39,9 @@ BARK_RMS_THRESHOLD = 0.05   # normalised RMS above which we classify a bark
 BARK_ZCR_MIN = 0.02         # zero-crossing rate floor (filters pure hum / DC)
 SILENCE_HOLD_S = 0.4        # ignore further bursts within this window (debounce)
 
+AROUSAL_NUM = {"low": 0.0, "medium": 0.5, "high": 1.0}
+VALENCE_NUM = {"negative": 0.0, "neutral": 0.5, "positive": 1.0}
+
 
 @dataclass
 class BarkEvent:
@@ -188,6 +191,10 @@ class MicListener:
         Normalised RMS above which a chunk is treated as a bark candidate.
     on_error:
         Optional callback(Exception) invoked when the audio stream errors.
+    modality_callback:
+        Optional callback(dict) invoked on EVERY chunk with continuous audio
+        modality (audio_arousal / audio_valence / audio_bark_prob) so the
+        runtime can fuse live audio into the frame pipeline — not just barks.
     """
 
     def __init__(
@@ -196,11 +203,13 @@ class MicListener:
         root: Path | None = None,
         rms_threshold: float = BARK_RMS_THRESHOLD,
         on_error: Callable[[Exception], None] | None = None,
+        modality_callback: Callable[[dict[str, float]], None] | None = None,
     ) -> None:
         self.bark_queue = bark_queue
         self.root = root or Path(__file__).resolve().parents[3]
         self.rms_threshold = rms_threshold
         self.on_error = on_error
+        self._modality_callback = modality_callback
 
         self._thread: threading.Thread | None = None
         self._stop_event = threading.Event()
@@ -271,6 +280,12 @@ class MicListener:
     def _process(self, chunk: np.ndarray) -> None:
         rms = _rms(chunk)
         zcr = _zcr(chunk)
+        arousal, valence = self._classify_levels(chunk)
+        if self._modality_callback is not None:
+            try:
+                self._modality_callback(self._modality_sample(arousal, valence, rms))
+            except Exception:
+                pass
         if rms < self.rms_threshold or zcr < BARK_ZCR_MIN:
             return
         now = time.monotonic()
@@ -278,19 +293,34 @@ class MicListener:
             return  # debounce
         self._last_bark_ts = now
 
-        if self._classify is not None:
-            try:
-                arousal, valence = self._classify(chunk)
-            except Exception:
-                arousal, valence = _heuristic_classify(chunk)
-        else:
-            arousal, valence = _heuristic_classify(chunk)
-
         evt = BarkEvent(ts=now, arousal=arousal, valence=valence, rms=rms, raw=chunk)
         try:
             self.bark_queue.put_nowait(evt)
         except queue.Full:
             pass  # drop if consumer is slow; bark is ephemeral
+
+    def _classify_levels(self, chunk: np.ndarray) -> tuple[str, str]:
+        """arousal/valence strings, using the trained encoder when available."""
+        if self._classify is not None:
+            try:
+                return self._classify(chunk)
+            except Exception:
+                pass
+        return _heuristic_classify(chunk)
+
+    def _modality_sample(
+        self, arousal: str, valence: str, rms: float
+    ) -> dict[str, float]:
+        """Continuous audio modality for the frame fusion pipeline (every chunk).
+
+        bark_prob is a continuous proxy derived from normalised RMS (1.0 at the
+        bark threshold).
+        """
+        return {
+            "audio_arousal": float(AROUSAL_NUM.get(arousal, 0.0)),
+            "audio_valence": float(VALENCE_NUM.get(valence, 0.0)),
+            "audio_bark_prob": float(min(1.0, rms / self.rms_threshold)),
+        }
 
     # ── inject-for-testing ───────────────────────────────────────────────────
 

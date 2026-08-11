@@ -72,7 +72,7 @@ The studio modality bars (Audio arousal, ECG stress, IMU activity) show static z
 inference time. The encoders exist and are trained — they just aren't loaded in the
 runtime's `process_frame` path.
 
-- [ ] Load `vocal.pt` in runtime; feed mic audio chunks from `MicListener` → MFCC → encoder → feature dims
+- [x] Load `vocal.pt` in runtime; feed mic audio chunks from `MicListener` → MFCC → encoder → feature dims (heuristic fallback when no checkpoint; continuous `audio_arousal`/`audio_valence`/`audio_bark_prob` fused into `process_frame` via `STATE.latest_audio_modality`)
 - [ ] Load `vitals.pt` when BLE/serial IMU connected (stub with simulated 6-DoF first)
 - [ ] Merge encoder outputs into `core/modality_spec` features before TriadNet call
 - [ ] Studio modality bars animate from live mic and IMU signals
@@ -170,7 +170,7 @@ flowchart LR
   E --> F[Collar BLE + TensorRT edge]
 ```
 
-1. **Wire live vocal encoder** — mic is already captured; feeding it into `process_frame` is one file change
+1. **Wire live vocal encoder** — ✅ DONE: `MicListener` emits continuous audio modality (arousal/valence/bark_prob) every chunk → `update_audio_modality` → fused into `process_frame` features (heuristic fallback when `vocal.pt` absent)
 2. **Barkopedia fine-tune** — real bark data → better arousal/valence → better conversation responses
 3. **YOLO + breed fine-tune** — your dog, your room, stable bbox + breed label on the box
 4. **Active learning UI + camera switch** — close the feedback → retrain loop visually; device dropdown via `/cameras`
