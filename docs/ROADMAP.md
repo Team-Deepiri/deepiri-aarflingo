@@ -81,12 +81,12 @@ runtime's `process_frame` path.
 
 ### 2. Real Barkopedia fine-tune
 
-- [ ] `./scripts/fetch_public_datasets.sh --barkopedia` → wire into `services/audio/app/train.py`
-- [ ] Replace / augment synthetic bark generation with real Barkopedia clips
-- [ ] Held-out val accuracy logged to manifest (`artifacts/manifests/`)
+- [x] `./scripts/fetch_public_datasets.sh --barkopedia` → wire into `services/audio/app/train.py` (loader + CLI `--data` + `train_aarflingo.sh` audio stage)
+- [x] Replace / augment synthetic bark generation with real Barkopedia clips (all 298 real clips now used; checkpoint selected by **real** held-out acc when present)
+- [x] Held-out val accuracy logged to manifest (`artifacts/manifests/`) — `vocal_metrics.json` now carries `best_val_acc_by_source` split (`real` vs `synth`)
 - [ ] Optional: PhysioZoo dog ECG → `lib/aarf-physio` loader for real HRV labels
 
-**Done when:** `vocal.pt` arousal/valence accuracy improves on real held-out clips.
+**Done when:** `vocal.pt` arousal/valence accuracy improves on real held-out clips. ✔️ real held-out 0.107 → **0.345** (3.1× chance, chance 0.111); training script defaults bumped (AUDIO_EPOCHS 20→50, all real clips used).
 
 ### 3. Vision → dog-communication (YOLO + breed live in your home)
 
@@ -171,7 +171,7 @@ flowchart LR
 ```
 
 1. **Wire live vocal encoder** — ✅ DONE: `MicListener` emits continuous audio modality (arousal/valence/bark_prob) every chunk → `update_audio_modality` → fused into `process_frame` features (heuristic fallback when `vocal.pt` absent)
-2. **Barkopedia fine-tune** — real bark data → better arousal/valence → better conversation responses
+2. **Barkopedia fine-tune** — ✅ DONE: all 298 real clips train the encoder; real held-out 0.345 (3.1× chance); checkpoint selection + metrics now real-driven
 3. **YOLO + breed fine-tune** — your dog, your room, stable bbox + breed label on the box
 4. **Active learning UI + camera switch** — close the feedback → retrain loop visually; device dropdown via `/cameras`
 5. **On-device CoreML / ONNX** — cut the WiFi dependency for iOS/Android

@@ -10,7 +10,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 EPOCHS="${EPOCHS:-30}"
-AUDIO_EPOCHS="${AUDIO_EPOCHS:-20}"
+AUDIO_EPOCHS="${AUDIO_EPOCHS:-50}"
 PHYSIO_EPOCHS="${PHYSIO_EPOCHS:-20}"
 BREED_EPOCHS="${BREED_EPOCHS:-12}"
 STAGES="${STAGES:-vision,audio,physio,triad}"
