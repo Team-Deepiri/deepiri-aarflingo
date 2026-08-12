@@ -125,8 +125,8 @@ class AppViewModel : ViewModel() {
         }
     }
 
-    fun setOnDevice(enabled: Boolean) {
-        onDevice = enabled && onDeviceAvailable
+    fun toggleOnDevice() {
+        onDevice = !onDevice && onDeviceAvailable
     }
 
     /** Rebuild the client when the URL changes in Settings. */

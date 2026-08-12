@@ -296,7 +296,7 @@ fun LiveScreen(vm: AppViewModel, modifier: Modifier = Modifier) {
             }
             if (vm.liveOn && vm.onDeviceAvailable) {
                 Button(
-                    onClick = { vm.setOnDevice(!vm.onDevice) },
+                    onClick = { vm.toggleOnDevice() },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = if (vm.onDevice) AarflingoColors.Accent else AarflingoColors.Card,
                     ),
