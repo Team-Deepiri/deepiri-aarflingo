@@ -9,7 +9,7 @@ import java.nio.FloatBuffer
  * On-device TriadNet inference — cuts WiFi dependence.
  *
  * Loads `models/triad.onnx` from app assets and runs the same TriadNet the
- * runtime uses, on a rolling 15-frame × 43-dim feature window. The phone
+ * runtime uses, on a rolling 15-frame × 73-dim feature window. The phone
  * estimates what it can from camera frames (brightness, contrast, motion,
  * aspect ratio, dog-presence heuristic); the rest of each feature row stays
  * zero like the runtime's cold-start padding (`flatten_sequence_rows`).
@@ -20,7 +20,7 @@ import java.nio.FloatBuffer
 class OnDeviceEngine(private val context: Context) {
 
     companion object {
-        const val FEATURE_DIM = 43
+        const val FEATURE_DIM = 73
         const val SEQUENCE_LEN = 15
         private const val MODEL_ASSET = "models/triad.onnx"
         private const val MANIFEST_ASSET = "models/triad_manifest.json"

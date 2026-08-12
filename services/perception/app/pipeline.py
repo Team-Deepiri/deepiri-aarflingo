@@ -21,6 +21,7 @@ from .scene import classify_scene
 from .temporal import TemporalTracker
 from .tracker import MultiDogTracker
 from .tau import score_approach
+from .deepfusion import advanced_defaults, compute_advanced_features, reset_trackers
 
 _TRACKER = TemporalTracker()
 _MULTI = MultiDogTracker()
@@ -91,6 +92,8 @@ def _run_primary(primary, frame_bgr, motion: float, vx: float, vy: float, confir
     scene = classify_scene(frame_bgr, motion_level=motion)
     face = estimate_face_signals(pose, arousal_proxy=scene.motion_level)
 
+    advanced = compute_advanced_features(bbox, pose, face, frame_bgr, vx, vy)
+
     edge_left = bbox.x
     edge_right = 1.0 - (bbox.x + bbox.w)
     edge_top = bbox.y
@@ -133,6 +136,7 @@ def _run_primary(primary, frame_bgr, motion: float, vx: float, vy: float, confir
         "track_stability": float(getattr(primary, "stability", 1.0)),
         "scene": scene.tags,
     }
+    base.update(advanced)
 
     if confirmed:
         _annotate_breed(frame_bgr, bbox, base)
@@ -168,7 +172,8 @@ def run_pipeline_frame(frame_bgr: np.ndarray) -> dict:
         motion, vx, vy = _TRACKER.update(None, gray_mean)
         _MULTI.update([], frame_bgr)
         scene = classify_scene(frame_bgr, motion_level=motion)
-        return {
+        reset_trackers()
+        base: dict = {
             "dog_present": 0.0,
             "breed": None,
             "breed_conf": 0.0,
@@ -187,6 +192,8 @@ def run_pipeline_frame(frame_bgr: np.ndarray) -> dict:
             "scene": scene.tags,
             "arousal_proxy": motion,
         }
+        base.update(advanced_defaults())
+        return base
 
     tracks = _MULTI.update(detections, frame_bgr)
     primary = _MULTI.primary()

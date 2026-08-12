@@ -7,7 +7,7 @@ import UIKit
 /// Loads the bundled `Triad.mlpackage` (CoreML, iOS 16+) produced by
 /// `aarflingo-bridge export --target coreml` via
 /// `scripts/mobile/bundle-mobile-models.sh`. Runs the same TriadNet the runtime
-/// uses on a rolling 15-frame × 43-dim feature window.
+/// uses on a rolling 15-frame × 73-dim feature window.
 ///
 /// The phone estimates what it can from camera frames (brightness, contrast,
 /// motion, aspect ratio, dog-presence heuristic); the rest of each feature row
@@ -18,7 +18,7 @@ import UIKit
 final class OnDeviceEngine {
 
     struct Constants {
-        static let featureDim = 43
+        static let featureDim = 73
         static let sequenceLen = 15
         static let modelName = "Triad"
     }

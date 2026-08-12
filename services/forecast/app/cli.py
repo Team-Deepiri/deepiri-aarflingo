@@ -7,9 +7,9 @@ from typing import Optional
 
 import typer
 
-from .export_onnx import export_onnx
+from .export_onnx import export_onnx, export_onnx_temporal
 from .infer import infer_batch
-from .train import train_epochs
+from .train import train_epochs, train_temporal_epochs
 
 app = typer.Typer(help="AARFLingo forecast CLI")
 
@@ -34,13 +34,24 @@ def build_default() -> None:
     typer.echo(json.dumps({"status": "ok", **result}))
 
 
+@app.command()
+def build_temporal() -> None:
+    """Train the §9 TriadNetTemporal (BiLSTM+attention) checkpoint."""
+    result = train_temporal_epochs(epochs=30)
+    typer.echo(json.dumps({"status": "ok", **result}))
+
+
 @app.command("export-onnx")
 def export_onnx_cmd(
     out: Optional[str] = typer.Option(None, "--out", help="Output directory for triad.onnx"),
+    temporal: bool = typer.Option(False, "--temporal", help="Export the TriadNetTemporal variant instead"),
 ) -> None:
     root = Path(__file__).resolve().parents[3]
     out_dir = Path(out) if out else root / "artifacts" / "bundles" / "default" / "studio"
-    path = export_onnx(out_dir)
+    if temporal:
+        path = export_onnx_temporal(out_dir)
+    else:
+        path = export_onnx(out_dir)
     typer.echo(json.dumps({"status": "ok", "path": str(path)}))
 
 

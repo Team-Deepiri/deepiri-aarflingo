@@ -6,10 +6,13 @@ from pathlib import Path
 import torch
 
 from .labels import behavior_labels, emotion_labels, intent_labels
+from .temporal_math import TriadNetTemporal
 from .triad_model import TriadNet, TriadPrediction, predict_from_model
 
 _MODEL: TriadNet | None = None
 _MODEL_PATH: Path | None = None
+_TEMPORAL_MODEL: TriadNetTemporal | None = None
+_TEMPORAL_PATH: Path | None = None
 
 
 def default_checkpoint() -> Path:
@@ -50,7 +53,62 @@ def load_checkpoint(path: Path) -> TriadNet:
     return model
 
 
+def get_temporal_model() -> TriadNetTemporal | None:
+    """Lazily load the §9 TriadNetTemporal checkpoint if present.
+
+    Falls back to None (flat TriadNet) when no temporal checkpoint exists —
+    additive, never a breaking swap of the shipped architecture.
+    """
+    global _TEMPORAL_MODEL, _TEMPORAL_PATH
+    path = default_checkpoint().parent / "triad_temporal.pt"
+    if _TEMPORAL_MODEL is not None and _TEMPORAL_PATH == path:
+        return _TEMPORAL_MODEL
+    if not path.exists():
+        return None
+    intents = intent_labels()
+    emotions = emotion_labels()
+    behaviors = behavior_labels()
+    model = TriadNetTemporal(73, intents, emotions, behaviors)
+    state = torch.load(path, map_location="cpu", weights_only=True)
+    model.load_state_dict(state)
+    model.eval()
+    _TEMPORAL_MODEL = model
+    _TEMPORAL_PATH = path
+    return model
+
+
+def predict_from_temporal(model: TriadNetTemporal, frames: list[list[float]]) -> TriadPrediction:
+    """Inference through the temporal backbone (unflattened sequence input)."""
+    import torch
+
+    from core.triad_torch import triad_confidence, triad_margin
+
+    x = torch.tensor([frames], dtype=torch.float32)
+    model.eval()
+    with torch.no_grad():
+        logits_i, logits_e, logits_b, arousal, valence = model(x)
+        pi = torch.softmax(logits_i, dim=-1)[0]
+        pe = torch.softmax(logits_e, dim=-1)[0]
+        pb = torch.softmax(logits_b, dim=-1)[0]
+    ii = int(pi.argmax())
+    ei = int(pe.argmax())
+    bi = int(pb.argmax())
+    conf = triad_confidence(pi, pe, pb, ii, ei, bi)
+    margin = triad_margin(pi, pe, pb)
+    return TriadPrediction(
+        intent_id=model.intent_labels[ii],
+        emotion_id=model.emotion_labels[ei],
+        behavior_id=model.behavior_labels[bi],
+        confidence=conf,
+        margin=margin,
+        intent_probs={model.intent_labels[j]: float(pi[j]) for j in range(len(model.intent_labels))},
+    )
+
+
 def infer_sequence(frames: list[list[float]]) -> TriadPrediction:
+    temporal = get_temporal_model()
+    if temporal is not None:
+        return predict_from_temporal(temporal, frames)
     model = get_model()
     if model is None:
         from .triad_model import heuristic_predict

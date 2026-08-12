@@ -52,6 +52,30 @@ BASE_FEATURE_NAMES: list[str] = [
     "heading_door",
     "heading_toy",
     "heading_bowl",
+    # docs/ADVANCED_MATH.md §1 — tail biomechanics (beyond wag rate)
+    "tail_wag_rate",
+    "tail_amplitude",
+    "tail_velocity",
+    "tail_rhythmicity",
+    "tail_height",
+    "tail_asymmetry",
+    "tail_lyapunov",
+    # docs/ADVANCED_MATH.md §2/§5 — DogFACS facial action units, ears, mouth
+    "facs_au_intensity",
+    "ear_angle",
+    "sclera_exposure",
+    "blink_rate",
+    "mouth_tension",
+    # docs/ADVANCED_MATH.md §3 — head pitch/yaw/roll-cock variance
+    "head_pitch",
+    "head_yaw",
+    "head_roll_var",
+    # docs/ADVANCED_MATH.md §6 — COM shift, approach/avoidance, gait, freezing
+    "com_shift_x",
+    "approach_avoid",
+    "gait_phase_trot",
+    "gait_phase_pace",
+    "freeze_duration",
 ]
 
 FEATURE_NAMES: list[str] = BASE_FEATURE_NAMES + MODALITY_NAMES
