@@ -64,23 +64,25 @@ class OnDeviceEngine(private val context: Context) {
         return out
     }
 
-    fun init(): Boolean = try {
-        if (session != null) return true
-        loadLabels()
-        val bytes = context.assets.open(MODEL_ASSET).use { it.readBytes() }
-        val env = ai.onnxruntime.OrtEnvironment.getEnvironment()
-        val opts = ai.onnxruntime.OrtSession.SessionOptions()
-        val sess = env.createSession(bytes, opts)
-        environment = env
-        session = sess
-        inputName = sess.inputNames.first()
-        val outs = sess.outputNames.toList()
-        if (outs.size >= 3) outputNames = outs
-        true
-    } catch (_: Exception) {
-        session?.close()
-        session = null
-        false
+    fun init(): Boolean {
+        return try {
+            if (session != null) true
+            loadLabels()
+            val bytes = context.assets.open(MODEL_ASSET).use { it.readBytes() }
+            val env = ai.onnxruntime.OrtEnvironment.getEnvironment()
+            val opts = ai.onnxruntime.OrtSession.SessionOptions()
+            val sess = env.createSession(bytes, opts)
+            environment = env
+            session = sess
+            inputName = sess.inputNames.first()
+            val outs = sess.outputNames.toList()
+            if (outs.size >= 3) outputNames = outs
+            true
+        } catch (_: Exception) {
+            session?.close()
+            session = null
+            false
+        }
     }
 
     /** Push one camera-derived feature row; runs the model when the window is full. */
@@ -111,9 +113,9 @@ class OnDeviceEngine(private val context: Context) {
                 longArrayOf(1, (FEATURE_DIM * SEQUENCE_LEN).toLong()),
             )
             val result = sess.run(mapOf(inputName to tensor))
-            val intentOut = result.get(outputNames[0])?.value as? Array<FloatArray>
-            val emotionOut = result.get(outputNames[1])?.value as? Array<FloatArray>
-            val behaviorOut = result.get(outputNames[2])?.value as? Array<FloatArray>
+            val intentOut = result.get(outputNames[0])?.orElse(null)?.value as? Array<FloatArray>
+            val emotionOut = result.get(outputNames[1])?.orElse(null)?.value as? Array<FloatArray>
+            val behaviorOut = result.get(outputNames[2])?.orElse(null)?.value as? Array<FloatArray>
             result.close()
             tensor.close()
             if (intentOut == null || emotionOut == null || behaviorOut == null) return@withContext null
@@ -136,7 +138,7 @@ class OnDeviceEngine(private val context: Context) {
                     conf <= 0.45f -> "reject"
                     else -> "review"
                 },
-                dogPresent = frame.dogPresent,
+                dogPresent = frame.dogPresent >= 0.5f,
             )
         } catch (_: Exception) {
             null
