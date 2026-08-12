@@ -80,6 +80,7 @@ fun LiveScreen(vm: AppViewModel, modifier: Modifier = Modifier) {
 
     // ── Health check on start ─────────────────────────────────────────────
     LaunchedEffect(vm.runtimeUrl) {
+        vm.initOnDevice(context)
         launch(Dispatchers.IO) { vm.checkHealth() }
     }
 
@@ -105,13 +106,21 @@ fun LiveScreen(vm: AppViewModel, modifier: Modifier = Modifier) {
         // Status chips
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             StatusChip(
-                if (vm.connected) "Runtime live" else "Runtime offline",
-                if (vm.connected) ChipTone.Ok else ChipTone.Warn,
+                if (vm.onDevice) "On-device engine" else if (vm.connected) "Runtime live" else "Runtime offline",
+                if (vm.onDevice) ChipTone.Ok else if (vm.connected) ChipTone.Ok else ChipTone.Warn,
             )
             StatusChip(
                 if (vm.liveOn) "Camera live" else "Camera off",
                 if (vm.liveOn) ChipTone.Info else ChipTone.Neutral,
             )
+        }
+        if (!vm.onDeviceAvailable && !vm.onDevice) {
+            Row {
+                StatusChip(
+                    "On-device model not bundled — add via scripts/mobile/bundle-mobile-models.sh",
+                    ChipTone.Neutral,
+                )
+            }
         }
 
         // Camera preview box
@@ -283,6 +292,20 @@ fun LiveScreen(vm: AppViewModel, modifier: Modifier = Modifier) {
                     modifier = Modifier.weight(1f),
                 ) {
                     Text("Flip", color = AarflingoColors.Text)
+                }
+            }
+            if (vm.liveOn && vm.onDeviceAvailable) {
+                Button(
+                    onClick = { vm.setOnDevice(!vm.onDevice) },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (vm.onDevice) AarflingoColors.Accent else AarflingoColors.Card,
+                    ),
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text(
+                        if (vm.onDevice) "Local ✓" else "Local",
+                        color = if (vm.onDevice) AarflingoColors.Bg else AarflingoColors.Text,
+                    )
                 }
             }
         }

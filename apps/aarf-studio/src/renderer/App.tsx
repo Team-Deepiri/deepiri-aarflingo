@@ -5,6 +5,7 @@ import { HistoryView } from "./components/HistoryView";
 import { IntentDashboard } from "./components/IntentDashboard";
 import { VoiceView } from "./components/VoiceView";
 import { DogProfileView } from "./components/DogProfileView";
+import { HealthHeader } from "./components/HealthHeader";
 
 type Tab = "dashboard" | "camera" | "history" | "voice" | "dog";
 
@@ -48,6 +49,7 @@ export function App() {
         </div>
       </aside>
       <main className="app-main">
+        <HealthHeader />
         {tab === "dashboard" && <IntentDashboard />}
         {tab === "camera" && <LiveView />}
         {tab === "history" && <HistoryView />}

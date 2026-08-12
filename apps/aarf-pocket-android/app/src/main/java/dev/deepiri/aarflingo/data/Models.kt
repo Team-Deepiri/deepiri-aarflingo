@@ -1,5 +1,7 @@
 package dev.deepiri.aarflingo.data
 
+import android.content.Context
+import android.graphics.Bitmap
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -87,6 +89,8 @@ class AppViewModel : ViewModel() {
     var connected by mutableStateOf(false)
     var liveOn by mutableStateOf(false)
     var prediction by mutableStateOf(TriadPrediction.Demo)
+    var onDevice by mutableStateOf(false)
+    var onDeviceAvailable by mutableStateOf(false)
     var autoConnect by mutableStateOf(false)
     var selectedIntentFilter by mutableStateOf<String?>(null)
     var showOnboarding by mutableStateOf(false)
@@ -106,6 +110,24 @@ class AppViewModel : ViewModel() {
     // ── Runtime client ─────────────────────────────────────────────────
     private var _client: RuntimeClient = RuntimeClient(runtimeUrl)
     val runtimeClient: RuntimeClient get() = _client
+
+    // ── On-device engine ───────────────────────────────────────────────
+    private var _onDevice: OnDeviceEngine? = null
+    private var _lastGray: FloatArray? = null
+
+    /** Injects engine init + extracts brightness/contrast/motion + runs locally. */
+    fun initOnDevice(context: Context) {
+        if (_onDevice == null) {
+            val engine = OnDeviceEngine(context.applicationContext)
+            engine.init()
+            _onDevice = engine
+            onDeviceAvailable = engine.available
+        }
+    }
+
+    fun setOnDevice(enabled: Boolean) {
+        onDevice = enabled && onDeviceAvailable
+    }
 
     /** Rebuild the client when the URL changes in Settings. */
     fun updateRuntimeUrl(url: String) {
@@ -134,10 +156,70 @@ class AppViewModel : ViewModel() {
 
     /** Upload a JPEG frame and update state from the response. */
     suspend fun inferFrame(jpeg: ByteArray) {
+        if (onDevice) {
+            val bitmap = decodeBitmap(jpeg) ?: return
+            val frame = extractFrameFeatures(bitmap)
+            bitmap.recycle()
+            val pred = _onDevice?.pushAndPredict(frame) ?: return
+            prediction = pred
+            appendHistory(pred)
+            return
+        }
         val pred = _client.inferFrame(jpeg) ?: return
         prediction = pred
         connected = true
         appendHistory(pred)
+    }
+
+    private fun decodeBitmap(jpeg: ByteArray): Bitmap? = runCatching {
+        android.graphics.BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size)
+    }.getOrNull()?.let { descale(it) }
+
+    private fun descale(bmp: Bitmap): Bitmap {
+        val scale = 240f / maxOf(bmp.width, bmp.height)
+        if (scale >= 1f) return bmp
+        val w = maxOf(1, (bmp.width * scale).toInt())
+        val h = maxOf(1, (bmp.height * scale).toInt())
+        val scaled = Bitmap.createScaledBitmap(bmp, w, h, true)
+        if (scaled !== bmp) bmp.recycle()
+        return scaled
+    }
+
+    /** Cheap grayscale stats (brightness/contrast) + normalized frame diff (motion). */
+    private fun extractFrameFeatures(bmp: Bitmap): OnDeviceFrame {
+        val w = bmp.width
+        val h = bmp.height
+        val pixels = IntArray(w * h)
+        bmp.getPixels(pixels, 0, w, 0, 0, w, h)
+        val gray = FloatArray(pixels.size)
+        var sum = 0L
+        for (i in pixels.indices) {
+            val p = pixels[i]
+            val g = ((p shr 16 and 0xFF) + (p shr 8 and 0xFF) + (p and 0xFF)) / 3f / 255f
+            gray[i] = g
+            sum += (g * 255).toLong()
+        }
+        val mean = sum.toFloat() / pixels.size / 255f
+        var variance = 0.0
+        var diff = 0.0f
+        val prev = _lastGray
+        for (i in gray.indices) {
+            val d = gray[i] - mean
+            variance += d * d
+            if (prev != null) diff += kotlin.math.abs(prev[i] - gray[i])
+        }
+        _lastGray = gray
+        val contrast = kotlin.math.sqrt(variance / pixels.size).toFloat()
+        val motion = if (prev != null) diff / pixels.size else 0f
+        val dogPresent = if (motion > 0.04f) 1f else 0f
+        return OnDeviceFrame(
+            brightness = mean,
+            contrast = (contrast * 3f).coerceIn(0f, 1f),
+            motion = motion,
+            width = w,
+            height = h,
+            dogPresent = dogPresent,
+        )
     }
 
     suspend fun checkHealth(): Boolean {
