@@ -15,7 +15,7 @@ import UIKit
 ///
 /// When the model isn't bundled (debug / first run), `available` is false and
 /// the app keeps using the runtime over WiFi.
-final class OnDeviceEngine {
+final class OnDeviceEngine: ObservableObject {
 
     struct Constants {
         static let featureDim = 73
