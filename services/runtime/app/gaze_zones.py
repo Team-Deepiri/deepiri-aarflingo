@@ -6,7 +6,9 @@ runtime restart.
 """
 from __future__ import annotations
 
+import os
 import sys
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -38,22 +40,25 @@ class Zone:
 
 
 def read_zones(path: Path | None = None) -> dict[str, dict[str, float]]:
-    """Read zones from disk; returns defaults when the file is missing."""
+    """Read zones from disk; returns defaults when the file is missing or malformed."""
     p = _zones_path(path)
     try:
         raw = yaml.safe_load(p.read_text(encoding="utf-8")) or {}
-    except (FileNotFoundError, OSError):
+    except (FileNotFoundError, OSError, yaml.YAMLError):
         return dict(DEFAULT_ZONES)
     zones: dict[str, dict[str, float]] = {}
     for name, vals in raw.items():
         if not isinstance(vals, dict):
             continue
-        z = Zone(
-            x=float(vals.get("x", 0.0)),
-            y=float(vals.get("y", 0.0)),
-            w=float(vals.get("w", 0.0)),
-            h=float(vals.get("h", 0.0)),
-        )
+        try:
+            z = Zone(
+                x=float(vals.get("x", 0.0)),
+                y=float(vals.get("y", 0.0)),
+                w=float(vals.get("w", 0.0)),
+                h=float(vals.get("h", 0.0)),
+            )
+        except (TypeError, ValueError):
+            continue
         zones[str(name)] = {"x": z.x, "y": z.y, "w": z.w, "h": z.h}
     return zones if zones else dict(DEFAULT_ZONES)
 
@@ -71,19 +76,32 @@ def write_zones(zones: dict[str, dict[str, float]], path: Path | None = None) ->
             h=min(1.0, max(0.0, float(vals.get("h", 0.0)))),
         )
         cleaned[str(name)] = {"x": round(z.x, 4), "y": round(z.y, 4), "w": round(z.w, 4), "h": round(z.h, 4)}
-    tmp = p.with_suffix(p.suffix + ".tmp")
-    tmp.write_text(yaml.safe_dump(cleaned, sort_keys=False), encoding="utf-8")
-    tmp.replace(p)
+    # Unique temp file so concurrent writers never clobber each other's scratch.
+    fd, tmp = tempfile.mkstemp(prefix=p.stem + ".", suffix=".tmp", dir=str(p.parent))
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            yaml.safe_dump(cleaned, fh, sort_keys=False)
+        os.chmod(tmp, 0o644)
+        os.replace(tmp, p)
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
     return p
 
 
 def reload_zones() -> bool:
     """Rebind `_ZONES` on a live perception pipeline module (if loaded).
 
-    Returns True when the live pipeline picked up the new zones.
+    The runtime registers the perception service as the `aarf_perception.*`
+    package (`aarf_perception.pipeline` + `aarf_perception.gaze`); a standalone
+    import uses `perception.app.*`. Returns True when the live pipeline picked
+    up the new zones.
     """
     mod = None
-    for name in ("aarf_perception.pipeline", "perception.pipeline"):
+    for name in ("aarf_perception.pipeline", "perception.app.pipeline"):
         m = sys.modules.get(name)
         if m is not None and hasattr(m, "_ZONES"):
             mod = m
@@ -91,11 +109,14 @@ def reload_zones() -> bool:
     if mod is None:
         return False
     try:
-        from aarf_perception.app.gaze import load_zones as _load
+        from aarf_perception.gaze import load_zones as _load
     except ImportError:
         try:
             from perception.app.gaze import load_zones as _load  # type: ignore[no-redef]
         except ImportError:
             return False
-    mod._ZONES = _load()  # type: ignore[attr-defined]
+    try:
+        mod._ZONES = _load(_zones_path(None))  # type: ignore[attr-defined]
+    except (OSError, yaml.YAMLError, TypeError, ValueError):
+        return False
     return True

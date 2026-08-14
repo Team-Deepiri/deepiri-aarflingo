@@ -105,6 +105,7 @@ FeedbackStore = _feedback.FeedbackStore
 _sync = _load_file(ROOT / "services" / "runtime" / "app" / "synchrony_state.py", "synchrony_state")
 update_sync = _sync.update_sync
 sync_features = _sync.sync_features
+reset_sync = _sync.reset_sync
 
 _VOICE_ENABLED = os.environ.get("VOICE_ENABLED", "0") == "1"
 _VOICE = None
@@ -496,6 +497,8 @@ def switch_camera(camera: int | str, mode: str | None = None) -> str:
     STATE.frame_count = 0
     STATE.infer_count = 0
     STATE.infer_total_ms = 0.0
+    STATE.sequence.clear()
+    reset_sync()
     import asyncio
 
     STATE.camera_task = asyncio.create_task(webcam_loop(camera))

@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from app.engine import STATE, _load_service_package, broadcast, list_cameras, live_status, process_jpeg, switch_camera, update_audio_modality, webcam_loop
+from app.engine import STATE, _load_service_package, broadcast, list_cameras, live_status, process_jpeg, reset_sync, switch_camera, update_audio_modality, webcam_loop
 from app.dog_profile import PERSONALITIES, TRAIT_KEYS, DogProfile, load_profile, save_profile
 from app.gaze_zones import _zones_path, read_zones, reload_zones, write_zones
 from app.platform import (
@@ -263,6 +263,8 @@ async def live_start(body: StartBody) -> dict:
     STATE.frame_count = 0
     STATE.infer_count = 0
     STATE.infer_total_ms = 0.0
+    STATE.sequence.clear()
+    reset_sync()
     STATE.camera_task = asyncio.create_task(webcam_loop(camera))
     return {"status": "started", "camera": camera, "mode": body.mode or "server", "wsl": is_wsl()}
 
@@ -306,7 +308,7 @@ def live_retrain() -> dict:
     train_mod = _load_service_package("forecast", "train")
     result = train_mod.train_epochs(epochs=15, feedback_path=fb if n else None)
     _forecast_infer = _load_service_package("forecast", "infer")
-    _forecast_infer._MODEL = None
+    _forecast_infer.reset_model_cache()
     return {"status": "ok", "feedback_samples": n, "train": result}
 
 
