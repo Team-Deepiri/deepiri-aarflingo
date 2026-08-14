@@ -9,7 +9,8 @@ export type RuntimeHealth = {
   bridgeProbing: boolean;
   wsl: boolean;
   bridgeUrl: string | null;
-  latencies: number[];
+  httpLatency: number | null;
+  wsLatency: number | null;
 };
 
 const RUNTIME = runtimeUrl();
@@ -30,7 +31,8 @@ export function useRuntimeHealth(intervalMs = 1000): RuntimeHealth {
   const [bridgeProbing, setBridgeProbing] = useState(true);
   const [wsl, setWsl] = useState(false);
   const [bridgeUrl, setBridgeUrl] = useState<string | null>(null);
-  const [latencies, setLatencies] = useState<number[]>([]);
+  const [httpLatency, setHttpLatency] = useState<number | null>(null);
+  const [wsLatency, setWsLatency] = useState<number | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
 
   const probeBridge = useCallback(async () => {
@@ -52,7 +54,7 @@ export function useRuntimeHealth(intervalMs = 1000): RuntimeHealth {
       const body = await res.json();
       const ms = Math.round(performance.now() - started);
       setOk(Boolean(body?.ok));
-      setLatencies((prev) => [...prev.slice(-59), ms]);
+      setHttpLatency(ms);
     } catch {
       setOk(false);
     }
@@ -65,12 +67,8 @@ export function useRuntimeHealth(intervalMs = 1000): RuntimeHealth {
       wsRef.current?.close();
       wsRef.current = ws;
       const t0 = performance.now();
-      ws.onmessage = () => {
-        ws.close();
-      };
       ws.onopen = () => {
-        // A WS echo round-trip isn't guaranteed; connection alone is the signal.
-        setLatencies((prev) => [...prev.slice(-59), Math.round(performance.now() - t0)]);
+        setWsLatency(Math.round(performance.now() - t0));
         ws.close();
       };
       ws.onerror = () => ws.close();
@@ -95,5 +93,5 @@ export function useRuntimeHealth(intervalMs = 1000): RuntimeHealth {
     };
   }, [check, probeWs, probeBridge, intervalMs]);
 
-  return { ok, checking, bridgeOk, bridgeProbing, wsl, bridgeUrl, latencies };
+  return { ok, checking, bridgeOk, bridgeProbing, wsl, bridgeUrl, httpLatency, wsLatency };
 }

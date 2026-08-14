@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
+import type { CaptureMode } from "../lib/platform";
 import { fetchZones, saveZones } from "../lib/zones";
 import type { ZoneRect, Zones } from "../lib/zones";
 
@@ -13,24 +14,92 @@ function toClient(e: { clientX: number; clientY: number }) {
   return { x: e.clientX, y: e.clientY };
 }
 
+type Box = { w: number; h: number };
+
+/**
+ * Map between stage-normalized and source-frame-normalized coordinates.
+ *
+ * The `.video-feed` uses `object-fit: cover`, so the visible video is the
+ * source frame scaled to fill the stage and cropped to the stage aspect. The
+ * perception pipeline sees the *full* source frame, so saved zones must be
+ * expressed in source-frame space. This transform inverts the cover crop.
+ */
+function coverTransform(stage: Box, src: Box) {
+  const scale = Math.max(stage.w / src.w, stage.h / src.h);
+  const scaledW = src.w * scale;
+  const scaledH = src.h * scale;
+  const offX = (scaledW - stage.w) / 2;
+  const offY = (scaledH - stage.h) / 2;
+  const toSource = (nx: number, ny: number) => ({
+    sx: (nx * stage.w + offX) / scaledW,
+    sy: (ny * stage.h + offY) / scaledH,
+  });
+  const toStage = (sx: number, sy: number) => ({
+    nx: (sx * scaledW - offX) / stage.w,
+    ny: (sy * scaledH - offY) / stage.h,
+  });
+  return { toSource, toStage };
+}
+
 /**
  * Gaze zone editor — draggable / resizable rects over the live preview.
  *
- * Coordinates are normalized 0–1 relative to the video stage box, matching the
- * schema read by the perception pipeline. Save writes to zones.default.yaml
- * via PUT /gaze/zones and the runtime hot-reloads the zones in memory.
+ * Zones are stored and saved in source-frame-normalized 0–1 space (matching
+ * the perception pipeline); `object-fit: cover` cropping is undone on render
+ * so the rects sit exactly where they will be detected.
  */
-export function GazeZoneEditor({ stageRef }: { stageRef: React.RefObject<HTMLDivElement | null> }) {
+export function GazeZoneEditor({
+  stageRef,
+  mode,
+  videoRef,
+  bridgeImgRef,
+}: {
+  stageRef: React.RefObject<HTMLDivElement | null>;
+  mode: CaptureMode;
+  videoRef: React.RefObject<HTMLVideoElement | null>;
+  bridgeImgRef: React.RefObject<HTMLImageElement | null>;
+}) {
   const [zones, setZones] = useState<Zones | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [stageSize, setStageSize] = useState<Box | null>(null);
+  const [sourceSize, setSourceSize] = useState<Box | null>(null);
 
   const zonesRef = useRef(zones);
   zonesRef.current = zones;
   const dragRef = useRef<{ name: string; mode: "move" | "resize"; startX: number; startY: number; orig: ZoneRect } | null>(null);
+
+  // Keep the stage + source frame sizes in sync so the cover-crop transform
+  // tracks the live feed (browser video / bridge image).
+  useEffect(() => {
+    const read = () => {
+      const box = stageRef.current?.getBoundingClientRect();
+      if (box && box.width > 0 && box.height > 0) {
+        setStageSize({ w: box.width, h: box.height });
+      }
+      if (mode === "browser") {
+        const v = videoRef.current;
+        if (v && v.videoWidth > 0) setSourceSize({ w: v.videoWidth, h: v.videoHeight });
+      } else if (mode === "bridge") {
+        const img = bridgeImgRef.current;
+        if (img && img.naturalWidth > 0) setSourceSize({ w: img.naturalWidth, h: img.naturalHeight });
+      } else {
+        // server mode: no browser feed to measure; assume stage == source.
+        setSourceSize(null);
+      }
+    };
+    read();
+    const id = window.setInterval(read, 500);
+    return () => window.clearInterval(id);
+  }, [stageRef, mode, videoRef, bridgeImgRef]);
+
+  const transform = (): ReturnType<typeof coverTransform> | null => {
+    if (!stageSize || !sourceSize) return null;
+    return coverTransform(stageSize, sourceSize);
+  };
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -50,16 +119,36 @@ export function GazeZoneEditor({ stageRef }: { stageRef: React.RefObject<HTMLDiv
     void refresh();
   }, [refresh]);
 
+  // Pointer → source-frame normalized coords (undoes the cover crop).
   const normalized = useCallback(
     (clientX: number, clientY: number): { nx: number; ny: number } => {
       const box = stageRef.current?.getBoundingClientRect();
       if (!box || box.width === 0 || box.height === 0) return { nx: 0, ny: 0 };
+      const nx = clamp((clientX - box.left) / box.width, 0, 1);
+      const ny = clamp((clientY - box.top) / box.height, 0, 1);
+      const t = transform();
+      if (!t) return { nx, ny };
+      const s = t.toSource(nx, ny);
+      return { nx: clamp(s.sx, 0, 1), ny: clamp(s.sy, 0, 1) };
+    },
+    [stageRef, stageSize, sourceSize]
+  );
+
+  // Source-frame zone → stage-frame rect for rendering (applies the crop).
+  const toStageRect = useCallback(
+    (z: ZoneRect): ZoneRect => {
+      const t = transform();
+      if (!t) return z;
+      const tl = t.toStage(z.x, z.y);
+      const br = t.toStage(z.x + z.w, z.y + z.h);
       return {
-        nx: clamp((clientX - box.left) / box.width, 0, 1),
-        ny: clamp((clientY - box.top) / box.height, 0, 1),
+        x: clamp(tl.nx, 0, 1),
+        y: clamp(tl.ny, 0, 1),
+        w: clamp(br.nx - tl.nx, 0.02, 1 - tl.nx),
+        h: clamp(br.ny - tl.ny, 0.02, 1 - tl.ny),
       };
     },
-    [stageRef]
+    [stageSize, sourceSize]
   );
 
   const onPointerDown = useCallback(
@@ -148,39 +237,42 @@ export function GazeZoneEditor({ stageRef }: { stageRef: React.RefObject<HTMLDiv
     <div className="zone-editor">
       {zones ? (
         <div className="zone-canvas" onPointerMove={onPointerMove} onPointerUp={onPointerUp}>
-          {Object.entries(zones).map(([name, z]) => (
-            <div
-              key={name}
-              className={`zone-rect${selected === name ? " selected" : ""}`}
-              style={{
-                left: `${z.x * 100}%`,
-                top: `${z.y * 100}%`,
-                width: `${z.w * 100}%`,
-                height: `${z.h * 100}%`,
-              }}
-              onPointerDown={(e) => onPointerDown(e, name, "move")}
-              title={`${name} — drag to move`}
-            >
-              <span className="zone-label">{name}</span>
-              <span
-                className="zone-resize"
-                onPointerDown={(e) => onPointerDown(e, name, "resize")}
-                title="Drag to resize"
-              />
-              <button
-                type="button"
-                className="zone-remove"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  removeZone(name);
+          {Object.entries(zones).map(([name, z]) => {
+            const stage = toStageRect(z);
+            return (
+              <div
+                key={name}
+                className={`zone-rect${selected === name ? " selected" : ""}`}
+                style={{
+                  left: `${stage.x * 100}%`,
+                  top: `${stage.y * 100}%`,
+                  width: `${stage.w * 100}%`,
+                  height: `${stage.h * 100}%`,
                 }}
-                title={`Remove ${name}`}
-                aria-label={`Remove ${name}`}
+                onPointerDown={(e) => onPointerDown(e, name, "move")}
+                title={`${name} — drag to move`}
               >
-                ×
-              </button>
-            </div>
-          ))}
+                <span className="zone-label">{name}</span>
+                <span
+                  className="zone-resize"
+                  onPointerDown={(e) => onPointerDown(e, name, "resize")}
+                  title="Drag to resize"
+                />
+                <button
+                  type="button"
+                  className="zone-remove"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removeZone(name);
+                  }}
+                  title={`Remove ${name}`}
+                  aria-label={`Remove ${name}`}
+                >
+                  ×
+                </button>
+              </div>
+            );
+          })}
         </div>
       ) : null}
 

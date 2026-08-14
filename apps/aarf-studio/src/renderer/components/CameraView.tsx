@@ -209,7 +209,7 @@ export function LiveView() {
             {cam.mode !== "server" && cam.status === "live" ? (
               <canvas ref={cam.overlayRef} className="video-overlay" />
             ) : null}
-            {zonesOpen ? <GazeZoneEditor stageRef={stageRef} /> : null}
+            {zonesOpen ? <GazeZoneEditor stageRef={stageRef} mode={cam.mode} videoRef={cam.videoRef} bridgeImgRef={cam.bridgeImgRef} /> : null}
             <canvas ref={cam.canvasRef} hidden />
             {cam.status === "starting" ? (
               <div className="video-overlay-msg">
