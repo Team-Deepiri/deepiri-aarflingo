@@ -107,8 +107,8 @@ capturing your dog's frames for the fine-tune.)
 ### 4. Studio active learning UI
 
 - [x] Surface low-confidence / `gate=review` frames in History tab with "label this" CTA (highlight <80% unlabelled rows; intent+emotion picker posts to `/feedback`)
-- [ ] In-app gaze zone editor (drag rects on live preview → write `zones.default.yaml`)
-- [ ] Auto-reconnect WebSocket + bridge health indicator in header (WS auto-reconnect ✅ shipped; header health indicator pending)
+- [x] In-app gaze zone editor (drag rects on live preview → write `zones.default.yaml`, hot-reloaded via `/gaze/zones`)
+- [x] Auto-reconnect WebSocket + bridge health indicator in header (HealthHeader: runtime + bridge + WS latency)
 - [x] Voice outcomes panel: show recent phrase → bark response pairs and learned weights (VoiceView tab ✅)
 - [x] Camera input switch UI: device dropdown fed by `/cameras`, live-switch via `/live/camera` (dropdown in camera toolbar when >1 device)
 
@@ -117,8 +117,8 @@ shows measurable weight drift from baseline.
 
 ### 5. iOS / Android polish
 
-- [ ] iOS: CoreML bundle export via `artifact-bridge` → on-device TriadNet inference (no server needed)
-- [ ] Android: same via ONNX Runtime Android
+- [x] iOS: CoreML bundle export via `artifact-bridge` → on-device TriadNet inference (no server needed)
+- [x] Android: same via ONNX Runtime Android
 - [ ] Both apps: display voice phrase spoken + bark response in Live tab
 - [ ] Settings: configure runtime URL + voice enable toggle
 

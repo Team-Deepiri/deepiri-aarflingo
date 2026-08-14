@@ -70,6 +70,9 @@ dependencies {
     // OkHttp — multipart frame upload + WebSocket
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
+    // ONNX Runtime — on-device TriadNet inference (no WiFi needed)
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.19.0")
+
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
 

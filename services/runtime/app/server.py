@@ -11,8 +11,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from app.engine import STATE, _load_service_package, broadcast, list_cameras, live_status, process_jpeg, switch_camera, update_audio_modality, webcam_loop
+from app.engine import STATE, _load_service_package, broadcast, list_cameras, live_status, process_jpeg, reset_sync, switch_camera, update_audio_modality, webcam_loop
 from app.dog_profile import PERSONALITIES, TRAIT_KEYS, DogProfile, load_profile, save_profile
+from app.gaze_zones import _zones_path, read_zones, reload_zones, write_zones
 from app.platform import (
     bridge_stream_url,
     client_bridge_stream_url,
@@ -68,6 +69,10 @@ class StartBody(BaseModel):
 class CameraBody(BaseModel):
     camera: int | str = 0
     mode: str | None = None  # browser | server | bridge
+
+
+class ZonesBody(BaseModel):
+    zones: dict[str, dict[str, float]]
 
 
 @asynccontextmanager
@@ -174,6 +179,32 @@ def dog_profile_post(body: DogProfileBody) -> dict:
     return {"ok": True, "profile": dog_profile_get()}
 
 
+@app.get("/gaze/zones")
+def gaze_zones_get() -> dict:
+    """Current gaze zones (normalized 0–1 rects) + where they persist."""
+    zones = read_zones()
+    return {
+        "ok": True,
+        "zones": zones,
+        "path": str(_zones_path(None)),
+        "reloaded": False,
+    }
+
+
+@app.put("/gaze/zones")
+def gaze_zones_put(body: ZonesBody) -> dict:
+    """Persist gaze zones. Applied live when the perception pipeline is loaded."""
+    zones = {name: dict(vals) for name, vals in body.zones.items()}
+    path = write_zones(zones)
+    reloaded = reload_zones()
+    return {
+        "ok": True,
+        "zones": read_zones(path),
+        "path": str(path),
+        "reloaded": reloaded,
+    }
+
+
 @app.get("/predictions/recent")
 def recent() -> list:
     return STATE.store.recent_predictions(30) if STATE.store else []
@@ -232,6 +263,8 @@ async def live_start(body: StartBody) -> dict:
     STATE.frame_count = 0
     STATE.infer_count = 0
     STATE.infer_total_ms = 0.0
+    STATE.sequence.clear()
+    reset_sync()
     STATE.camera_task = asyncio.create_task(webcam_loop(camera))
     return {"status": "started", "camera": camera, "mode": body.mode or "server", "wsl": is_wsl()}
 
@@ -275,7 +308,7 @@ def live_retrain() -> dict:
     train_mod = _load_service_package("forecast", "train")
     result = train_mod.train_epochs(epochs=15, feedback_path=fb if n else None)
     _forecast_infer = _load_service_package("forecast", "infer")
-    _forecast_infer._MODEL = None
+    _forecast_infer.reset_model_cache()
     return {"status": "ok", "feedback_samples": n, "train": result}
 
 

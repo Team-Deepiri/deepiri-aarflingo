@@ -21,6 +21,7 @@ import {
   TRAIT_LABELS,
 } from "../lib/labels";
 import { ConfidenceRing, SignalBars, Sparkline, TokenHeatmap } from "./viz";
+import { GazeZoneEditor } from "./GazeZoneEditor";
 
 function speak(intent: string) {
   if (!("speechSynthesis" in window)) return;
@@ -38,6 +39,8 @@ export function LiveView() {
   const [retrainMsg, setRetrainMsg] = useState("");
   const [confidenceHistory, setConfidenceHistory] = useState<number[]>([]);
   const [snack, setSnack] = useState<string | null>(null);
+  const [zonesOpen, setZonesOpen] = useState(false);
+  const stageRef = useRef<HTMLDivElement>(null);
 
   const config = useConfigDetect();
   const { prediction, connected, error: runtimeError, health, liveStatus, startWebcam, stopWebcam, sendFeedback, refreshLiveStatus } = useRuntimeLive();
@@ -170,7 +173,7 @@ export function LiveView() {
             </div>
           </div>
 
-          <div className="video-stage">
+          <div className="video-stage" ref={stageRef}>
             <video
               ref={cam.videoRef}
               autoPlay
@@ -206,6 +209,7 @@ export function LiveView() {
             {cam.mode !== "server" && cam.status === "live" ? (
               <canvas ref={cam.overlayRef} className="video-overlay" />
             ) : null}
+            {zonesOpen ? <GazeZoneEditor stageRef={stageRef} mode={cam.mode} videoRef={cam.videoRef} bridgeImgRef={cam.bridgeImgRef} /> : null}
             <canvas ref={cam.canvasRef} hidden />
             {cam.status === "starting" ? (
               <div className="video-overlay-msg">
@@ -240,6 +244,15 @@ export function LiveView() {
             </button>
             <button type="button" className="btn ghost" onClick={() => void config.redetect()}>
               Re-detect
+            </button>
+            <button
+              type="button"
+              className={`btn ghost ${zonesOpen ? "active" : ""}`}
+              aria-pressed={zonesOpen}
+              onClick={() => setZonesOpen((v) => !v)}
+              title="Calibrate gaze zones (door, toy, bowl) over the live frame"
+            >
+              {zonesOpen ? "Close zones" : "Edit zones"}
             </button>
             {cam.cameras.length > 1 ? (
               <label className="cam-switch">

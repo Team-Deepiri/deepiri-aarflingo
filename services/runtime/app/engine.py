@@ -102,6 +102,10 @@ infer_sequence = _forecast_infer.infer_sequence
 heuristic_predict = _forecast_triad.heuristic_predict
 TriadPrediction = _forecast_triad.TriadPrediction
 FeedbackStore = _feedback.FeedbackStore
+_sync = _load_file(ROOT / "services" / "runtime" / "app" / "synchrony_state.py", "synchrony_state")
+update_sync = _sync.update_sync
+sync_features = _sync.sync_features
+reset_sync = _sync.reset_sync
 
 _VOICE_ENABLED = os.environ.get("VOICE_ENABLED", "0") == "1"
 _VOICE = None
@@ -147,11 +151,23 @@ class LiveState:
 STATE = LiveState()
 
 
-def update_audio_modality(audio_arousal: float = 0.0, audio_valence: float = 0.0, audio_bark_prob: float = 0.0) -> dict[str, float]:
+def update_audio_modality(
+    audio_arousal: float = 0.0,
+    audio_valence: float = 0.0,
+    audio_bark_prob: float = 0.0,
+    audio_f0: float = 0.0,
+    audio_hnr: float = 0.0,
+    audio_formant_f1: float = 0.0,
+    audio_burstiness: float = 0.0,
+) -> dict[str, float]:
     mod = {
         "audio_arousal": float(audio_arousal),
         "audio_valence": float(audio_valence),
         "audio_bark_prob": float(audio_bark_prob),
+        "audio_f0": float(audio_f0),
+        "audio_hnr": float(audio_hnr),
+        "audio_formant_f1": float(audio_formant_f1),
+        "audio_burstiness": float(audio_burstiness),
     }
     STATE.latest_audio_modality = mod
     return mod
@@ -210,6 +226,10 @@ def _ensure_conversation() -> None:
                 audio_arousal=float(mod.get("audio_arousal", 0.0)),
                 audio_valence=float(mod.get("audio_valence", 0.0)),
                 audio_bark_prob=float(mod.get("audio_bark_prob", 0.0)),
+                audio_f0=float(mod.get("audio_f0", 0.0)),
+                audio_hnr=float(mod.get("audio_hnr", 0.0)),
+                audio_formant_f1=float(mod.get("audio_formant_f1", 0.0)),
+                audio_burstiness=float(mod.get("audio_burstiness", 0.0)),
             )
 
         mic = _mic_mod.MicListener(
@@ -344,6 +364,8 @@ def process_frame(frame_bgr: np.ndarray, audio_modality: dict[str, float] | None
         features.update(audio_modality)
     elif STATE.latest_audio_modality:
         features.update(STATE.latest_audio_modality)
+    update_sync(features)
+    features.update(sync_features())
     vec = vectorize(features)
     STATE.sequence.append(vec)
     seq = list(STATE.sequence)
@@ -475,6 +497,8 @@ def switch_camera(camera: int | str, mode: str | None = None) -> str:
     STATE.frame_count = 0
     STATE.infer_count = 0
     STATE.infer_total_ms = 0.0
+    STATE.sequence.clear()
+    reset_sync()
     import asyncio
 
     STATE.camera_task = asyncio.create_task(webcam_loop(camera))

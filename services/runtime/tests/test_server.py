@@ -2,14 +2,19 @@
 from __future__ import annotations
 
 import io
+from pathlib import Path
 
 import numpy as np
 from fastapi.testclient import TestClient
 from PIL import Image
 
+import app.gaze_zones as _zones
 from app.server import app
 
 client = TestClient(app)
+
+# Point zone persistence at a temp file so tests never touch the repo config.
+_TMP_ZONES = Path("/tmp/aarflingo_test_zones.yaml")
 
 
 def _jpeg_bytes() -> bytes:
@@ -100,3 +105,44 @@ def test_live_camera_accepts_string_index() -> None:
     assert res.json()["status"] == "switched"
     client.post("/live/stop")
 
+
+
+def test_gaze_zones_get_returns_defaults() -> None:
+    _zones.ZONES_PATH = _TMP_ZONES
+    res = client.get("/gaze/zones")
+    assert res.status_code == 200
+    body = res.json()
+    assert body["ok"] is True
+    assert set(body["zones"]) >= {"door", "toy", "bowl"}
+    for _, z in body["zones"].items():
+        assert {"x", "y", "w", "h"} <= set(z)
+
+
+def test_gaze_zones_put_persists_and_clamps() -> None:
+    _zones.ZONES_PATH = _TMP_ZONES
+    zones = {
+        "door": {"x": 0.6, "y": -0.2, "w": 1.5, "h": 0.3},
+        "toy": {"x": 0.1, "y": 0.1, "w": 0.2, "h": 0.2},
+    }
+    res = client.put("/gaze/zones", json={"zones": zones})
+    assert res.status_code == 200
+    body = res.json()
+    assert body["ok"] is True
+    persisted = body["zones"]
+    assert persisted["door"]["y"] == 0.0  # clamped
+    assert persisted["door"]["w"] == 1.0  # clamped
+    assert persisted["toy"]["x"] == 0.1
+
+
+def test_gaze_zones_put_roundtrip() -> None:
+    _zones.ZONES_PATH = _TMP_ZONES
+    fresh = client.get("/gaze/zones").json()["zones"]
+    res = client.put("/gaze/zones", json={"zones": fresh}).json()
+    assert res["zones"] == fresh
+
+
+def test_gaze_zones_restore_defaults() -> None:
+    _zones.ZONES_PATH = _TMP_ZONES
+    _zones.write_zones(dict(_zones.DEFAULT_ZONES))
+    res = client.get("/gaze/zones").json()
+    assert res["zones"] == _zones.DEFAULT_ZONES
