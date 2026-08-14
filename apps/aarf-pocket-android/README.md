@@ -1,6 +1,6 @@
 # Aarflingo Pocket (Android)
 
-Kotlin + Jetpack Compose companion app. **v0.1 is UI-only** — mock predictions, no on-device ML yet.
+Kotlin + Jetpack Compose companion app. Runs TriadNet **on-device** via ONNX Runtime from bundled `models/triad.onnx` (no WiFi needed); falls back to the runtime client when the model isn't bundled. Bundle it with `scripts/mobile/bundle-mobile-models.sh`.
 
 ## Build (WSL / Linux)
 

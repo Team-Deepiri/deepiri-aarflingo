@@ -194,9 +194,6 @@ def finetune_dog_yolo(
     # Export the fine-tuned detector to ONNX for the runtime + mobile bundles.
     trained = YOLO(str(out))
     trained.export(format="onnx", imgsz=imgsz, simplify=True, opset=17)
-    exported = out.with_suffix(".onnx")
-    if exported.exists():
-        shutil.move(str(exported), str(exported))
     return {
         "weights": str(out),
         "onnx": str(out.with_suffix(".onnx")) if out.with_suffix(".onnx").exists() else None,

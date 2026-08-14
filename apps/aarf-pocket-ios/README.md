@@ -1,6 +1,6 @@
 # Aarflingo Pocket (iOS)
 
-SwiftUI companion app for on-the-go dog intent monitoring. **v0.1 is UI-only** — no CoreML inference yet.
+SwiftUI companion app for on-the-go dog intent monitoring. Runs TriadNet **on-device** via CoreML from the bundled `Triad.mlpackage` (no WiFi needed); falls back to the runtime client when the model isn't bundled. Bundle it with `scripts/mobile/bundle-mobile-models.sh` on macOS.
 
 ## Requirements
 
