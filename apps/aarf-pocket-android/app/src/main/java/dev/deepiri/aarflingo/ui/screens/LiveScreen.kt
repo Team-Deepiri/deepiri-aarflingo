@@ -80,7 +80,9 @@ fun LiveScreen(vm: AppViewModel, modifier: Modifier = Modifier) {
 
     // ── Health check on start ─────────────────────────────────────────────
     LaunchedEffect(vm.runtimeUrl) {
-        vm.initOnDevice(context)
+        // Model asset loading + ONNX session creation is heavy — never on the
+        // main thread (ANR / UI jank on slow devices).
+        launch(Dispatchers.IO) { vm.initOnDevice(context) }
         launch(Dispatchers.IO) { vm.checkHealth() }
     }
 

@@ -5,7 +5,6 @@ struct LiveView: View {
     @EnvironmentObject private var appState: AppState
     @StateObject private var camera = CameraManager()
     @StateObject private var engine = OnDeviceEngine()
-    @State private var prevGray: [Float]?
     @StateObject private var client: RuntimeClient = {
         let stored = UserDefaults.standard.string(forKey: "runtimeURL") ?? "http://127.0.0.1:8765"
         return RuntimeClient(baseURL: URL(string: stored)!)
@@ -117,7 +116,7 @@ struct LiveView: View {
                             if camera.isRunning {
                                 camera.stop()
                                 client.disconnect()
-                                prevGray = nil
+                                engine.resetDiff()
                             } else {
                                 startSession()
                             }
@@ -218,9 +217,7 @@ struct LiveView: View {
         // Wire camera → local engine (when bundled) or POST /infer/frame
         camera.onFrame = { [weak freshClient] jpeg in
             if appState.localMode, let ui = UIImage(data: jpeg) {
-                var prev: [Float]? = prevGray
-                let frame = OnDeviceFrame.from(image: ui, prevGray: &prev)
-                prevGray = prev
+                let frame = engine.diffFrame(ui)
                 if let pred = engine.pushAndPredict(frame: frame) {
                     await MainActor.run {
                         appState.prediction = pred

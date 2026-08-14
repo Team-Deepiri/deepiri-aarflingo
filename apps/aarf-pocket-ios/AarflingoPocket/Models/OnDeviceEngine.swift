@@ -32,6 +32,7 @@ final class OnDeviceEngine: ObservableObject {
     private var model: MLModel?
     private var window: [[Float]] = []
     private var lastGray: [Float]?
+    private let diffLock = NSLock()
 
     /// True when the bundled CoreML model is present and ready to run.
     var available: Bool { model != nil }
@@ -39,6 +40,23 @@ final class OnDeviceEngine: ObservableObject {
     init() {
         loadLabels()
         loadModel()
+    }
+
+    // MARK: – Frame diff
+
+    /// Compute frame features under a lock. The camera callback runs off the
+    /// main actor, so the previous-frame buffer can't live in SwiftUI `@State`
+    /// — it would be mutated across isolation domains.
+    func diffFrame(_ image: UIImage) -> OnDeviceFrame {
+        diffLock.lock()
+        defer { diffLock.unlock() }
+        return OnDeviceFrame.from(image: image, prevGray: &lastGray)
+    }
+
+    func resetDiff() {
+        diffLock.lock()
+        defer { diffLock.unlock() }
+        lastGray = nil
     }
 
     // MARK: – Model + labels loading

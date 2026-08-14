@@ -265,5 +265,6 @@ class AppViewModel : ViewModel() {
     override fun onCleared() {
         super.onCleared()
         _client.disconnect()
+        _onDevice?.close()
     }
 }

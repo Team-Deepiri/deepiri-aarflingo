@@ -85,6 +85,16 @@ class OnDeviceEngine(private val context: Context) {
         }
     }
 
+    /** Release the ONNX session + environment. */
+    fun close() {
+        try {
+            session?.close()
+        } catch (_: Exception) {
+        }
+        session = null
+        environment = null
+    }
+
     /** Push one camera-derived feature row; runs the model when the window is full. */
     suspend fun pushAndPredict(frame: OnDeviceFrame): TriadPrediction? = withContext(Dispatchers.Default) {
         val sess = session ?: run {
