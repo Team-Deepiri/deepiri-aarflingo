@@ -197,6 +197,9 @@ ensure_poetry() {
 install_python_services() {
   info "Poetry install (root lock, YOLO extra)..."
   poetry install --no-interaction --no-ansi -E yolo
+
+  info "Installing sounddevice (mic capture)..."
+  poetry run pip install --quiet sounddevice || warn "sounddevice install failed — mic listener will be disabled"
 }
 
 train_and_export() {

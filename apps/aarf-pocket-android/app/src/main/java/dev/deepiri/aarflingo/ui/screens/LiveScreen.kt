@@ -144,7 +144,7 @@ fun LiveScreen(vm: AppViewModel, modifier: Modifier = Modifier) {
                             val cameraProvider = cameraProviderFuture.get()
 
                             val preview = Preview.Builder().build().also {
-                                it.setSurfaceProvider(previewView.surfaceProvider)
+                                it.surfaceProvider = previewView.surfaceProvider
                             }
 
                             val analysis = ImageAnalysis.Builder()
