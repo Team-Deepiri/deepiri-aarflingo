@@ -304,8 +304,8 @@ def _conversation_speak(pred: TriadPrediction) -> dict | None:
                 )
             except Exception:
                 pass
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("voice speak worker skipped: %s", exc)
 
     thread = threading.Thread(target=_speak_worker, daemon=True, name="aarf-voice-speak")
     thread.start()
