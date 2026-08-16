@@ -170,8 +170,9 @@ class FeedbackStore:
     def recent_predictions(self, limit: int = 50) -> list[dict]:
         with self._conn() as conn:
             rows = conn.execute(
-                """SELECT id, session_id, ts_ms, intent, emotion, behavior, confidence
-                FROM predictions ORDER BY ts_ms DESC LIMIT ?""",
+                """SELECT p.id, p.session_id, p.ts_ms, p.intent, p.emotion, p.behavior, p.confidence,
+                          (SELECT COUNT(*) FROM feedback f WHERE f.prediction_id = p.id) AS has_feedback
+                FROM predictions p ORDER BY p.ts_ms DESC LIMIT ?""",
                 (limit,),
             ).fetchall()
         return [
@@ -183,6 +184,8 @@ class FeedbackStore:
                 "emotion": r[4],
                 "behavior": r[5],
                 "confidence": r[6],
+                "has_feedback": bool(r[7]),
+                "needs_label": bool(r[7]) is False and r[6] < 0.8,
             }
             for r in rows
         ]

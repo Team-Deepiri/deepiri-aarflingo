@@ -7,6 +7,7 @@ from pathlib import Path
 import typer
 
 from .vision_train import train_vision
+from .breed_train import train_breed
 from .vision_data import (
     collect_features,
     find_images,
@@ -22,6 +23,25 @@ app = typer.Typer(help="AARFLingo perception")
 def prepare_vision() -> None:
     result = train_vision()
     typer.echo(json.dumps(result))
+
+
+@app.command("train-breed")
+def train_breed_cmd(
+    data_dir: str = typer.Option("data/raw/dog_images/Images", help="Stanford Dogs Images root"),
+    epochs: int = typer.Option(12, help="Training epochs"),
+    freeze_backbone: int = typer.Option(2, help="Epochs of head-only training before unfreezing"),
+    lr: float = typer.Option(2e-3, help="Peak learning rate"),
+    out: str = typer.Option("", help="Output weights path (default: artifacts/models/vision/breed.pt)"),
+) -> None:
+    """Fine-tune MobileNetV3-Large on Stanford Dogs for 120-way breed ID."""
+    result = train_breed(
+        data_dir=Path(data_dir),
+        out_weights=Path(out) if out else None,
+        epochs=epochs,
+        freeze_backbone=freeze_backbone,
+        lr=lr,
+    )
+    typer.echo(json.dumps(result, indent=2))
 
 
 @app.command("track-demo")
@@ -80,6 +100,58 @@ def collect_real(
             indent=2,
         )
     )
+
+
+@app.command("capture-frames")
+def capture_frames_cmd(
+    out: str = typer.Option("data/dog/captures", help="Output capture directory"),
+    camera: int = typer.Option(0, help="Camera index"),
+    frames: int = typer.Option(200, help="Number of frames to capture"),
+    interval: float = typer.Option(0.2, help="Seconds between frames (motion-skipped)"),
+) -> None:
+    """Grab webcam frames of your dog for fine-tuning (YOLO / breed)."""
+    from .dog_dataset import capture_frames
+
+    result = capture_frames(Path(out), camera=camera, frames=frames, interval=interval)
+    typer.echo(json.dumps(result, indent=2))
+
+
+@app.command("prep-dog-yolo")
+def prep_dog_yolo_cmd(
+    captures: str = typer.Option("data/dog/captures", help="Captured frames dir"),
+    labels: str = typer.Option("data/dog/captures/labels.jsonl", help="Rect labels JSONL"),
+    out: str = typer.Option("artifacts/dog_yolo_dataset", help="Output YOLO dataset dir"),
+    classes: str = typer.Option("dog", help="Comma-separated class names"),
+) -> None:
+    """Build a YOLO dataset layout (images/ + labels/ + data.yaml) from captures."""
+    from .dog_dataset import prep_dog_yolo
+
+    result = prep_dog_yolo(
+        captures_dir=Path(captures),
+        labels_path=Path(labels),
+        out_dir=Path(out),
+        classes=[c.strip() for c in classes.split(",") if c.strip()],
+    )
+    typer.echo(json.dumps(result, indent=2))
+
+
+@app.command("finetune-dog-yolo")
+def finetune_dog_yolo_cmd(
+    dataset: str = typer.Option("artifacts/dog_yolo_dataset", help="YOLO dataset dir (prep-dog-yolo output)"),
+    epochs: int = typer.Option(30, help="Training epochs"),
+    imgsz: int = typer.Option(640, help="Training image size"),
+    out: str = typer.Option("artifacts/models/vision/dog_yolo.pt", help="Output weights path"),
+) -> None:
+    """Fine-tune YOLOv8n on your dog and export dog_yolo.onnx for the runtime."""
+    from .dog_dataset import finetune_dog_yolo
+
+    result = finetune_dog_yolo(
+        dataset_dir=Path(dataset),
+        epochs=epochs,
+        imgsz=imgsz,
+        out_onnx=Path(out),
+    )
+    typer.echo(json.dumps(result, indent=2))
 
 
 @app.command("verify-real")

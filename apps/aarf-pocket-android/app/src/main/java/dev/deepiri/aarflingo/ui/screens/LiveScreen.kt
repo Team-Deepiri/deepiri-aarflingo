@@ -80,6 +80,9 @@ fun LiveScreen(vm: AppViewModel, modifier: Modifier = Modifier) {
 
     // ── Health check on start ─────────────────────────────────────────────
     LaunchedEffect(vm.runtimeUrl) {
+        // Model asset loading + ONNX session creation is heavy — never on the
+        // main thread (ANR / UI jank on slow devices).
+        launch(Dispatchers.IO) { vm.initOnDevice(context) }
         launch(Dispatchers.IO) { vm.checkHealth() }
     }
 
@@ -105,13 +108,21 @@ fun LiveScreen(vm: AppViewModel, modifier: Modifier = Modifier) {
         // Status chips
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             StatusChip(
-                if (vm.connected) "Runtime live" else "Runtime offline",
-                if (vm.connected) ChipTone.Ok else ChipTone.Warn,
+                if (vm.onDevice) "On-device engine" else if (vm.connected) "Runtime live" else "Runtime offline",
+                if (vm.onDevice) ChipTone.Ok else if (vm.connected) ChipTone.Ok else ChipTone.Warn,
             )
             StatusChip(
                 if (vm.liveOn) "Camera live" else "Camera off",
                 if (vm.liveOn) ChipTone.Info else ChipTone.Neutral,
             )
+        }
+        if (!vm.onDeviceAvailable && !vm.onDevice) {
+            Row {
+                StatusChip(
+                    "On-device model not bundled — add via scripts/mobile/bundle-mobile-models.sh",
+                    ChipTone.Neutral,
+                )
+            }
         }
 
         // Camera preview box
@@ -133,7 +144,7 @@ fun LiveScreen(vm: AppViewModel, modifier: Modifier = Modifier) {
                             val cameraProvider = cameraProviderFuture.get()
 
                             val preview = Preview.Builder().build().also {
-                                it.surfaceProvider = previewView.surfaceProvider
+                                it.setSurfaceProvider(previewView.surfaceProvider)
                             }
 
                             val analysis = ImageAnalysis.Builder()
@@ -283,6 +294,20 @@ fun LiveScreen(vm: AppViewModel, modifier: Modifier = Modifier) {
                     modifier = Modifier.weight(1f),
                 ) {
                     Text("Flip", color = AarflingoColors.Text)
+                }
+            }
+            if (vm.liveOn && vm.onDeviceAvailable) {
+                Button(
+                    onClick = { vm.toggleOnDevice() },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (vm.onDevice) AarflingoColors.Accent else AarflingoColors.Card,
+                    ),
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text(
+                        if (vm.onDevice) "Local ✓" else "Local",
+                        color = if (vm.onDevice) AarflingoColors.Bg else AarflingoColors.Text,
+                    )
                 }
             }
         }

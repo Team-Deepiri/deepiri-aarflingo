@@ -1,6 +1,6 @@
 # Mobile apps (WSL / macOS)
 
-Aarflingo Pocket ships as native shells for **Android** (Kotlin + Jetpack Compose) and **iOS** (SwiftUI). ML inference is not wired yet — both apps use mock predictions and polished UI.
+Aarflingo Pocket ships as native shells for **Android** (Kotlin + Jetpack Compose) and **iOS** (SwiftUI), with on-device TriadNet inference: Android runs the bundled ONNX model via ONNX Runtime, iOS via CoreML. Without a bundled model both apps fall back to the WiFi runtime.
 
 ## Android on WSL2
 

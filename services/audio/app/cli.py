@@ -23,7 +23,7 @@ def train(
     epochs: int = typer.Option(25, help="Training epochs"),
     out: Optional[str] = typer.Option(None, help="Checkpoint path"),
     data: Optional[str] = typer.Option(None, help="Path to Barkopedia dataset root"),
-    synth_per_combo: int = typer.Option(8, help="Synthetic clips per (arousal, valence) combo"),
+    synth_per_combo: int = typer.Option(25, help="Synthetic clips per (arousal, valence) combo; also caps real clips per combo in the balanced subset"),
 ) -> None:
     data_dir = Path(data) if data else None
     result = train_vocal(epochs=epochs, out_path=Path(out) if out else None, data_dir=data_dir, synth_per_combo=synth_per_combo)

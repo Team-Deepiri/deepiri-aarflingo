@@ -52,6 +52,7 @@ dependencies {
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.activity:activity-compose:1.9.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.2")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.2")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.2")
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-tooling-preview")
@@ -68,6 +69,9 @@ dependencies {
 
     // OkHttp — multipart frame upload + WebSocket
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+
+    // ONNX Runtime — on-device TriadNet inference (no WiFi needed)
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.19.0")
 
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")

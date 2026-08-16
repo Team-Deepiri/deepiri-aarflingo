@@ -39,6 +39,9 @@ BARK_RMS_THRESHOLD = 0.05   # normalised RMS above which we classify a bark
 BARK_ZCR_MIN = 0.02         # zero-crossing rate floor (filters pure hum / DC)
 SILENCE_HOLD_S = 0.4        # ignore further bursts within this window (debounce)
 
+AROUSAL_NUM = {"low": 0.0, "medium": 0.5, "high": 1.0}
+VALENCE_NUM = {"negative": 0.0, "neutral": 0.5, "positive": 1.0}
+
 
 @dataclass
 class BarkEvent:
@@ -174,6 +177,48 @@ def _load_encoder(root: Path):
 
 # ── MicListener ─────────────────────────────────────────────────────────────
 
+def _load_prosody(root: Path):
+    """Return the audio prosody module (docs/ADVANCED_MATH.md §4) or None.
+
+    Mirrors `_load_encoder`'s isolated-package load of services/audio/app so
+    the psychoacoustic descriptors stay single-source in prosody.py rather
+    than being duplicated here.
+    """
+    try:
+        import importlib.util
+        import sys
+        import types
+
+        audio_dir = root / "services" / "audio" / "app"
+        pkg = "aarf_audio_mic"
+        if pkg not in sys.modules:
+            p = types.ModuleType(pkg)
+            p.__path__ = [str(audio_dir)]  # type: ignore[attr-defined]
+            p.__package__ = pkg
+            sys.modules[pkg] = p
+
+        for py in sorted(audio_dir.glob("*.py")):
+            if py.name == "__init__.py":
+                continue
+            mname = f"{pkg}.{py.stem}"
+            if mname in sys.modules:
+                continue
+            spec = importlib.util.spec_from_file_location(
+                mname, py, submodule_search_locations=[str(audio_dir)]
+            )
+            if spec and spec.loader:
+                mod = importlib.util.module_from_spec(spec)
+                mod.__package__ = pkg
+                sys.modules[mname] = mod
+                try:
+                    spec.loader.exec_module(mod)  # type: ignore[union-attr]
+                except ImportError:
+                    pass
+        return sys.modules.get(f"{pkg}.prosody")
+    except Exception:
+        return None
+
+
 class MicListener:
     """Captures mic audio in a background thread; pushes BarkEvents to a queue.
 
@@ -188,6 +233,10 @@ class MicListener:
         Normalised RMS above which a chunk is treated as a bark candidate.
     on_error:
         Optional callback(Exception) invoked when the audio stream errors.
+    modality_callback:
+        Optional callback(dict) invoked on EVERY chunk with continuous audio
+        modality (audio_arousal / audio_valence / audio_bark_prob) so the
+        runtime can fuse live audio into the frame pipeline — not just barks.
     """
 
     def __init__(
@@ -196,17 +245,20 @@ class MicListener:
         root: Path | None = None,
         rms_threshold: float = BARK_RMS_THRESHOLD,
         on_error: Callable[[Exception], None] | None = None,
+        modality_callback: Callable[[dict[str, float]], None] | None = None,
     ) -> None:
         self.bark_queue = bark_queue
         self.root = root or Path(__file__).resolve().parents[3]
         self.rms_threshold = rms_threshold
         self.on_error = on_error
+        self._modality_callback = modality_callback
 
         self._thread: threading.Thread | None = None
         self._stop_event = threading.Event()
         self._last_bark_ts: float = 0.0
         self._classify: Callable[[np.ndarray], tuple[str, str]] | None = None
         self._available: bool = True  # set False if no audio device
+        self._prosody = None          # lazy: services/audio/app/prosody.py (§4)
 
     # ── public API ──────────────────────────────────────────────────────────
 
@@ -214,6 +266,7 @@ class MicListener:
         """Start the background capture thread (non-blocking)."""
         self._stop_event.clear()
         self._classify = _load_encoder(self.root)
+        self._prosody = _load_prosody(self.root)
         self._thread = threading.Thread(target=self._run, daemon=True, name="aarf-mic")
         self._thread.start()
 
@@ -271,6 +324,14 @@ class MicListener:
     def _process(self, chunk: np.ndarray) -> None:
         rms = _rms(chunk)
         zcr = _zcr(chunk)
+        arousal, valence = self._classify_levels(chunk)
+        if self._modality_callback is not None:
+            try:
+                mod = self._modality_sample(arousal, valence, rms)
+                mod.update(self._prosody_sample(chunk))
+                self._modality_callback(mod)
+            except Exception:
+                pass
         if rms < self.rms_threshold or zcr < BARK_ZCR_MIN:
             return
         now = time.monotonic()
@@ -278,19 +339,77 @@ class MicListener:
             return  # debounce
         self._last_bark_ts = now
 
-        if self._classify is not None:
-            try:
-                arousal, valence = self._classify(chunk)
-            except Exception:
-                arousal, valence = _heuristic_classify(chunk)
-        else:
-            arousal, valence = _heuristic_classify(chunk)
-
         evt = BarkEvent(ts=now, arousal=arousal, valence=valence, rms=rms, raw=chunk)
         try:
             self.bark_queue.put_nowait(evt)
         except queue.Full:
             pass  # drop if consumer is slow; bark is ephemeral
+
+    def _classify_levels(self, chunk: np.ndarray) -> tuple[str, str]:
+        """arousal/valence strings, using the trained encoder when available."""
+        if self._classify is not None:
+            try:
+                return self._classify(chunk)
+            except Exception:
+                pass
+        return _heuristic_classify(chunk)
+
+    def _modality_sample(
+        self, arousal: str, valence: str, rms: float
+    ) -> dict[str, float]:
+        """Continuous audio modality for the frame fusion pipeline (every chunk).
+
+        bark_prob is a continuous proxy derived from normalised RMS (1.0 at the
+        bark threshold).
+        """
+        return {
+            "audio_arousal": float(AROUSAL_NUM.get(arousal, 0.0)),
+            "audio_valence": float(VALENCE_NUM.get(valence, 0.0)),
+            "audio_bark_prob": float(min(1.0, rms / self.rms_threshold)),
+        }
+
+    def _prosody_sample(self, chunk: np.ndarray) -> dict[str, float]:
+        """Psychoacoustic descriptors (§4): F0, HNR, F1, burstiness.
+
+        `audio_burstiness` needs a history of bark/burst events (>3 to be
+        meaningful) — we track recent burst times per chunk, mirroring the
+        BarkEvent debounce window so burstiness reflects real bark trains.
+        """
+        p = self._prosody
+        if p is None:
+            return {
+                "audio_f0": 0.0,
+                "audio_hnr": 0.0,
+                "audio_formant_f1": 0.0,
+                "audio_burstiness": 0.0,
+            }
+        try:
+            f0 = p.estimate_f0(chunk)
+            hnr = p.harmonic_to_noise_ratio(chunk)
+            f1, _ = p.formants(chunk)
+            burst = p.burstiness(self._burst_times())
+        except Exception:
+            f0 = hnr = f1 = burst = 0.0
+        now = time.monotonic()
+        if _rms(chunk) >= self.rms_threshold:
+            self._burst_times().append(now)
+        return {
+            "audio_f0": float(f0),
+            "audio_hnr": float(hnr),
+            "audio_formant_f1": float(f1),
+            "audio_burstiness": float(burst),
+        }
+
+    def _burst_times(self) -> list[float]:
+        """Recent bark/burst event timestamps (trimmed to a rolling window)."""
+        events = getattr(self, "_burst_history", None)
+        if events is None:
+            events = []
+            self._burst_history = events
+        cutoff = time.monotonic() - 60.0
+        trimmed = [e for e in events if e >= cutoff]
+        self._burst_history[:] = trimmed
+        return self._burst_history
 
     # ── inject-for-testing ───────────────────────────────────────────────────
 

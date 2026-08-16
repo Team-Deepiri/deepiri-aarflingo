@@ -4,6 +4,7 @@ import AVFoundation
 struct LiveView: View {
     @EnvironmentObject private var appState: AppState
     @StateObject private var camera = CameraManager()
+    @StateObject private var engine = OnDeviceEngine()
     @StateObject private var client: RuntimeClient = {
         let stored = UserDefaults.standard.string(forKey: "runtimeURL") ?? "http://127.0.0.1:8765"
         return RuntimeClient(baseURL: URL(string: stored)!)
@@ -20,13 +21,21 @@ struct LiveView: View {
                     // ── Status chips ────────────────────────────────────
                     HStack {
                         StatusChip(
-                            label: client.connected ? "Runtime live" : "Runtime offline",
-                            tone: client.connected ? .ok : .warn
+                            label: appState.localMode ? "On-device engine" : (client.connected ? "Runtime live" : "Runtime offline"),
+                            tone: appState.localMode || client.connected ? .ok : .warn
                         )
                         StatusChip(
                             label: camera.isRunning ? "Camera live" : "Camera off",
                             tone: camera.isRunning ? .info : .neutral
                         )
+                    }
+                    if !appState.engineAvailable && !appState.localMode {
+                        HStack {
+                            StatusChip(
+                                label: "On-device model not bundled — run scripts/mobile/bundle-mobile-models.sh",
+                                tone: .neutral
+                            )
+                        }
                     }
 
                     // ── Camera preview ──────────────────────────────────
@@ -60,7 +69,7 @@ struct LiveView: View {
                             )
 
                         // Confidence badge overlay
-                        if camera.isRunning, let pred = client.prediction {
+                        if camera.isRunning, let pred = activePrediction {
                             HStack(spacing: 6) {
                                 Circle()
                                     .fill(gateColor(pred.gate))
@@ -78,7 +87,7 @@ struct LiveView: View {
                     }
 
                     // ── Intent card ─────────────────────────────────────
-                    if let pred = client.prediction, camera.isRunning {
+                    if let pred = activePrediction, camera.isRunning {
                         IntentHeroCard(prediction: .init(
                             intent: pred.intent,
                             emotion: pred.emotion,
@@ -91,10 +100,10 @@ struct LiveView: View {
                         // Live signal bars (from runtime features — placeholder ratios for now)
                         VStack(alignment: .leading, spacing: 12) {
                             Text("Live signals").font(.headline)
-                            LiveSignalBar(label: "Confidence",
+                            SignalBar(label: "Confidence",
                                           value: pred.confidence,
                                           color: gateColor(pred.gate))
-                            LiveSignalBar(label: "Dog detected",
+                            SignalBar(label: "Dog detected",
                                           value: pred.dogPresent ? 1.0 : 0.0,
                                           color: AarflingoTheme.info)
                         }
@@ -107,6 +116,7 @@ struct LiveView: View {
                             if camera.isRunning {
                                 camera.stop()
                                 client.disconnect()
+                                engine.resetDiff()
                             } else {
                                 startSession()
                             }
@@ -121,10 +131,17 @@ struct LiveView: View {
                             }
                             .buttonStyle(PrimaryButtonStyle(accent: false))
                         }
+
+                        if camera.isRunning && engine.available {
+                            Button(appState.localMode ? "Local ✓" : "Local") {
+                                appState.localMode.toggle()
+                            }
+                            .buttonStyle(PrimaryButtonStyle(accent: appState.localMode))
+                        }
                     }
 
                     // Error
-                    if let err = client.lastError {
+                    if let err = client.lastError, !appState.localMode {
                         Text(err)
                             .font(.caption)
                             .foregroundStyle(AarflingoTheme.danger)
@@ -132,7 +149,9 @@ struct LiveView: View {
                     }
 
                     // Footer
-                    Text("TriadNet · live inference via \(appState.runtimeURL)")
+                    Text(appState.localMode
+                         ? "On-device TriadNet · no network needed"
+                         : "TriadNet · live inference via \(appState.runtimeURL)")
                         .font(.caption2)
                         .foregroundStyle(AarflingoTheme.muted.opacity(0.6))
                         .frame(maxWidth: .infinity)
@@ -153,9 +172,9 @@ struct LiveView: View {
                     }
                 }
             }
-            .onChange(of: appState.runtimeURL) { _, newURL in
+            .onChange(of: appState.runtimeURL) { newURL in
                 // Reconnect to new URL when changed in Settings
-                guard let url = URL(string: newURL) else { return }
+                guard URL(string: newURL) != nil else { return }
                 camera.stop()
                 client.disconnect()
             }
@@ -169,20 +188,50 @@ struct LiveView: View {
 
     // MARK: – Private
 
+    /// Prediction from local engine (when enabled) or the runtime client.
+    private var activePrediction: RuntimePrediction? {
+        appState.localMode ? localPrediction : client.prediction
+    }
+
+    private var localPrediction: RuntimePrediction? {
+        guard appState.localMode, camera.isRunning else { return nil }
+        let p = appState.prediction
+        return RuntimePrediction(
+            intent: p.intent,
+            emotion: p.emotion,
+            behavior: p.behavior,
+            confidence: p.confidence,
+            gate: p.gate,
+            dogPresent: p.dogPresent,
+            tsMsRaw: nil
+        )
+    }
+
     private func startSession() {
         guard let url = URL(string: appState.runtimeURL) else { return }
+        appState.engineAvailable = engine.available
 
         // Re-create client with current URL
         let freshClient = RuntimeClient(baseURL: url)
 
-        // Wire camera → POST /infer/frame
+        // Wire camera → local engine (when bundled) or POST /infer/frame
         camera.onFrame = { [weak freshClient] jpeg in
-            await freshClient?.inferFrame(jpeg)
+            if appState.localMode, let ui = UIImage(data: jpeg) {
+                let frame = engine.diffFrame(ui)
+                if let pred = engine.pushAndPredict(frame: frame) {
+                    await MainActor.run {
+                        appState.prediction = pred
+                        appState.connected = true
+                    }
+                }
+            } else {
+                await freshClient?.inferFrame(jpeg)
+            }
         }
 
         camera.start(fps: 5)
 
-        // Also connect WebSocket for live prediction stream
+        // Also connect WebSocket for live prediction stream (network mode)
         freshClient.connect()
 
         // Health check
@@ -200,17 +249,4 @@ struct LiveView: View {
     }
 }
 
-// MARK: – Convenience extension so TriadPrediction works with IntentHeroCard
-extension TriadPrediction {
-    init(intent: String, emotion: String, behavior: String,
-         confidence: Double, gate: String, dogPresent: Bool) {
-        self.init(
-            intent: intent,
-            emotion: emotion,
-            behavior: behavior,
-            confidence: confidence,
-            gate: gate,
-            dogPresent: dogPresent
-        )
-    }
-}
+

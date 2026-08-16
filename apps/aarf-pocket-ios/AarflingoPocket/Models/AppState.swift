@@ -16,6 +16,8 @@ final class AppState: ObservableObject {
         didSet { UserDefaults.standard.set(autoConnect, forKey: "autoConnect") }
     }
     @Published var selectedIntentFilter: String? = nil
+    @Published var localMode = false
+    @Published var engineAvailable = false
 
     var uniqueIntents: [String] {
         Array(Set(history.map(\.intent))).sorted()
