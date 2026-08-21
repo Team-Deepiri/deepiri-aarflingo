@@ -32,6 +32,7 @@ def train_breed_cmd(
     freeze_backbone: int = typer.Option(2, help="Epochs of head-only training before unfreezing"),
     lr: float = typer.Option(2e-3, help="Peak learning rate"),
     out: str = typer.Option("", help="Output weights path (default: artifacts/models/vision/breed.pt)"),
+    extra_dir: str = typer.Option("", help="Personal stills dir (<Breed>/*.jpg) merged into training — e.g. data/my_dog/breed"),
 ) -> None:
     """Fine-tune MobileNetV3-Large on Stanford Dogs for 120-way breed ID."""
     result = train_breed(
@@ -40,6 +41,7 @@ def train_breed_cmd(
         epochs=epochs,
         freeze_backbone=freeze_backbone,
         lr=lr,
+        extra_dir=Path(extra_dir) if extra_dir else None,
     )
     typer.echo(json.dumps(result, indent=2))
 
@@ -105,14 +107,36 @@ def collect_real(
 @app.command("capture-frames")
 def capture_frames_cmd(
     out: str = typer.Option("data/dog/captures", help="Output capture directory"),
-    camera: int = typer.Option(0, help="Camera index"),
+    camera: int = typer.Option(0, help="Camera index (used when --source is empty)"),
     frames: int = typer.Option(200, help="Number of frames to capture"),
     interval: float = typer.Option(0.2, help="Seconds between frames (motion-skipped)"),
+    source: str = typer.Option("", help="Capture source override: MJPEG URL (e.g. WSL bridge http://host:8766/video/stream) or camera index"),
 ) -> None:
     """Grab webcam frames of your dog for fine-tuning (YOLO / breed)."""
     from .dog_dataset import capture_frames
 
-    result = capture_frames(Path(out), camera=camera, frames=frames, interval=interval)
+    result = capture_frames(Path(out), camera=camera, frames=frames, interval=interval, source=source or None)
+    typer.echo(json.dumps(result, indent=2))
+
+
+@app.command("auto-label-dog")
+def auto_label_dog_cmd(
+    captures: str = typer.Option("data/dog/captures", help="Captured frames dir"),
+    labels: str = typer.Option("data/dog/captures/labels.jsonl", help="Rect labels JSONL to write"),
+    conf: float = typer.Option(0.25, help="Min YOLO confidence for a dog box"),
+    weights: str = typer.Option("yolov8n.pt", help="Detector weights (COCO classes)"),
+    overwrite: bool = typer.Option(False, "--overwrite", help="Replace existing labels instead of keeping them"),
+) -> None:
+    """Model-assisted labeling: pre-fill labels.jsonl with dog boxes for review."""
+    from .dog_dataset import auto_label
+
+    result = auto_label(
+        captures_dir=Path(captures),
+        labels_path=Path(labels),
+        conf=conf,
+        weights=weights,
+        overwrite=overwrite,
+    )
     typer.echo(json.dumps(result, indent=2))
 
 

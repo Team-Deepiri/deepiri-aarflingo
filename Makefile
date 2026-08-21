@@ -1,4 +1,4 @@
-.PHONY: setup test smoke dev runtime studio electron train verify mobile-android mobile-verify web
+.PHONY: setup test smoke dev runtime studio electron train verify mobile-android mobile-verify web home-capture home-train
 
 setup:
 	./setup.sh
@@ -32,6 +32,13 @@ smoke:
 
 dev:
 	./scripts/dev.sh
+
+home-capture:
+	./scripts/home_capture.sh
+
+home-train:
+	PYTHONPATH=.:services/perception poetry run aarflingo-perception prep-dog-yolo
+	PYTHONPATH=.:services/perception poetry run aarflingo-perception finetune-dog-yolo
 
 runtime:
 	./scripts/run_runtime.sh
