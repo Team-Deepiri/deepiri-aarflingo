@@ -2,7 +2,7 @@
 
 Observational puck on the dog. Streams IMU, mic, neck PPG, and battery to aarf-pocket over BLE. **No shock, vibe, motor, or door strike.**
 
-Firmware `0.2.0`. Advertises `aarf-collar`.
+Firmware `0.3.0`. Advertises `aarf-collar`.
 
 ## What you get
 
@@ -13,7 +13,7 @@ Firmware `0.2.0`. Advertises `aarf-collar`.
 | Pocket iOS / Android | Done — Settings → Listen to collar |
 | Laptop listener | Done — `python3 scripts/collar_listen.py` |
 | Footprints / BOM | Done — `./kicad-launcher --sch bom` |
-| PCB layout / fab | 40×32 mm outline, parts placed, copper unrouted |
+| PCB layout / fab | 40×32 mm, parts placed, GND pours on F/B. Signals unrouted |
 | Enclosure / strap | Not designed. NFC tag + 180 mAh cell are in the BOM. |
 
 ## Flash
@@ -24,14 +24,14 @@ Firmware `0.2.0`. Advertises `aarf-collar`.
 cd firmware/collar && pio run -t upload
 ```
 
-Serial 115200 should print `aarf-collar rev-A fw 0.2.0` and any I2C hits (`0x68` IMU, `0x58` PPG).
+Serial 115200 should print `aarf-collar rev-A fw 0.3.0` and any I2C hits (`0x68` IMU, `0x58` PPG).
 
 ## Pair
 
 1. Charge via USB-C (100 mA default PROG).
 2. Phone: Settings → **Listen to collar**. Allow Bluetooth.
 3. Or laptop: `pip install bleak && python3 scripts/collar_listen.py`
-4. You should see 1 Hz JSON with `hr_bpm`, `rr_bpm`, `still`, `pant`, `arousal`, `skin_c`, `puck_c`, `gyro`, `vbat_v`, `fault`.
+4. You should see 1 Hz JSON with `hr_bpm`, `rr_bpm`, `still`, `pant`, `arousal`, `skin_c`, `puck_c`, `gyro`, `red`, `vbat_v`, `fault`.
 
 Dog-state (ethogram + autonomic proxies, not blood work): [DOG_STATE.md](DOG_STATE.md).
 

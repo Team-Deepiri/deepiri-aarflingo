@@ -22,6 +22,7 @@ data class CollarVitals(
     val gyroRms: Float,
     val puckC: Float,
     val skinC: Float,
+    val red: Float,
     val fault: String?,
     val source: String,
 )
@@ -55,6 +56,7 @@ object CollarCbor {
             gyroRms = (map["gyro"] as? Float) ?: 0f,
             puckC = (map["puck_c"] as? Float) ?: 0f,
             skinC = (map["skin_c"] as? Float) ?: 0f,
+            red = (map["red"] as? Float) ?: 0f,
             fault = map["fault"] as? String,
             source = (map["source"] as? String) ?: "sensors",
         )

@@ -27,6 +27,8 @@
 static CollarLoop g_loop;
 static int32_t g_ir[50];
 static size_t g_nir;
+static int32_t g_red[50];
+static size_t g_nred;
 static float g_xyz[100 * 3];
 static size_t g_nimu;
 static float g_gyro_ss;
@@ -63,9 +65,9 @@ static int16_t i2c_read_le16(uint8_t addr, uint8_t reg) {
     return (int16_t)((uint16_t)lo | ((uint16_t)hi << 8));
 }
 
-static int32_t afe4404_read_led1(void) {
+static int32_t afe4404_read_led(uint8_t reg) {
     Wire.beginTransmission(AFE4404_I2C_ADDR);
-    Wire.write(AFE4404_REG_LED1VAL);
+    Wire.write(reg);
     if (Wire.endTransmission(false) != 0) {
         return INT32_MIN;
     }
@@ -222,9 +224,13 @@ void loop() {
         }
     }
 
-    int32_t s = afe4404_read_led1();
+    int32_t s = afe4404_read_led(AFE4404_REG_LED1VAL);
     if (s != INT32_MIN && g_nir < (sizeof g_ir / sizeof g_ir[0])) {
         g_ir[g_nir++] = s;
+    }
+    int32_t r = afe4404_read_led(AFE4404_REG_LED2VAL);
+    if (r != INT32_MIN && g_nred < (sizeof g_red / sizeof g_red[0])) {
+        g_red[g_nred++] = r;
     }
 
     drive_led(now);
@@ -251,8 +257,9 @@ void loop() {
 
     int n = collar_loop_step(&g_loop, g_ir, g_nir, 50, imu_rms, imu_peak, ar, bark, vbat,
                              g_imu_ok, mic_ok, g_xyz, g_nimu, g_pcm, g_npcm, gyro_rms, puck_c,
-                             skin_c);
+                             skin_c, g_red, g_nred);
     g_nir = 0;
+    g_nred = 0;
     g_nimu = 0;
     g_npcm = 0;
     g_gyro_ss = 0.0f;

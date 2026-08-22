@@ -18,7 +18,7 @@ int collar_loop_step(CollarLoop *L, const int32_t *ir, size_t n, int fs_hz,
                      float imu_rms, float imu_peak, float audio_rms, int bark,
                      float vbat_v, int imu_ok, int mic_ok, const float *xyz, size_t nimu,
                      const int32_t *pcm, size_t npcm, float gyro_rms, float puck_c,
-                     float skin_c) {
+                     float skin_c, const int32_t *red, size_t nred) {
     if (L == NULL) {
         return -1;
     }
@@ -45,7 +45,7 @@ int collar_loop_step(CollarLoop *L, const int32_t *ir, size_t n, int fs_hz,
         L->last.fault = "ppg";
     }
 
-    dog_state_fill(&L->last, xyz, nimu, pcm, npcm, ir, n, fs_hz);
+    dog_state_fill(&L->last, xyz, nimu, pcm, npcm, ir, n, red, nred, fs_hz);
     L->last.gyro_rms = gyro_rms;
     L->last.puck_c = puck_c;
     L->last.skin_c = skin_c;

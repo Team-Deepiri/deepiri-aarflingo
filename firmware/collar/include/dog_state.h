@@ -17,7 +17,7 @@ int dog_rr_from_ir(const int32_t *ir, size_t n, int fs_hz, int still);
 float dog_perfusion(const int32_t *ir, size_t n);
 float dog_arousal(int hr_bpm, int rmssd_ms, int still, int pant, int bark, float dyn_g);
 void dog_state_fill(CollarSample *s, const float *xyz, size_t nimu, const int32_t *pcm, size_t npcm,
-                    const int32_t *ir, size_t nir, int fs_hz);
+                    const int32_t *ir, size_t nir, const int32_t *red, size_t nred, int fs_hz);
 
 #ifdef __cplusplus
 }

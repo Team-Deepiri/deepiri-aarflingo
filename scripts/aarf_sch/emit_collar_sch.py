@@ -1059,6 +1059,50 @@ def emit_pcb() -> str:
   )
 '''
     holes = ""
+    def _zone(layer: str) -> str:
+        return f'''  (zone (net 1) (net_name "GND") (layer "{layer}") (tstamp {uid()}) (hatch edge 0.508)
+    (connect_pads (clearance 0.2))
+    (min_thickness 0.25)
+    (filled_areas_thickness no)
+    (fill yes (thermal_gap 0.5) (thermal_bridge_width 0.5))
+    (polygon
+      (pts
+        (xy {x0} {y0})
+        (xy {x1} {y0})
+        (xy {x1} {y1})
+        (xy {x0} {y1})
+      )
+    )
+  )
+'''
+
+    vias = ""
+    for lx, ly in (
+        (3.0, 8.0),
+        (3.0, 16.0),
+        (3.0, 24.0),
+        (11.0, 16.0),
+        (11.0, 24.0),
+        (22.0, 16.0),
+        (22.0, 24.0),
+        (37.0, 8.0),
+        (37.0, 16.0),
+        (37.0, 24.0),
+    ):
+        vias += f'''  (via (at {PCB_OX + lx} {PCB_OY + ly}) (size 0.8) (drill 0.4) (layers "F.Cu" "B.Cu") (net 1)
+    (tstamp {uid()})
+  )
+'''
+    silk = f'''  (gr_text "DIRTY" (at {PCB_OX + 6.5} {PCB_OY + 16.0} 90)
+    (layer "F.SilkS") (uuid {uid()}) (effects (font (size 0.8 0.8)))
+  )
+  (gr_text "BRAIN" (at {PCB_OX + 22.0} {PCB_OY + 16.0} 0)
+    (layer "F.SilkS") (uuid {uid()}) (effects (font (size 0.8 0.8)))
+  )
+  (gr_text "CLEAN" (at {PCB_OX + 35.5} {PCB_OY + 16.0} 90)
+    (layer "F.SilkS") (uuid {uid()}) (effects (font (size 0.8 0.8)))
+  )
+'''
     for lx, ly in ((1.6, 1.6), (BOARD_W_MM - 1.6, 1.6), (1.6, BOARD_H_MM - 1.6), (BOARD_W_MM - 1.6, BOARD_H_MM - 1.6)):
         holes += f'''  (footprint "MountingHole:MountingHole_2.2mm" (layer "F.Cu")
     (tstamp {uid()})
@@ -1105,10 +1149,14 @@ def emit_pcb() -> str:
     (pad_to_mask_clearance 0)
   )
 
+  (net 0 "")
+  (net 1 "GND")
+  (net 2 "3V3")
+
   (gr_rect (start {x0} {y0}) (end {x1} {y1})
     (stroke (width 0.1) (type default)) (fill none) (layer "Edge.Cuts") (tstamp {uid()})
   )
-{keep}{holes}{"".join(parts)})
+{keep}{silk}{holes}{vias}{_zone("F.Cu")}{_zone("B.Cu")}{"".join(parts)})
 '''
 
 

@@ -38,6 +38,10 @@ def test_pcb_places_every_stuffed_ref():
     assert "RF_KEEP" in pcb
     assert f"{100 + BOARD_W_MM:.1f}" in pcb or f"{100 + BOARD_W_MM:.0f}" in pcb
     assert BOARD_H_MM >= 32.0
+    assert '(zone' in pcb
+    assert '(net_name "GND")' in pcb
+    assert '"F.Cu"' in pcb and '"B.Cu"' in pcb
+    assert pcb.count("(zone") >= 2
 
 
 def test_verify_passes_on_emitted_board():

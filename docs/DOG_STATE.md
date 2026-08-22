@@ -14,7 +14,8 @@ Firmware: `firmware/collar/src/dog_state.c`. Same 1 Hz CBOR map — new keys, no
 | `pant` | Mic ZCR + RMS, not bark | Stress or heat pant (PetMD / ethogram) | Cannot tell heat from fear |
 | `hr_bpm` / `rmssd_ms` | Neck PPG | Arousal ↑ HR, ↓ RMSSD (Katayama et al.; Frontiers 2022) | Fur kills optical SNR; `ppg_ok` gates it |
 | `rr_bpm` | IR wander while `still` | Resting respiratory rate (collar SCG/PPG literature) | 0 when moving |
-| `pi` | IR AC/DC | Perfusion / contact quality | Not SpO2 (need a second LED) |
+| `pi` | IR AC/DC | Perfusion / contact quality | IR path only |
+| `red` | 660 nm AC/DC | Second-wavelength perfusion | **Not SpO2.** Need both paths + cal |
 | `arousal` | Fusion 0..1 | High HR + low RMSSD + pant/bark + motion | **Not valence.** Play and fear both raise it. |
 | `gyro` | BMI270 °/s RMS | Shake-off / roll / head snap | Needs the Bosch config blob for full noise floor |
 | `puck_c` | BMI270 die | Package self-heat | Not ambient, not skin |
@@ -33,4 +34,4 @@ Cortisol, glucose, “happy vs sad,” tail set, ear set, whale eye. Those need 
 
 ## Firmware contract
 
-Keys live on the existing notify map (`docs/FIRMWARE_COLLAR.md`). Pocket decodes `still`, `pant`, `rr_bpm`, `arousal`, `skin_c`, `puck_c`, `gyro`. No writable GATT.
+Keys live on the existing notify map (`docs/FIRMWARE_COLLAR.md`). Pocket decodes `still`, `pant`, `rr_bpm`, `arousal`, `skin_c`, `puck_c`, `gyro`, `red`. No writable GATT.

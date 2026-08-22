@@ -4,7 +4,7 @@ Charge: **R1 = 10k → 100 mA**. Schematic pad allows 2 kΩ (500 mA) — do not 
 
 Regenerate: `./kicad-launcher --sch bom` (writes this file and `BOM.csv`).
 
-Footprints are assigned on the schematic (`./kicad-launcher --sch bom`). PCB copper is still outline-only.
+Footprints are assigned on the schematic (`./kicad-launcher --sch bom`). PCB has GND pours; signal traces are still unrouted.
 
 | Qty | Ref | Value | MPN | Pkg | Footprint | Sheet | Role |
 |----:|-----|-------|-----|-----|-----------|-------|------|

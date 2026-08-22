@@ -102,7 +102,8 @@ Phase 2 already specified this. Collar firmware **extends** it; it does not repl
   "arousal": <float 0..1, autonomic proxy — not valence>,
   "gyro": <float dps RMS>,
   "puck_c": <float, BMI270 die °C — package, not skin>,
-  "skin_c": <float, neck NTC °C — contact, not core>
+  "skin_c": <float, neck NTC °C — contact, not core>,
+  "red": <float, red-LED perfusion AC/DC — not SpO2>
 }
 ```
 

@@ -97,6 +97,7 @@ int main(void) {
     if (!collar_frame_contains(buf, n, "gyro")) return 10;
     if (!collar_frame_contains(buf, n, "puck_c")) return 11;
     if (!collar_frame_contains(buf, n, "skin_c")) return 12;
+    if (!collar_frame_contains(buf, n, "red")) return 13;
     printf("%d\n", n);
     return 0;
 }
@@ -142,7 +143,7 @@ int main(void) {
     }
     CollarLoop L;
     collar_loop_init(&L);
-    int n = collar_loop_step(&L, ir, N, FS, 0.1f, 0.2f, 0.01f, 0, 3.8f, 1, 1, NULL, 0, NULL, 0, 0.f, 0.f, 0.f);
+    int n = collar_loop_step(&L, ir, N, FS, 0.1f, 0.2f, 0.01f, 0, 3.8f, 1, 1, NULL, 0, NULL, 0, 0.f, 0.f, 0.f, NULL, 0);
     if (n < 20) return 2;
     if (L.state != COLLAR_IDLE) return 3;
     if (!L.last.ppg_ok) return 4;
@@ -231,6 +232,13 @@ int main(void) {
     if (a < 0.4f || a > 1.0f) return 7;
     float calm = dog_arousal(55, 90, 1, 0, 0, 0.02f);
     if (calm > 0.35f) return 8;
+    int32_t red[16];
+    for (int i = 0; i < 16; i++) {
+        red[i] = 10000 + ((i % 2) ? 2000 : -2000);
+    }
+    CollarSample s = {0};
+    dog_state_fill(&s, NULL, 0, NULL, 0, NULL, 0, red, 16, 50);
+    if (s.red < 0.2f) return 9;
     return 0;
 }
 """
@@ -263,7 +271,7 @@ int main(void) {
     int32_t ir[8] = {0};
     CollarLoop L;
     collar_loop_init(&L);
-    int n = collar_loop_step(&L, ir, 8, 50, 0.1f, 0.2f, 0.01f, 0, 3.00f, 1, 1, NULL, 0, NULL, 0, 0.f, 0.f, 0.f);
+    int n = collar_loop_step(&L, ir, 8, 50, 0.1f, 0.2f, 0.01f, 0, 3.00f, 1, 1, NULL, 0, NULL, 0, 0.f, 0.f, 0.f, NULL, 0);
     if (n < 10) return 2;
     if (L.last.fault == NULL || strcmp(L.last.fault, "vbat") != 0) return 3;
     return 0;
@@ -374,7 +382,7 @@ int main(void) {
     int32_t ir[8] = {0};
     CollarLoop L;
     collar_loop_init(&L);
-    int n = collar_loop_step(&L, ir, 8, 50, 0.f, 0.f, 0.01f, 0, 3.80f, 0, 1, NULL, 0, NULL, 0, 0.f, 0.f, 0.f);
+    int n = collar_loop_step(&L, ir, 8, 50, 0.f, 0.f, 0.01f, 0, 3.80f, 0, 1, NULL, 0, NULL, 0, 0.f, 0.f, 0.f, NULL, 0);
     if (n < 10) return 2;
     if (L.last.fault == NULL || strcmp(L.last.fault, "imu") != 0) return 3;
     return 0;
@@ -520,6 +528,10 @@ int main(void) {
     if (out.puck_c < 22.9f || out.puck_c > 23.1f) return 10;
     if (out.skin_c < 30.9f || out.skin_c > 31.1f) return 11;
     if (out.pitch < 9.9f || out.pitch > 10.1f) return 12;
+    s.red = 0.42f;
+    n = collar_frame_encode(&s, buf, sizeof buf);
+    if (collar_frame_decode(buf, n, &out, fault, sizeof fault) != 0) return 13;
+    if (out.red < 0.41f || out.red > 0.43f) return 14;
     return 0;
 }
 """
@@ -560,6 +572,7 @@ int main(void) {
     assert "gyro" in frame
     assert "puck_c" in frame
     assert "skin_c" in frame
+    assert "red" in frame
 
 
 def test_imu_isr_only_sets_flag(tmp_path):
@@ -583,7 +596,7 @@ int main(void) {
 
 def test_product_version_is_rev_a():
     text = (COLLAR / "include" / "product.h").read_text(encoding="utf-8")
-    assert "0.2.0" in text
+    assert "0.3.0" in text
     assert "aarf-collar" in text
     flash = Path(__file__).resolve().parents[3] / "scripts" / "flash_collar.sh"
     assert flash.is_file()
@@ -647,6 +660,7 @@ def test_pocket_gatt_matches_firmware_uuids():
         assert "skin_c" in text
         assert "gyro" in text
         assert "puck_c" in text
+        assert '"red"' in text or "map[\"red\"]" in text or 'map["red"]' in text
         assert "SHOCK" not in text
 
 

@@ -113,8 +113,8 @@ LED_SERIES_OHMS = 330
 
 NEXT_STEPS = (
     "Open the board: ./kicad-launcher --run collar",
-    "Footprints are on the symbols. Layout: USB/charger dirty zone opposite I2S mic; solid GND plane",
-    "Run schematic ERC in KiCad (or kicad-cli sch erc on KiCad 9+)",
-    "Update gerbers after copper; stuff from hardware/collar-reva/BOM.csv",
+    "GND pours are on F.Cu/B.Cu. In KiCad: Update PCB from schematic, then Edit → Fill All Zones",
+    "Route USB D+/D−, I2C, I2S, and VBAT after official module footprints replace courtyards",
+    "Export gerbers only after signals are routed; stuff from hardware/collar-reva/BOM.csv",
     "Firmware: keep hardware/collar-reva/pins.h in lockstep with scripts/aarf_sch/nets.py",
 )

@@ -65,8 +65,8 @@ int collar_frame_encode(const CollarSample *s, uint8_t *buf, size_t cap) {
         return -1;
     }
     int n = 0;
-    /* 22-key map: sensors + ethogram + gyro/temp */
-    if (put(buf, cap, &n, 0xB6) != 0) {
+    /* 23-key map: sensors + ethogram + gyro/temp + red PI */
+    if (put(buf, cap, &n, 0xB7) != 0) {
         return -1;
     }
     if (put_text(buf, cap, &n, "source") || put_text(buf, cap, &n, "sensors")) {
@@ -140,6 +140,9 @@ int collar_frame_encode(const CollarSample *s, uint8_t *buf, size_t cap) {
         return -1;
     }
     if (put_text(buf, cap, &n, "skin_c") || put_f32(buf, cap, &n, s->skin_c)) {
+        return -1;
+    }
+    if (put_text(buf, cap, &n, "red") || put_f32(buf, cap, &n, s->red)) {
         return -1;
     }
     return n;
@@ -300,7 +303,8 @@ int collar_frame_decode(const uint8_t *buf, int n, CollarSample *out, char *faul
                    strcmp(key, "audio_rms") == 0 || strcmp(key, "vbat_v") == 0 ||
                    strcmp(key, "pitch") == 0 || strcmp(key, "pi") == 0 ||
                    strcmp(key, "arousal") == 0 || strcmp(key, "gyro") == 0 ||
-                   strcmp(key, "puck_c") == 0 || strcmp(key, "skin_c") == 0) {
+                   strcmp(key, "puck_c") == 0 || strcmp(key, "skin_c") == 0 ||
+                   strcmp(key, "red") == 0) {
             uint8_t t;
             if (take(buf, n, &i, &t) != 0 || t != 0xFA || i + 4 > n) {
                 return -1;
@@ -327,6 +331,8 @@ int collar_frame_decode(const uint8_t *buf, int n, CollarSample *out, char *faul
                 out->gyro_rms = conv.f;
             } else if (key[0] == 's') {
                 out->skin_c = conv.f;
+            } else if (key[0] == 'r') {
+                out->red = conv.f;
             } else if (key[4] == 'r') {
                 out->imu_rms = conv.f;
             } else if (key[4] == 'p') {

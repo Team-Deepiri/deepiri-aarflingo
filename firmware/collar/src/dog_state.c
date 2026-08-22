@@ -106,7 +106,7 @@ float dog_arousal(int hr_bpm, int rmssd_ms, int still, int pant, int bark, float
 }
 
 void dog_state_fill(CollarSample *s, const float *xyz, size_t nimu, const int32_t *pcm, size_t npcm,
-                    const int32_t *ir, size_t nir, int fs_hz) {
+                    const int32_t *ir, size_t nir, const int32_t *red, size_t nred, int fs_hz) {
     if (s == NULL) {
         return;
     }
@@ -120,5 +120,6 @@ void dog_state_fill(CollarSample *s, const float *xyz, size_t nimu, const int32_
     s->pant = dog_pant(s->audio_rms, s->bark, zcr);
     s->rr_bpm = dog_rr_from_ir(ir, nir, fs_hz, s->still);
     s->pi = dog_perfusion(ir, nir);
+    s->red = dog_perfusion(red, nred);
     s->arousal = dog_arousal(s->hr_bpm, s->rmssd_ms, s->still, s->pant, s->bark, dyn);
 }

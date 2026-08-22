@@ -58,6 +58,7 @@ fun DashboardScreen(vm: AppViewModel, modifier: Modifier = Modifier) {
                 MetricRow("Body", if (v.still) "still" else "moving")
                 MetricRow("Skin / puck", "%.1f / %.1f °C".format(v.skinC, v.puckC))
                 MetricRow("Gyro RMS", "%.0f °/s".format(v.gyroRms))
+                MetricRow("Red PI", "%.2f".format(v.red))
                 MetricRow("Collar VBAT", "%.2f V".format(v.vbatV))
             }
         }
