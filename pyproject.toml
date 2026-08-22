@@ -7,7 +7,7 @@ packages = [{ include = "aarflingo_cli" }]
 
 [tool.poetry.dependencies]
 python = "^3.11"
-typer = "^0.15.0"
+typer = "^0.17.0"
 opencv-python-headless = "^4.10.0"
 numpy = "^2.0.0"
 pyyaml = "^6.0"

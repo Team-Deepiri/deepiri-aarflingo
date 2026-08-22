@@ -189,9 +189,10 @@ and **your dog's home data** replacing the last synthetic/lab shapes.
 
 ### 2. Home-data fine-tuning (vision + breed on your dog)
 
-- [ ] Capture clips from your dog in your room via the live box (`services/ingest` export frames) → label bboxes (studio editor or Roboflow)
-- [ ] Fine-tune YOLOv8n on labelled frames; export updated `dog_yolo.onnx`; re-verify 5+ fps on WSL bridge
-- [ ] Add your dog's stills to a personal breed/trait set; `aarflingo-perception train-breed` retrain; confirm breed label + conf on the box
+- [x] Capture tooling ready: `make home-capture` (bridge-aware `capture-frames --source`, WSL auto-detect) + model-assisted labeling (`auto-label-dog` pre-fills labels.jsonl from COCO YOLO) — see [HOME_CAPTURE.md](HOME_CAPTURE.md)
+- [ ] Run the capture session in your room → review labels.jsonl
+- [ ] Fine-tune YOLOv8n on labelled frames (`make home-train`); export updated `dog_yolo.onnx`; re-verify 5+ fps on WSL bridge
+- [ ] Add your dog's stills to a personal breed/trait set; `aarflingo-perception train-breed --extra-dir data/my_dog/breed`; confirm breed label + conf on the box
 - [ ] Optional: YOLO-pose keypoints → gaze proxy upgrade
 
 **Done when:** stable `dog_present=true` bbox + correct breed label at 5+ fps in your actual room/lighting; `/feedback` harvest ≥10 rows per live session.

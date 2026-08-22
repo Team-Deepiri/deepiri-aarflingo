@@ -1,0 +1,245 @@
+#!/usr/bin/env bash
+# Aarflingo hardware launcher — install/check KiCad, open this repo's
+# collar project, run the schematic craftsmanship CLI.
+#
+# Lives in deepiri-aarflingo. Does not call, import, or clone Exovra tooling.
+#
+#   ./kicad-launcher              # status + next steps
+#   ./kicad-launcher --check
+#   ./kicad-launcher --list
+#   ./kicad-launcher --run [NAME]
+#   ./kicad-launcher --sch [status|verify|next]
+#   ./kicad-launcher --install    # apt KiCad + ngspice (Debian/Ubuntu/WSL)
+#
+# Env:
+#   AARFLINGO_HARDWARE  Override hardware/ scan root
+
+set -euo pipefail
+
+CHECK_ONLY=0
+LIST_ONLY=0
+RUN_ONLY=0
+SCH_ONLY=0
+INSTALL=0
+RUN_TARGET=""
+SCH_ARGS=()
+
+usage() {
+    sed -n '2,16p' "$0" | sed 's/^# \?//'
+}
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+    --check) CHECK_ONLY=1; shift ;;
+    --list) LIST_ONLY=1; shift ;;
+    --install) INSTALL=1; shift ;;
+    --sch)
+        SCH_ONLY=1
+        shift
+        while [[ $# -gt 0 ]]; do
+            SCH_ARGS+=("$1")
+            shift
+        done
+        ;;
+    --run)
+        RUN_ONLY=1
+        shift
+        if [[ $# -gt 0 && "$1" != --* ]]; then
+            RUN_TARGET="$1"
+            shift
+        fi
+        ;;
+    -h|--help)
+        usage
+        exit 0
+        ;;
+    *)
+        echo "Unknown option: $1 (try --help)" >&2
+        exit 1
+        ;;
+    esac
+done
+
+if [[ -t 1 ]] && command -v tput >/dev/null 2>&1 && [[ "$(tput colors 2>/dev/null || echo 0)" -ge 8 ]]; then
+    C_RESET="$(tput sgr0)"; C_BOLD="$(tput bold)"
+    C_RED="$(tput setaf 1)"; C_GREEN="$(tput setaf 2)"; C_YELLOW="$(tput setaf 3)"
+    C_CYAN="$(tput setaf 6)"
+else
+    C_RESET=""; C_BOLD=""; C_RED=""; C_GREEN=""; C_YELLOW=""; C_CYAN=""
+fi
+
+SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
+REPO_ROOT="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
+HARDWARE_ROOT="${AARFLINGO_HARDWARE:-${REPO_ROOT}/hardware}"
+AARF_SCH="${REPO_ROOT}/scripts/aarf_sch/cli.py"
+
+if [[ "$SCH_ONLY" -eq 1 ]]; then
+    if [[ ! -f "$AARF_SCH" ]]; then
+        echo "aarf_sch not found at $AARF_SCH" >&2
+        exit 1
+    fi
+    if [[ ${#SCH_ARGS[@]} -eq 0 ]]; then
+        SCH_ARGS=(status)
+    fi
+    exec python3 "$AARF_SCH" "${SCH_ARGS[@]}"
+fi
+
+PROJECT_NAMES=()
+PROJECT_PATHS=()
+
+discover_projects() {
+    PROJECT_NAMES=()
+    PROJECT_PATHS=()
+    local f name
+    [[ -d "$HARDWARE_ROOT" ]] || return 0
+    while IFS= read -r -d '' f; do
+        name="$(basename "$(dirname "$f")")"
+        PROJECT_NAMES+=("$name")
+        PROJECT_PATHS+=("$f")
+    done < <(find "$HARDWARE_ROOT" -maxdepth 4 -iname '*.kicad_pro' -print0 2>/dev/null | sort -z)
+}
+
+list_projects() {
+    if [[ ${#PROJECT_NAMES[@]} -eq 0 ]]; then
+        echo "${C_YELLOW}No KiCad projects under ${HARDWARE_ROOT}.${C_RESET}"
+        return
+    fi
+    echo "${C_BOLD}Aarflingo hardware:${C_RESET}"
+    local i
+    for i in "${!PROJECT_NAMES[@]}"; do
+        printf "    ${C_YELLOW}[%d]${C_RESET} %s\n" "$((i + 1))" "${PROJECT_NAMES[$i]}"
+    done
+}
+
+launch_project() {
+    local idx="$1" path
+    path="${PROJECT_PATHS[$idx]}"
+    if ! command -v kicad >/dev/null 2>&1; then
+        echo "${C_RED}kicad is not installed — ./kicad-launcher --install${C_RESET}" >&2
+        exit 1
+    fi
+    echo "${C_CYAN}Launching KiCad on ${path} ...${C_RESET}"
+    nohup kicad "$path" >/dev/null 2>&1 &
+    disown
+}
+
+pick_and_launch() {
+    discover_projects
+    if [[ ${#PROJECT_NAMES[@]} -eq 0 ]]; then
+        echo "No hardware projects found under ${HARDWARE_ROOT}." >&2
+        exit 1
+    fi
+    if [[ -n "$RUN_TARGET" ]]; then
+        local i matches=()
+        for i in "${!PROJECT_NAMES[@]}"; do
+            if [[ "${PROJECT_NAMES[$i]}" == *"$RUN_TARGET"* ]]; then
+                matches+=("$i")
+            fi
+        done
+        if [[ ${#matches[@]} -eq 0 ]]; then
+            echo "No project matches '${RUN_TARGET}'." >&2
+            list_projects
+            exit 1
+        elif [[ ${#matches[@]} -gt 1 ]]; then
+            echo "Multiple matches for '${RUN_TARGET}':" >&2
+            for i in "${matches[@]}"; do
+                echo "  ${PROJECT_NAMES[$i]}" >&2
+            done
+            exit 1
+        fi
+        launch_project "${matches[0]}"
+        return
+    fi
+    if [[ ${#PROJECT_NAMES[@]} -eq 1 ]]; then
+        launch_project 0
+        return
+    fi
+    if [[ ! -t 0 ]]; then
+        echo "Pass --run NAME (e.g. --run collar)." >&2
+        list_projects
+        exit 1
+    fi
+    list_projects
+    local choice
+    read -r -p "Pick a project [1-${#PROJECT_NAMES[@]}]: " choice
+    if [[ ! "$choice" =~ ^[0-9]+$ ]] || (( choice < 1 || choice > ${#PROJECT_NAMES[@]} )); then
+        echo "Invalid selection." >&2
+        exit 1
+    fi
+    launch_project "$((choice - 1))"
+}
+
+kicad_major() {
+    command -v kicad-cli >/dev/null 2>&1 || { echo 0; return; }
+    kicad-cli --version 2>/dev/null | grep -oE '^[0-9]+' | head -1 || echo 0
+}
+
+tool_status() {
+    local name="$1" cmd="$2"
+    if command -v "$cmd" >/dev/null 2>&1; then
+        printf "  ${C_GREEN}[x]${C_RESET} %-12s (%s)\n" "$name" "$(command -v "$cmd")"
+        return 0
+    fi
+    printf "  ${C_RED}[ ]${C_RESET} %-12s not found\n" "$name"
+    return 1
+}
+
+echo "${C_BOLD}${C_CYAN}== Aarflingo KiCad launcher ==${C_RESET}"
+echo "repo:      ${REPO_ROOT}"
+echo "hardware:  ${HARDWARE_ROOT}"
+echo
+
+echo "${C_BOLD}Tools:${C_RESET}"
+HAVE_KICAD=0
+HAVE_NGSPICE=0
+tool_status "kicad" kicad && HAVE_KICAD=1 || true
+tool_status "kicad-cli" kicad-cli || true
+tool_status "ngspice" ngspice && HAVE_NGSPICE=1 || true
+echo "  KiCad major: $(kicad_major)"
+echo
+
+if [[ "$CHECK_ONLY" -eq 1 ]]; then
+    discover_projects
+    list_projects
+    exit 0
+fi
+
+if [[ "$LIST_ONLY" -eq 1 ]]; then
+    discover_projects
+    list_projects
+    exit 0
+fi
+
+if [[ "$RUN_ONLY" -eq 1 ]]; then
+    pick_and_launch
+    exit 0
+fi
+
+if [[ "$INSTALL" -eq 1 ]]; then
+    if ! command -v apt-get >/dev/null 2>&1; then
+        echo "apt-get not found. Install KiCad from https://www.kicad.org/download/" >&2
+        exit 1
+    fi
+    echo "${C_YELLOW}Installing kicad + ngspice (sudo)...${C_RESET}"
+    sudo apt-get update
+    sudo apt-get install -y kicad ngspice
+    echo "${C_GREEN}Done.${C_RESET} Optional: KiCad 9 PPA adds 'kicad-cli sch erc'."
+    echo "  sudo add-apt-repository ppa:kicad/kicad-9.0-releases && sudo apt-get update && sudo apt-get install -y kicad"
+    exit 0
+fi
+
+discover_projects
+list_projects
+echo
+echo "${C_BOLD}Next:${C_RESET}"
+cat <<EOF
+  ./kicad-launcher --run collar     # open the dog-worn puck schematic
+  ./kicad-launcher --sch status     # sheet / net inventory
+  ./kicad-launcher --sch verify     # GPIO + ethics + required parts
+  ./kicad-launcher --sch next       # layout / ERC checklist
+  ./kicad-launcher --install        # only if kicad is missing
+EOF
+echo
+if [[ "$HAVE_KICAD" -eq 0 ]]; then
+    echo "${C_YELLOW}KiCad not on PATH. Install with ./kicad-launcher --install${C_RESET}"
+fi

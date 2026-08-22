@@ -1,4 +1,4 @@
-.PHONY: setup test smoke dev runtime studio electron train verify mobile-android mobile-verify web
+.PHONY: setup test smoke dev runtime studio electron train verify mobile-android mobile-verify web home-capture home-train kicad kicad-sch
 
 setup:
 	./setup.sh
@@ -15,8 +15,15 @@ verify:
 branding:
 	./scripts/sync-branding.sh
 
+kicad:
+	./kicad-launcher --run collar
+
+kicad-sch:
+	./kicad-launcher --sch verify
+
 test:
 	python3 core/metrics/test_anticipate.py
+	python3 -m pytest -q scripts/aarf_sch
 	PYTHONPATH=. poetry run pytest -q core/tests
 	PYTHONPATH=.:services/ingest poetry run pytest -q services/ingest/tests
 	PYTHONPATH=.:services/perception poetry run pytest -q services/perception/tests
@@ -32,6 +39,13 @@ smoke:
 
 dev:
 	./scripts/dev.sh
+
+home-capture:
+	./scripts/home_capture.sh
+
+home-train:
+	PYTHONPATH=.:services/perception poetry run aarflingo-perception prep-dog-yolo
+	PYTHONPATH=.:services/perception poetry run aarflingo-perception finetune-dog-yolo
 
 runtime:
 	./scripts/run_runtime.sh
