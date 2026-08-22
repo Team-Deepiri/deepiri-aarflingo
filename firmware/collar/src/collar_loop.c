@@ -15,7 +15,7 @@ void collar_loop_init(CollarLoop *L) {
 
 int collar_loop_step(CollarLoop *L, const int32_t *ir, size_t n, int fs_hz,
                      float imu_rms, float imu_peak, float audio_rms, int bark,
-                     float vbat_v) {
+                     float vbat_v, int imu_ok, int mic_ok) {
     if (L == NULL) {
         return -1;
     }
@@ -34,6 +34,10 @@ int collar_loop_step(CollarLoop *L, const int32_t *ir, size_t n, int fs_hz,
     L->last.rmssd_ms = hr.ok ? hr.rmssd_ms : 0;
     if (vbat_v < COLLAR_VBAT_EMPTY_V) {
         L->last.fault = "vbat";
+    } else if (!imu_ok) {
+        L->last.fault = "imu";
+    } else if (!mic_ok) {
+        L->last.fault = "mic";
     } else if (!hr.ok) {
         L->last.fault = "ppg";
     }

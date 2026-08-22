@@ -131,7 +131,7 @@ int main(void) {
     }
     CollarLoop L;
     collar_loop_init(&L);
-    int n = collar_loop_step(&L, ir, N, FS, 0.1f, 0.2f, 0.01f, 0, 3.8f);
+    int n = collar_loop_step(&L, ir, N, FS, 0.1f, 0.2f, 0.01f, 0, 3.8f, 1, 1);
     if (n < 20) return 2;
     if (L.state != COLLAR_IDLE) return 3;
     if (!L.last.ppg_ok) return 4;
@@ -203,7 +203,7 @@ int main(void) {
     int32_t ir[8] = {0};
     CollarLoop L;
     collar_loop_init(&L);
-    int n = collar_loop_step(&L, ir, 8, 50, 0.1f, 0.2f, 0.01f, 0, 3.00f);
+    int n = collar_loop_step(&L, ir, 8, 50, 0.1f, 0.2f, 0.01f, 0, 3.00f, 1, 1);
     if (n < 10) return 2;
     if (L.last.fault == NULL || strcmp(L.last.fault, "vbat") != 0) return 3;
     return 0;
@@ -247,11 +247,90 @@ int main(void) {
     _compile_and_run([SRC / "ble_tx.c"], extra, "test_ble_tx", tmp_path)
 
 
+def test_ble_gatt_is_notify_only_and_named(tmp_path):
+    extra = r"""
+#include "ble_link.h"
+#include <string.h>
+int main(void) {
+    if (strcmp(COLLAR_BLE_ADV_NAME, "aarf-collar") != 0) return 2;
+    if (COLLAR_GATT_NOTIFY_PROPS != 0x10) return 3;
+    if (COLLAR_GATT_WRITE_PROPS != 0) return 4;
+    if (COLLAR_BLE_MTU != 247) return 5;
+    return 0;
+}
+"""
+    _compile_and_run([], extra, "test_gatt", tmp_path)
+
+
+def test_ble_radio_source_has_no_write_char():
+    radio = COLLAR / "src" / "ble_radio.cpp"
+    if not radio.is_file():
+        pytest.fail("ble_radio.cpp missing — implement after this red test")
+    text = radio.read_text(encoding="utf-8")
+    assert "NOTIFY" in text
+    assert "setMTU" in text
+    assert "WRITE" not in text
+    assert "SHOCK" not in text
+
+
+def test_led_period_matches_fault_table(tmp_path):
+    src = SRC / "led_stat.c"
+    if not src.is_file():
+        pytest.fail("led_stat.c missing — implement after this red test")
+    extra = r"""
+#include "led_stat.h"
+#include <stddef.h>
+int main(void) {
+    if (collar_led_period_ms(NULL) != 10) return 2;
+    if (collar_led_period_ms("ppg") != 500) return 3;
+    if (collar_led_period_ms("imu") != 500) return 4;
+    if (collar_led_period_ms("mic") != 500) return 5;
+    if (collar_led_period_ms("vbat") != 0) return 6;
+    return 0;
+}
+"""
+    _compile_and_run([src], extra, "test_led", tmp_path)
+
+
+def test_wdt_is_longer_than_clip(tmp_path):
+    extra = r"""
+#include "wdt.h"
+int main(void) {
+    if (COLLAR_CLIP_BUDGET_S >= COLLAR_WDT_S) return 2;
+    if (COLLAR_WDT_S < 20) return 3;
+    return 0;
+}
+"""
+    _compile_and_run([], extra, "test_wdt", tmp_path)
+
+
+def test_collar_loop_imu_fault_beats_ppg(tmp_path):
+    extra = r"""
+#include "collar_loop.h"
+#include <string.h>
+int main(void) {
+    int32_t ir[8] = {0};
+    CollarLoop L;
+    collar_loop_init(&L);
+    int n = collar_loop_step(&L, ir, 8, 50, 0.f, 0.f, 0.01f, 0, 3.80f, 0, 1);
+    if (n < 10) return 2;
+    if (L.last.fault == NULL || strcmp(L.last.fault, "imu") != 0) return 3;
+    return 0;
+}
+"""
+    _compile_and_run(
+        [SRC / "ppg_hr.c", SRC / "frame.c", SRC / "collar_loop.c"],
+        extra,
+        "test_imu_fault",
+        tmp_path,
+    )
+
+
 def test_ble_link_is_notify_only():
     text = (COLLAR / "include" / "ble_link.h").read_text(encoding="utf-8")
     assert "COLLAR_BLE_NOTIFY_UUID" in text
     assert "COLLAR_BLE_MTU" in text
-    assert "WRITE" not in text
+    assert "COLLAR_GATT_WRITE_PROPS" in text
     assert "SHOCK" not in text
 
 

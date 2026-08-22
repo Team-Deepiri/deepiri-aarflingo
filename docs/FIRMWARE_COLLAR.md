@@ -11,7 +11,7 @@ KiCad: `./kicad-launcher --run collar`. Electrical math: [hardware/collar-reva/A
 | Item | Value |
 |------|--------|
 | Module | ESP32-S3-MINI-1 |
-| Framework (Rev-A) | Arduino + host-tested C (`ppg_hr`, `frame`, `collar_loop`). NimBLE notify is the next increment; Serial JSON is bring-up. |
+| Framework (Rev-A) | Arduino + NimBLE + host-tested C. Advertises `aarf-collar`, notifies CBOR at 1 Hz. |
 | Sensors | BMI270 (I2C), INMP441 (I2S), TI AFE4404 neck PPG (I2C) |
 | Radio | BLE notify 1 Hz; Wi-Fi only for triggered clip upload |
 | Actuation | **None** |

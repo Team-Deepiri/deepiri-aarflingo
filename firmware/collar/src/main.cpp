@@ -1,16 +1,20 @@
 #include "afe4404.h"
 #include "audio_feat.h"
 #include "ble_link.h"
+#include "ble_radio.h"
 #include "ble_tx.h"
 #include "bmi270.h"
 #include "collar_loop.h"
 #include "imu_feat.h"
+#include "led_stat.h"
 #include "pins.h"
 #include "vbat.h"
+#include "wdt.h"
 
 #include <Arduino.h>
 #include <Wire.h>
 #include <driver/i2s.h>
+#include <esp_task_wdt.h>
 #include <stdint.h>
 
 static CollarLoop g_loop;
@@ -20,6 +24,7 @@ static float g_xyz[100 * 3];
 static size_t g_nimu;
 static int32_t g_pcm[64];
 static size_t g_npcm;
+static int g_imu_ok;
 
 static int16_t i2c_read_le16(uint8_t addr, uint8_t reg) {
     Wire.beginTransmission(addr);
@@ -52,7 +57,7 @@ static int32_t afe4404_read_led1(void) {
 }
 
 static void sample_imu_once(void) {
-    if (g_nimu >= 100) {
+    if (!g_imu_ok || g_nimu >= 100) {
         return;
     }
     int16_t x = i2c_read_le16(BMI270_I2C_ADDR, BMI270_REG_ACC_X_LSB);
@@ -64,6 +69,19 @@ static void sample_imu_once(void) {
     g_nimu++;
 }
 
+static void drive_led(uint32_t now) {
+    static uint32_t last;
+    uint32_t period = collar_led_period_ms(g_loop.last.fault);
+    if (period == 0) {
+        digitalWrite(PIN_LED_STAT, LOW);
+        return;
+    }
+    if (now - last >= period) {
+        last = now;
+        digitalWrite(PIN_LED_STAT, !digitalRead(PIN_LED_STAT));
+    }
+}
+
 void setup() {
     Serial.begin(115200);
     pinMode(PIN_LED_STAT, OUTPUT);
@@ -71,7 +89,11 @@ void setup() {
     pinMode(PIN_IMU_INT, INPUT);
     pinMode(PIN_PPG_RDY, INPUT);
     pinMode(PIN_PPG_RST, OUTPUT);
+    digitalWrite(PIN_PPG_RST, LOW);
+    delay(10);
     digitalWrite(PIN_PPG_RST, HIGH);
+    delay(10);
+
     Wire.begin(PIN_SDA, PIN_SCL);
     Wire.beginTransmission(BMI270_I2C_ADDR);
     Wire.write(BMI270_REG_CHIP_ID);
@@ -79,9 +101,8 @@ void setup() {
     if (Wire.endTransmission(false) == 0 && Wire.requestFrom((int)BMI270_I2C_ADDR, 1) == 1) {
         chip = (uint8_t)Wire.read();
     }
-    if (!bmi270_chip_ok(chip)) {
-        Serial.println("imu_fault");
-    }
+    g_imu_ok = bmi270_chip_ok(chip);
+
     collar_loop_init(&g_loop);
     analogReadResolution(12);
 
@@ -102,11 +123,16 @@ void setup() {
     i2s_driver_install(I2S_NUM_0, &i2s_cfg, 0, NULL);
     i2s_set_pin(I2S_NUM_0, &i2s_pins);
 
-    Serial.print("collar notify ");
-    Serial.println(COLLAR_BLE_NOTIFY_UUID);
+    collar_ble_begin();
+    esp_task_wdt_init(COLLAR_WDT_S, true);
+    esp_task_wdt_add(NULL);
+
+    Serial.print("adv ");
+    Serial.println(COLLAR_BLE_ADV_NAME);
 }
 
 void loop() {
+    esp_task_wdt_reset();
     sample_imu_once();
 
     int32_t hop[16];
@@ -123,8 +149,10 @@ void loop() {
         g_ir[g_nir++] = s;
     }
 
-    static uint32_t last = 0;
     uint32_t now = millis();
+    drive_led(now);
+
+    static uint32_t last;
     if (now - last < 1000) {
         delay(10);
         return;
@@ -137,8 +165,10 @@ void loop() {
     float ar = audio_rms(g_pcm, g_npcm);
     int bark = audio_bark(ar, 500.0f);
     float vbat = vbat_from_raw(analogRead(PIN_VBAT_SENSE), 4095, 3.10f, 1.0f, 0.0f);
+    int mic_ok = g_npcm > 0;
 
-    int n = collar_loop_step(&g_loop, g_ir, g_nir, 50, imu_rms, imu_peak, ar, bark, vbat);
+    int n = collar_loop_step(&g_loop, g_ir, g_nir, 50, imu_rms, imu_peak, ar, bark, vbat,
+                             g_imu_ok, mic_ok);
     g_nir = 0;
     g_nimu = 0;
     g_npcm = 0;
@@ -146,8 +176,7 @@ void loop() {
         uint8_t notify[256];
         int pn = collar_ble_pack(g_loop.tx, n, notify, sizeof notify, COLLAR_BLE_MTU);
         if (pn > 0) {
-            Serial.write(notify, (size_t)pn);
+            collar_ble_notify(notify, pn);
         }
     }
-    digitalWrite(PIN_LED_STAT, !digitalRead(PIN_LED_STAT));
 }
