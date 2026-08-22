@@ -1,6 +1,6 @@
 # METHODS
 
-Aarflingo predicts a triad — intent × emotion × behavior — from vision, audio, and physiology. This file is the protocol a reviewer can run. It is not a results claim.
+Aarflingo predicts a triad — intent × emotion × behavior — from vision, audio, and physiology. This file is the protocol a reviewer can run. It is not a results claim. The manuscript is [PAPER.md](PAPER.md) / [aarflingo.tex](aarflingo.tex).
 
 ## What counts as v1.0 accuracy
 

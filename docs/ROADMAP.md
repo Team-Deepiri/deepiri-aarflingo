@@ -243,7 +243,8 @@ Harness (does not pass the bar yet): `make v1-gate` writes RESULTS.md. `python3 
 ### 3. Writing & release timeline
 
 - [ ] **v1.0-M3:** dataset + eval harness frozen; baseline/ablation table generated
-- [ ] **v1.0-M4:** full methods + results draft; figures from notebook exports
+- [x] **v1.0-M4:** methods preprint in `docs/paper/PAPER.md` + `aarflingo.tex` (honest: home N=0, synthetic 1.0 does not count)
+- [ ] figures from notebook exports + home-eval tables once `dog_split.jsonl` exists
 - [ ] **v1.0-M5:** internal review (ethogram experts + ML reviewer), ethics/data-sheet polish
 - [ ] **v1.0-M6:** release artifacts (model checkpoints, ONNX, code tag `v1.0`) + submit to a venue (e.g. ACII/ICMI animal-AI track, or NeurIPS Datasets & Benchmarks for the dataset paper, or a vet-behavioural journal)
 

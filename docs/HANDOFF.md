@@ -54,8 +54,8 @@ ROADMAP Completion §2 boxes.
 2. Tick ROADMAP Completion §2 items that passed.
 3. Next on Completion §1: `vitals.pt` + PhysioZoo HRV labels. Collar 1 Hz
    already fills studio Heart/Body bars via `POST /infer/collar`.
-4. Paper track starts once home data exists: dataset protocol in ROADMAP
-   "Research paper" §2 (`docs/paper/METHODS.md` etc.).
+4. Methods preprint is in `docs/paper/PAPER.md`. Home JSONL is still the
+   missing measurement (`python3 scripts/v1_gate.py --require-bar`).
 
 ## Gotchas learned this session
 

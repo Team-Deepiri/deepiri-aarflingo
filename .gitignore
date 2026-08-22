@@ -71,6 +71,14 @@ firmware/**/.pio/
 **/_autosave-*
 **/~*
 
+# LaTeX build junk (keep .tex / .bib / .md)
+docs/paper/*.aux
+docs/paper/*.log
+docs/paper/*.out
+docs/paper/*.bbl
+docs/paper/*.blg
+docs/paper/*.synctex.gz
+
 # OS
 .DS_Store
 Thumbs.db

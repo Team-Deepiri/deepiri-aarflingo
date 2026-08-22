@@ -1,5 +1,7 @@
 # Reproduce
 
+Manuscript: [PAPER.md](PAPER.md). arXiv source: [aarflingo.tex](aarflingo.tex).
+
 ## Harness (no GPU)
 
 ```bash

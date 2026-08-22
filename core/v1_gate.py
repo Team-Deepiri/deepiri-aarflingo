@@ -12,7 +12,7 @@ from typing import Any
 
 ACCURACY_BAR = 0.95
 MIN_DOGS = 3
-PAPER_FILES = ("METHODS.md", "RESULTS.md", "DATASHEET.md", "reproduce.md")
+PAPER_FILES = ("METHODS.md", "RESULTS.md", "DATASHEET.md", "reproduce.md", "PAPER.md", "aarflingo.tex")
 EVAL_JSONL = Path("data/dog/eval/dog_split.jsonl")
 MANIFEST = Path("artifacts/manifests/aarflingo-multimodal.json")
 JETSON_DOCKER = Path("infra/docker/jetson.Dockerfile")

@@ -29,6 +29,8 @@ make v1-gate                      # report + docs/paper/RESULTS.md
 python3 scripts/v1_gate.py --require-bar   # fails until the bar is real
 ```
 
+Methods preprint (does **not** claim the bar): [docs/paper/PAPER.md](docs/paper/PAPER.md).
+
 ## Architecture
 
 | Path | Role |

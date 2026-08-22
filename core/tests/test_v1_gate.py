@@ -96,4 +96,21 @@ def test_paper_scaffold_lists_required_files() -> None:
     from core.v1_gate import paper_ready
 
     info = paper_ready(ROOT)
-    assert set(info["required"]) >= {"METHODS.md", "RESULTS.md", "DATASHEET.md", "reproduce.md"}
+    assert set(info["required"]) >= {
+        "METHODS.md",
+        "RESULTS.md",
+        "DATASHEET.md",
+        "reproduce.md",
+        "PAPER.md",
+        "aarflingo.tex",
+    }
+    assert info["ok"] is True
+
+
+def test_manuscript_does_not_claim_home_bar() -> None:
+    paper = (ROOT / "docs" / "paper" / "PAPER.md").read_text(encoding="utf-8")
+    tex = (ROOT / "docs" / "paper" / "aarflingo.tex").read_text(encoding="utf-8")
+    for text in (paper, tex):
+        assert "bar_met" in text or "bar is unmet" in text or "unmet" in text.lower()
+        assert "N=0" in text or "N=0" in text.replace(" ", "") or "0 / 0" in text
+        assert "does **not** claim" in text or "Not a claim of 95" in text or "does not claim 95" in text.lower()
