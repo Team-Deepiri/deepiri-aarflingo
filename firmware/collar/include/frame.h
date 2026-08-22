@@ -26,6 +26,10 @@ int collar_frame_encode(const CollarSample *s, uint8_t *buf, size_t cap);
 
 int collar_frame_contains(const uint8_t *buf, int n, const char *key);
 
+/* Decode our Phase-2 map. fault is copied into fault_buf (may be empty). */
+int collar_frame_decode(const uint8_t *buf, int n, CollarSample *out, char *fault_buf,
+                        size_t fault_cap);
+
 #ifdef __cplusplus
 }
 #endif

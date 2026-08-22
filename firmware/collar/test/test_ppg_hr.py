@@ -430,6 +430,89 @@ int main(void) {
     assert len(payload) <= 200
 
 
+def test_cbor_decode_roundtrip_hr_and_fault(tmp_path):
+    extra = r"""
+#include "frame.h"
+#include <string.h>
+int main(void) {
+    CollarSample s = {0};
+    s.v = 1;
+    s.ts_ms = 42;
+    s.hr_bpm = 96;
+    s.rmssd_ms = 30;
+    s.ppg_ok = 1;
+    s.bark = 1;
+    s.vbat_v = 3.80f;
+    s.imu_rms = 0.12f;
+    s.fault = "ppg";
+    uint8_t buf[256];
+    int n = collar_frame_encode(&s, buf, sizeof buf);
+    CollarSample out = {0};
+    char fault[16] = {0};
+    if (collar_frame_decode(buf, n, &out, fault, sizeof fault) != 0) return 2;
+    if (out.hr_bpm != 96) return 3;
+    if (out.bark != 1) return 4;
+    if (out.ts_ms != 42) return 5;
+    if (strcmp(fault, "ppg") != 0) return 6;
+    if (out.vbat_v < 3.79f || out.vbat_v > 3.81f) return 7;
+    return 0;
+}
+"""
+    _compile_and_run([SRC / "frame.c"], extra, "test_decode", tmp_path)
+
+
+def test_python_decoder_matches_c_encoder(tmp_path):
+    extra = r"""
+#include "frame.h"
+#include <stdio.h>
+int main(void) {
+    CollarSample s = {0};
+    s.v = 1;
+    s.ts_ms = 99;
+    s.hr_bpm = 88;
+    s.ppg_ok = 1;
+    s.vbat_v = 3.7f;
+    s.imu_rms = 0.2f;
+    uint8_t buf[256];
+    int n = collar_frame_encode(&s, buf, sizeof buf);
+    if (n < 20) return 2;
+    fwrite(buf, 1, (size_t)n, stdout);
+    return 0;
+}
+"""
+    dump = _compile([SRC / "frame.c"], extra, "dump_cbor", tmp_path)
+    payload = subprocess.run([str(dump)], capture_output=True).stdout
+    import sys
+
+    sys.path.insert(0, str(COLLAR / "host"))
+    from decode import decode_collar_cbor  # noqa: E402
+
+    frame = decode_collar_cbor(payload)
+    assert frame["hr_bpm"] == 88
+    assert frame["ts_ms"] == 99
+    assert frame["source"] == "sensors"
+    assert frame["v"] == 1
+
+
+def test_imu_isr_only_sets_flag(tmp_path):
+    extra = r"""
+#include "imu_isr.h"
+int main(void) {
+    volatile int flag = 0;
+    collar_imu_isr(&flag);
+    if (flag != 1) return 2;
+    if (!collar_imu_take(&flag)) return 3;
+    if (flag != 0) return 4;
+    if (collar_imu_take(&flag)) return 5;
+    return 0;
+}
+"""
+    src = SRC / "imu_isr.c"
+    if not src.is_file():
+        pytest.fail("imu_isr.c missing — implement after this red test")
+    _compile_and_run([src], extra, "test_isr", tmp_path)
+
+
 def test_firmware_has_no_actuator_drivers():
     banned = ("SHOCK", "STIM", "VIBE", "HAPTIC", "SOLENOID", "MOTOR", "STRIKE", "PUNISH")
     for path in (COLLAR / "src").rglob("*"):

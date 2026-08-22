@@ -8,6 +8,7 @@
 #include "clip_wifi.h"
 #include "collar_loop.h"
 #include "imu_feat.h"
+#include "imu_isr.h"
 #include "led_stat.h"
 #include "pins.h"
 #include "vbat.h"
@@ -30,6 +31,11 @@ static size_t g_npcm;
 static int g_imu_ok;
 static VbatCal g_vbat_cal;
 static char g_runtime_url[96];
+static volatile int g_imu_flag;
+
+static void IRAM_ATTR on_imu_int(void) {
+    collar_imu_isr(&g_imu_flag);
+}
 
 static int i2c_write8(uint8_t addr, uint8_t reg, uint8_t val) {
     Wire.beginTransmission(addr);
@@ -116,6 +122,13 @@ void setup() {
     delay(10);
 
     Wire.begin(PIN_SDA, PIN_SCL);
+    for (uint8_t addr = 1; addr < 127; addr++) {
+        Wire.beginTransmission(addr);
+        if (Wire.endTransmission() == 0) {
+            Serial.print("i2c 0x");
+            Serial.println(addr, HEX);
+        }
+    }
     for (size_t i = 0; i < AFE4404_INIT_COUNT; i++) {
         afe4404_write24(afe4404_init[i].reg, afe4404_init[i].val);
     }
@@ -131,6 +144,7 @@ void setup() {
         delay(2);
         i2c_write8(BMI270_I2C_ADDR, BMI270_REG_PWR_CTRL, BMI270_PWR_ACC_EN);
         i2c_write8(BMI270_I2C_ADDR, BMI270_REG_ACC_RANGE, BMI270_ACC_RANGE_8G);
+        attachInterrupt(digitalPinToInterrupt(PIN_IMU_INT), on_imu_int, RISING);
     }
 
     Preferences prefs;
@@ -176,7 +190,12 @@ void setup() {
 
 void loop() {
     esp_task_wdt_reset();
-    sample_imu_once();
+    uint32_t now = millis();
+    static uint32_t last_imu;
+    if (collar_imu_take(&g_imu_flag) || (now - last_imu >= 10)) {
+        last_imu = now;
+        sample_imu_once();
+    }
 
     int32_t hop[16];
     size_t got = 0;
@@ -192,7 +211,6 @@ void loop() {
         g_ir[g_nir++] = s;
     }
 
-    uint32_t now = millis();
     drive_led(now);
 
     static uint32_t last;
