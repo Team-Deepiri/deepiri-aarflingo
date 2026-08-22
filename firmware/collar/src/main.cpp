@@ -144,6 +144,8 @@ void setup() {
         delay(2);
         i2c_write8(BMI270_I2C_ADDR, BMI270_REG_PWR_CTRL, BMI270_PWR_ACC_EN);
         i2c_write8(BMI270_I2C_ADDR, BMI270_REG_ACC_RANGE, BMI270_ACC_RANGE_8G);
+        i2c_write8(BMI270_I2C_ADDR, BMI270_REG_INT1_IO_CTRL, BMI270_INT1_IO_OUT_AH);
+        i2c_write8(BMI270_I2C_ADDR, BMI270_REG_INT_MAP_DATA, BMI270_INT_MAP_DRDY_INT1);
         attachInterrupt(digitalPinToInterrupt(PIN_IMU_INT), on_imu_int, RISING);
     }
 

@@ -16,6 +16,10 @@ extern "C" {
 #define BMI270_PWR_ACC_EN 0x04
 #define BMI270_REG_CMD 0x7E
 #define BMI270_CMD_SOFTRESET 0xB6
+#define BMI270_REG_INT1_IO_CTRL 0x53
+#define BMI270_INT1_IO_OUT_AH 0x0A
+#define BMI270_REG_INT_MAP_DATA 0x58
+#define BMI270_INT_MAP_DRDY_INT1 0x04
 
 /* ±8 g, 16-bit two's complement. */
 float bmi270_lsb_to_g(int16_t lsb);

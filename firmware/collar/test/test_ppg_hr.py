@@ -181,6 +181,8 @@ int main(void) {
     if (bmi270_chip_ok(0x00)) return 7;
     if (BMI270_ACC_RANGE_8G != 0x02) return 8;
     if (BMI270_PWR_ACC_EN != 0x04) return 9;
+    if (BMI270_REG_INT1_IO_CTRL != 0x53) return 10;
+    if (BMI270_REG_INT_MAP_DATA != 0x58) return 11;
     return 0;
 }
 """
@@ -511,6 +513,40 @@ int main(void) {
     if not src.is_file():
         pytest.fail("imu_isr.c missing — implement after this red test")
     _compile_and_run([src], extra, "test_isr", tmp_path)
+
+
+def test_pocket_gatt_matches_firmware_uuids():
+    repo = Path(__file__).resolve().parents[3]
+    header = (repo / "firmware" / "collar" / "include" / "ble_link.h").read_text(encoding="utf-8")
+    assert "aarf-collar" in header
+    assert "6e400001-b5a3-f393-e0a9-e50e24dcca9e" in header.lower()
+    assert "6e400003-b5a3-f393-e0a9-e50e24dcca9e" in header.lower()
+    ios = repo / "apps" / "aarf-pocket-ios" / "AarflingoPocket" / "Models" / "CollarCbor.swift"
+    droid = (
+        repo
+        / "apps"
+        / "aarf-pocket-android"
+        / "app"
+        / "src"
+        / "main"
+        / "java"
+        / "dev"
+        / "deepiri"
+        / "aarflingo"
+        / "data"
+        / "CollarCbor.kt"
+    )
+    if not ios.is_file():
+        pytest.fail("CollarCbor.swift missing — implement after this red test")
+    if not droid.is_file():
+        pytest.fail("CollarCbor.kt missing — implement after this red test")
+    for path in (ios, droid):
+        text = path.read_text(encoding="utf-8")
+        assert "aarf-collar" in text
+        assert "6E400001-B5A3-F393-E0A9-E50E24DCCA9E" in text.upper()
+        assert "6E400003-B5A3-F393-E0A9-E50E24DCCA9E" in text.upper()
+        assert "hr_bpm" in text
+        assert "SHOCK" not in text
 
 
 def test_firmware_has_no_actuator_drivers():

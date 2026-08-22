@@ -26,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
 import dev.deepiri.aarflingo.data.AppViewModel
 import dev.deepiri.aarflingo.ui.components.AarflingoCard
 import dev.deepiri.aarflingo.ui.theme.AarflingoColors
@@ -65,6 +66,36 @@ fun SettingsScreen(vm: AppViewModel, modifier: Modifier = Modifier) {
             Spacer(Modifier.height(8.dp))
             Text(
                 "Connects to Aarflingo runtime for live TriadNet inference (v0.2).",
+                color = AarflingoColors.Muted,
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+
+        AarflingoCard {
+            Text("Collar", fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(8.dp))
+            val ctx = LocalContext.current
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("Listen to collar", color = AarflingoColors.Text)
+                Switch(
+                    checked = vm.collarListen,
+                    onCheckedChange = { vm.setCollarListen(ctx, it) },
+                    colors = SwitchDefaults.colors(checkedThumbColor = AarflingoColors.Accent),
+                )
+            }
+            vm.collarVitals?.let { v ->
+                Text("HR ${v.hrBpm} bpm · ${"%.2f".format(v.vbatV)} V · bark ${if (v.bark) "yes" else "no"}")
+            } ?: Text(
+                vm.collarStatus ?: if (vm.collarListen) "Waiting for aarf-collar" else "Off",
+                color = AarflingoColors.Muted,
+                style = MaterialTheme.typography.bodySmall,
+            )
+            Text(
+                "Observational BLE notify only. Does not write actuation chars.",
                 color = AarflingoColors.Muted,
                 style = MaterialTheme.typography.bodySmall,
             )

@@ -17,6 +17,8 @@ make firmware          # host tests + pio compile
 cd firmware/collar && pio run -t upload
 ```
 
+Pocket: Settings → **Listen to collar** (iOS/Android). Same GATT UUIDs as this firmware. Observational notify only.
+
 Laptop subscriber (needs `bleak`):
 
 ```bash
