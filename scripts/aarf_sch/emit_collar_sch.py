@@ -9,8 +9,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from nets import BOARD, GPIO, TITLE
-from bom import footprint_for
+from bom import LINES, footprint_for
+from nets import BOARD, BOARD_H_MM, BOARD_W_MM, GPIO, TITLE
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 OUT = REPO_ROOT / "hardware" / BOARD
@@ -890,8 +890,170 @@ def emit_pins_h() -> str:
     return "\n".join(lines)
 
 
+# Board origin in the KiCad sheet (mm). Local coords are 0..BOARD_W/H.
+PCB_OX = 100.0
+PCB_OY = 80.0
+
+# Dirty (USB/charge) | brain (module) | clean (IMU/mic/PPG, optical on +Y neck edge).
+# Antenna of U1 faces −Y (away from neck and USB metal).
+PLACEMENT: dict[str, tuple[float, float, float]] = {
+    "J1": (5.5, 5.0, 0),
+    "R9": (10.5, 3.2, 0),
+    "R10": (10.5, 5.4, 0),
+    "D1": (8.0, 10.5, 0),
+    "F1": (8.0, 14.5, 0),
+    "U2": (8.0, 19.5, 0),
+    "R1": (11.8, 19.5, 90),
+    "J2": (6.5, 27.5, 0),
+    "U3": (15.5, 27.5, 0),
+    "C1": (15.5, 24.0, 0),
+    "C2": (18.8, 24.0, 0),
+    "R2": (22.2, 27.5, 90),
+    "R3": (24.0, 27.5, 90),
+    "C3": (26.0, 27.5, 0),
+    "U1": (22.0, 14.5, 0),
+    "C4": (29.2, 8.5, 0),
+    "C5": (29.2, 11.5, 0),
+    "R4": (13.8, 8.5, 0),
+    "R5": (13.8, 10.5, 0),
+    "R6": (13.8, 20.5, 0),
+    "D2": (13.8, 22.6, 0),
+    "U4": (34.5, 8.0, 0),
+    "C6": (37.6, 8.0, 0),
+    "R7": (31.4, 8.0, 0),
+    "R8": (31.4, 10.2, 0),
+    "U5": (34.5, 14.5, 0),
+    "C7": (37.6, 14.5, 0),
+    "U6": (34.5, 22.5, 0),
+    "C8": (37.6, 21.0, 0),
+    "D3": (32.2, 29.2, 0),
+    "D4": (36.4, 29.2, 0),
+}
+
+
+def _bom_line(ref: str):
+    for line in LINES:
+        if ref in line.refs:
+            return line
+    return None
+
+
+def _fp_props(ref: str, value: str, lib: str) -> str:
+    return f'''    (property "Reference" "{ref}" (at 0 -1.4 0)
+      (layer "F.SilkS")
+      (uuid {uid()})
+      (effects (font (size 0.7 0.7)))
+    )
+    (property "Value" "{value}" (at 0 1.4 0)
+      (layer "F.Fab")
+      (uuid {uid()})
+      (effects (font (size 0.6 0.6)))
+    )
+    (property "Footprint" "{lib}" (at 0 0 0)
+      (layer "F.Fab")
+      (uuid {uid()})
+      (effects (font (size 1.27 1.27)) hide)
+    )'''
+
+
+def _pad2(dx: float, w: float, h: float) -> str:
+    return f'''    (pad "1" smd roundrect (at {-dx} 0) (size {w} {h}) (layers "F.Cu" "F.Paste" "F.Mask")
+      (roundrect_rratio 0.25) (uuid {uid()})
+    )
+    (pad "2" smd roundrect (at {dx} 0) (size {w} {h}) (layers "F.Cu" "F.Paste" "F.Mask")
+      (roundrect_rratio 0.25) (uuid {uid()})
+    )'''
+
+
+def _courtyard(w: float, h: float) -> str:
+    x, y = w / 2, h / 2
+    return f'''    (fp_rect (start {-x} {-y}) (end {x} {y})
+      (stroke (width 0.05) (type default)) (fill none) (layer "F.CrtYd")
+    )
+    (fp_rect (start {-x} {-y}) (end {x} {y})
+      (stroke (width 0.12) (type default)) (fill none) (layer "F.Fab")
+    )'''
+
+
+def _footprint(ref: str, lx: float, ly: float, rot: float) -> str:
+    line = _bom_line(ref)
+    value = line.value if line else ref
+    lib = footprint_for(ref) or "Package_DFN_QFN:courtyard"
+    x, y = PCB_OX + lx, PCB_OY + ly
+    kind = ref[0]
+    if kind in {"R", "C", "D"} and ref not in {"D1"}:
+        if "0805" in (line.pkg if line else "") or ref in {"C1", "C2", "C5", "D3", "D4"}:
+            pads = _pad2(0.9, 0.8, 1.2)
+            body = _courtyard(2.2, 1.6) + "\n" + pads
+        else:
+            pads = _pad2(0.48, 0.5, 0.6)
+            body = _courtyard(1.2, 0.9) + "\n" + pads
+    elif ref == "D1":
+        body = _courtyard(3.0, 2.8) + f'''
+    (pad "1" smd rect (at -0.95 -0.95) (size 0.6 0.5) (layers "F.Cu" "F.Paste" "F.Mask") (uuid {uid()}))
+    (pad "2" smd rect (at 0.95 -0.95) (size 0.6 0.5) (layers "F.Cu" "F.Paste" "F.Mask") (uuid {uid()}))
+    (pad "3" smd rect (at 0.95 0.95) (size 0.6 0.5) (layers "F.Cu" "F.Paste" "F.Mask") (uuid {uid()}))
+    (pad "4" smd rect (at -0.95 0.95) (size 0.6 0.5) (layers "F.Cu" "F.Paste" "F.Mask") (uuid {uid()}))'''
+    elif ref in {"U2", "U3"}:
+        body = _courtyard(3.2, 3.0) + f'''
+    (pad "1" smd rect (at -0.95 -1.0) (size 0.6 0.7) (layers "F.Cu" "F.Paste" "F.Mask") (uuid {uid()}))
+    (pad "2" smd rect (at 0 -1.0) (size 0.6 0.7) (layers "F.Cu" "F.Paste" "F.Mask") (uuid {uid()}))
+    (pad "3" smd rect (at 0.95 -1.0) (size 0.6 0.7) (layers "F.Cu" "F.Paste" "F.Mask") (uuid {uid()}))
+    (pad "4" smd rect (at 0.95 1.0) (size 0.6 0.7) (layers "F.Cu" "F.Paste" "F.Mask") (uuid {uid()}))
+    (pad "5" smd rect (at -0.95 1.0) (size 0.6 0.7) (layers "F.Cu" "F.Paste" "F.Mask") (uuid {uid()}))'''
+    elif ref == "F1":
+        body = _courtyard(5.0, 3.4) + _pad2(1.75, 1.4, 2.0)
+    elif ref == "U1":
+        body = _courtyard(15.4, 20.5)
+    elif ref == "J1":
+        body = _courtyard(9.0, 8.0)
+    elif ref == "J2":
+        body = _courtyard(8.0, 6.0)
+    elif ref == "U4":
+        body = _courtyard(3.0, 3.5)
+    elif ref == "U5":
+        body = _courtyard(4.2, 3.6)
+    elif ref == "U6":
+        body = _courtyard(2.4, 2.4)
+    else:
+        body = _courtyard(2.0, 2.0)
+    return f'''  (footprint "{lib}" (layer "F.Cu")
+    (tstamp {uid()})
+    (at {x} {y} {rot})
+    (attr smd)
+{_fp_props(ref, value, lib)}
+{body}
+  )
+'''
+
+
 def emit_pcb() -> str:
-    return '''(kicad_pcb (version 20221018) (generator pcbnew)
+    x0, y0 = PCB_OX, PCB_OY
+    x1, y1 = PCB_OX + BOARD_W_MM, PCB_OY + BOARD_H_MM
+    parts = [_footprint(ref, *xyr) for ref, xyr in PLACEMENT.items()]
+    keep = f'''  (gr_text "RF_KEEP" (at {PCB_OX + 22} {PCB_OY + 2.2} 0)
+    (layer "Dwgs.User")
+    (uuid {uid()})
+    (effects (font (size 1.0 1.0)))
+  )
+  (gr_rect (start {PCB_OX + 14} {PCB_OY + 0.4}) (end {PCB_OX + 30} {PCB_OY + 4.2})
+    (stroke (width 0.1) (type default)) (fill none) (layer "Dwgs.User") (tstamp {uid()})
+  )
+'''
+    holes = ""
+    for lx, ly in ((1.6, 1.6), (BOARD_W_MM - 1.6, 1.6), (1.6, BOARD_H_MM - 1.6), (BOARD_W_MM - 1.6, BOARD_H_MM - 1.6)):
+        holes += f'''  (footprint "MountingHole:MountingHole_2.2mm" (layer "F.Cu")
+    (tstamp {uid()})
+    (at {PCB_OX + lx} {PCB_OY + ly})
+    (property "Reference" "H" (at 0 0 0)
+      (layer "F.SilkS") (uuid {uid()}) (effects (font (size 0.5 0.5)) hide)
+    )
+    (pad "" np_thru_hole circle (at 0 0) (size 2.2 2.2) (drill 2.2) (layers "*.Cu" "*.Mask")
+      (uuid {uid()})
+    )
+  )
+'''
+    return f'''(kicad_pcb (version 20221018) (generator pcbnew)
 
   (general
     (thickness 1.6)
@@ -925,10 +1087,10 @@ def emit_pcb() -> str:
     (pad_to_mask_clearance 0)
   )
 
-  (gr_rect (start 100 80) (end 130 110)
-    (stroke (width 0.1) (type default)) (fill none) (layer "Edge.Cuts") (tstamp ''' + uid() + ''')
+  (gr_rect (start {x0} {y0}) (end {x1} {y1})
+    (stroke (width 0.1) (type default)) (fill none) (layer "Edge.Cuts") (tstamp {uid()})
   )
-)
+{keep}{holes}{"".join(parts)})
 '''
 
 

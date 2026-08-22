@@ -9,6 +9,9 @@ from __future__ import annotations
 BOARD = "collar-reva"
 TITLE = "Aarflingo Collar Rev-A"
 MCU = "ESP32-S3-MINI-1"
+# 40×32 mm: USB/charger dirty, module, optical/clean. 30×30 cannot fit MINI-1 + USB-C.
+BOARD_W_MM = 40.0
+BOARD_H_MM = 32.0
 
 # Observational wearable only. These substrings must never appear as net names.
 FORBIDDEN_NETS = (

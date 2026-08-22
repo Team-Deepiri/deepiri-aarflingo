@@ -60,11 +60,14 @@ Charger: MCP73831. Schematic pad allows 2 kΩ (500 mA). **BOM default RPROG = 10
 
 ## Floorplan
 
+Board is **40×32 mm** (30×30 cannot fit MINI-1 + USB-C). Antenna keepout `RF_KEEP` on the −Y edge, opposite the optical window.
+
 | Zone | Contents |
 |------|----------|
-| Dirty | USB-C, TVS, PTC, MCP73831, JST |
+| Dirty (−X) | USB-C, TVS, PTC, MCP73831, JST, CC pulldowns |
 | Brain | ESP32-S3, 0.1 µF + 10 µF on 3V3, crystal is on-module |
-| Clean | BMI270, INMP441, I2C pull-ups. Far from charger loop. |
+| Clean (+X) | BMI270, INMP441, I2C pull-ups. Far from charger loop. |
+| Optical (+Y) | IR LED D3 + photodiode D4 toward ventral neck |
 
 ## Ethics / safety
 

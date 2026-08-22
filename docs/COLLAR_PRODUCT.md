@@ -13,7 +13,7 @@ Firmware `0.1.0`. Advertises `aarf-collar`.
 | Pocket iOS / Android | Done — Settings → Listen to collar |
 | Laptop listener | Done — `python3 scripts/collar_listen.py` |
 | Footprints / BOM | Done — `./kicad-launcher --sch bom` |
-| PCB layout / fab | Outline only — copper still to route |
+| PCB layout / fab | 40×32 mm outline, parts placed, copper unrouted |
 | Enclosure / strap | Not designed. NFC tag + 180 mAh cell are in the BOM. |
 
 ## Flash

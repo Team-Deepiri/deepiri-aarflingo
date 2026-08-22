@@ -20,7 +20,24 @@ from cli import (  # noqa: E402
     parse_pins_h,
     read_sheet,
 )
-from nets import FORBIDDEN_NETS, GPIO, I2C_PULLUP_OHMS, SHEET_NETS, VBAT_DIV_BOT_OHMS, VBAT_DIV_TOP_OHMS  # noqa: E402
+from nets import BOARD_H_MM, BOARD_W_MM, FORBIDDEN_NETS, GPIO, I2C_PULLUP_OHMS, SHEET_NETS, VBAT_DIV_BOT_OHMS, VBAT_DIV_TOP_OHMS  # noqa: E402
+
+
+def test_pcb_places_every_stuffed_ref():
+    pcb = (HERE.parents[1] / "hardware" / "collar-reva" / "collar-reva.kicad_pcb").read_text(
+        encoding="utf-8"
+    )
+    skip = {"BT1", "TAG1"}
+    missing = [
+        ref
+        for ref in all_refs()
+        if ref not in skip and f'(property "Reference" "{ref}"' not in pcb
+    ]
+    assert not missing, missing
+    assert "Edge.Cuts" in pcb
+    assert "RF_KEEP" in pcb
+    assert f"{100 + BOARD_W_MM:.1f}" in pcb or f"{100 + BOARD_W_MM:.0f}" in pcb
+    assert BOARD_H_MM >= 32.0
 
 
 def test_verify_passes_on_emitted_board():

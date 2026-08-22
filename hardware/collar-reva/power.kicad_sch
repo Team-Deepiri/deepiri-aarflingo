@@ -594,11 +594,11 @@
 
   (text "Dirty zone: USB / charger. Keep away from I2S mic." (at 20 20 0)
     (effects (font (size 1.27 1.27)) (justify left bottom))
-    (uuid ac761d4f-dea1-41e6-97ae-5b942c2afea6)
+    (uuid 883a2181-4154-45a3-8a9f-706796cea103)
   )
   (symbol (lib_id "Connector:Conn_01x06") (at 40 70 0) (unit 1)
     (in_bom yes) (on_board yes)
-    (uuid e3017cc9-6cb8-4be7-8054-2db82f4591a0)
+    (uuid 5f9e619f-e6b2-4c65-942b-01f0986395a7)
     (property "Reference" "J1" (at 40 57.3 0)
       (effects (font (size 1.27 1.27)))
     )
@@ -611,12 +611,12 @@
     (property "Datasheet" "~" (at 40 70 0)
       (effects (font (size 1.27 1.27)) hide)
     )
-    (pin "1" (uuid da62d8e4-2f2c-40ba-bd8f-c47f6386eebe))
-    (pin "2" (uuid 7e32407f-21e6-4fe1-b229-a3a65bdc0c5b))
-    (pin "3" (uuid 42ac8237-47f6-4832-b544-ce10fa303819))
-    (pin "4" (uuid a3cc65c8-54c0-4cd2-904d-84eac7791f1f))
-    (pin "5" (uuid f62edc7e-a885-42d5-b51b-d2d374b34dfb))
-    (pin "6" (uuid 645da028-4fff-4fe7-aa41-53ff58a405fb))
+    (pin "1" (uuid 4862b654-c62c-4082-a436-8a9c80c2ffa7))
+    (pin "2" (uuid f9656b0b-2847-46f1-9937-466765a32a61))
+    (pin "3" (uuid 90485b0f-4f08-428c-894d-3b1d4b7aeddf))
+    (pin "4" (uuid 2638ca83-da9c-400d-bed9-dd1f00f040d1))
+    (pin "5" (uuid 5f9a3f88-e945-4ccd-bbd7-cc9de04e60dd))
+    (pin "6" (uuid 0d03b429-ef5d-412f-a275-cd211f3c1e63))
     (instances
       (project "collar-reva"
         (path "/7fffe17a-9ffb-4f1f-b4b6-a4342b258eee/722922c5-f112-4de2-9d1d-7f370e5d2a8b"
@@ -627,7 +627,7 @@
   )
   (symbol (lib_id "Device:D_TVS") (at 65 55 0) (unit 1)
     (in_bom yes) (on_board yes)
-    (uuid 5774beb1-9e0c-4403-a17d-6ad3a0f56aec)
+    (uuid d5b31486-0a1f-423b-b96c-3a5391dd4a7b)
     (property "Reference" "D1" (at 65 42.3 0)
       (effects (font (size 1.27 1.27)))
     )
@@ -640,8 +640,8 @@
     (property "Datasheet" "~" (at 65 55 0)
       (effects (font (size 1.27 1.27)) hide)
     )
-    (pin "1" (uuid dcfb5208-4755-4378-96c3-858b540f382b))
-    (pin "2" (uuid 5e1269d1-b54c-442b-8e33-a91fbabb8785))
+    (pin "1" (uuid d4fc6fac-35d1-4b39-9267-bad4ee7bda65))
+    (pin "2" (uuid c17c02d5-8cc0-4ca0-92a4-835b6eee9153))
     (instances
       (project "collar-reva"
         (path "/7fffe17a-9ffb-4f1f-b4b6-a4342b258eee/722922c5-f112-4de2-9d1d-7f370e5d2a8b"
@@ -652,7 +652,7 @@
   )
   (symbol (lib_id "Device:Fuse") (at 90 50 0) (unit 1)
     (in_bom yes) (on_board yes)
-    (uuid 77421486-01f3-4b53-bdfa-440dea168d81)
+    (uuid 3c70cd65-882e-405e-87fa-d7c60192de94)
     (property "Reference" "F1" (at 90 37.3 0)
       (effects (font (size 1.27 1.27)))
     )
@@ -665,8 +665,8 @@
     (property "Datasheet" "~" (at 90 50 0)
       (effects (font (size 1.27 1.27)) hide)
     )
-    (pin "1" (uuid aad21485-af1d-4b00-a665-3f41ccfb0a1e))
-    (pin "2" (uuid 0011bd34-f9cb-4da1-91f5-b86ddced7a28))
+    (pin "1" (uuid 2ddb6f4a-61ed-41e5-a9d8-9b13cb86b1aa))
+    (pin "2" (uuid 6112f1ca-2daa-4801-bd3f-77c51e3e6a9a))
     (instances
       (project "collar-reva"
         (path "/7fffe17a-9ffb-4f1f-b4b6-a4342b258eee/722922c5-f112-4de2-9d1d-7f370e5d2a8b"
@@ -677,7 +677,7 @@
   )
   (symbol (lib_id "aarf:IC5") (at 120 55 0) (unit 1)
     (in_bom yes) (on_board yes)
-    (uuid 6a0633bb-c62d-45c1-8cc0-165a1ff0c0fe)
+    (uuid 787cf731-2187-4c61-a9b1-13cfa4294943)
     (property "Reference" "U2" (at 120 42.3 0)
       (effects (font (size 1.27 1.27)))
     )
@@ -690,11 +690,11 @@
     (property "Datasheet" "~" (at 120 55 0)
       (effects (font (size 1.27 1.27)) hide)
     )
-    (pin "1" (uuid cdc1183b-6a5c-4b48-b64b-997bb0ef4e11))
-    (pin "2" (uuid e5d07844-796e-47c6-8952-c93708247d83))
-    (pin "3" (uuid fab2a4f4-df57-4b9c-b396-24e1e9c207b5))
-    (pin "4" (uuid 587c5e45-21b9-48a4-a390-dfd99c605e44))
-    (pin "5" (uuid b1dd2cd8-6c72-4f1e-bb1c-1c181bac6580))
+    (pin "1" (uuid f66c6998-fdf6-407e-a756-bc5db548a42b))
+    (pin "2" (uuid 41646894-24f2-4333-81dc-4cd82272b457))
+    (pin "3" (uuid 5989708f-34e8-439d-99f5-92729ab5053b))
+    (pin "4" (uuid db72dd1c-1f0f-4a0a-b442-049d40fd2114))
+    (pin "5" (uuid 02f3bc50-39a2-4fa5-94f1-bdbbe6b23edd))
     (instances
       (project "collar-reva"
         (path "/7fffe17a-9ffb-4f1f-b4b6-a4342b258eee/722922c5-f112-4de2-9d1d-7f370e5d2a8b"
@@ -705,7 +705,7 @@
   )
   (symbol (lib_id "Connector:Conn_01x02") (at 155 55 0) (unit 1)
     (in_bom yes) (on_board yes)
-    (uuid 90594a57-5f03-4fa3-a44a-fe4316245045)
+    (uuid da73a35b-2cb4-4210-9863-008df45cb6b1)
     (property "Reference" "J2" (at 155 42.3 0)
       (effects (font (size 1.27 1.27)))
     )
@@ -718,8 +718,8 @@
     (property "Datasheet" "~" (at 155 55 0)
       (effects (font (size 1.27 1.27)) hide)
     )
-    (pin "1" (uuid 4215a6d3-677f-4fd4-a6e6-23ace39ab4a7))
-    (pin "2" (uuid 7e0f72c9-aa9e-4b45-815f-44896e937367))
+    (pin "1" (uuid 2320fd6f-93c3-4329-8ba4-25d02893e028))
+    (pin "2" (uuid c2bf8946-4180-40fb-87f3-58259336b0c6))
     (instances
       (project "collar-reva"
         (path "/7fffe17a-9ffb-4f1f-b4b6-a4342b258eee/722922c5-f112-4de2-9d1d-7f370e5d2a8b"
@@ -730,7 +730,7 @@
   )
   (symbol (lib_id "aarf:IC5") (at 190 55 0) (unit 1)
     (in_bom yes) (on_board yes)
-    (uuid cbbcd2af-5785-46d1-bcd2-66336a21843b)
+    (uuid 6781b5ad-6264-48ce-8c40-4b698a6d5e91)
     (property "Reference" "U3" (at 190 42.3 0)
       (effects (font (size 1.27 1.27)))
     )
@@ -743,11 +743,11 @@
     (property "Datasheet" "~" (at 190 55 0)
       (effects (font (size 1.27 1.27)) hide)
     )
-    (pin "1" (uuid 5276ef66-cf2c-4d7d-abdd-e1e8f0056449))
-    (pin "2" (uuid 1e50a9a8-f8e0-4059-b704-1a1a8ca71dff))
-    (pin "3" (uuid ce6776cb-900c-45ae-a293-3fcd8d4b6128))
-    (pin "4" (uuid 7f0634eb-9de4-4007-b735-d262d76c10db))
-    (pin "5" (uuid cc120903-d780-4c17-b3e1-405efd6f5ea0))
+    (pin "1" (uuid 584ad5c3-a218-47dd-a38a-64cdf1804896))
+    (pin "2" (uuid 34c6831f-5535-4460-9c50-e671ece00323))
+    (pin "3" (uuid 5052e090-d4cc-4f4c-b7da-b1a5f8f73577))
+    (pin "4" (uuid 1b1db00e-99cc-48e3-b3c1-a97837be34f6))
+    (pin "5" (uuid 0e86fddd-eafe-41fe-8b6f-f491dd2545da))
     (instances
       (project "collar-reva"
         (path "/7fffe17a-9ffb-4f1f-b4b6-a4342b258eee/722922c5-f112-4de2-9d1d-7f370e5d2a8b"
@@ -758,7 +758,7 @@
   )
   (symbol (lib_id "Device:R") (at 120 80 0) (unit 1)
     (in_bom yes) (on_board yes)
-    (uuid e3c20b4e-c8c9-4139-9e5c-ecca55b8ff30)
+    (uuid ee4d6325-e067-46f3-a7cc-f58f65a91315)
     (property "Reference" "R1" (at 120 67.3 0)
       (effects (font (size 1.27 1.27)))
     )
@@ -771,8 +771,8 @@
     (property "Datasheet" "~" (at 120 80 0)
       (effects (font (size 1.27 1.27)) hide)
     )
-    (pin "1" (uuid 18f7bd9c-c5c6-4682-9fa6-9c3bed1b4554))
-    (pin "2" (uuid 568062e6-6479-4b53-9538-012e562d3d02))
+    (pin "1" (uuid d3489ee5-f8f1-487d-ac85-35ca4ee08696))
+    (pin "2" (uuid 033e54da-47e2-4b5f-9c9a-b708a8094e06))
     (instances
       (project "collar-reva"
         (path "/7fffe17a-9ffb-4f1f-b4b6-a4342b258eee/722922c5-f112-4de2-9d1d-7f370e5d2a8b"
@@ -783,7 +783,7 @@
   )
   (symbol (lib_id "Device:R") (at 175 90 0) (unit 1)
     (in_bom yes) (on_board yes)
-    (uuid ea8f835d-3332-443a-9980-82450d914d5c)
+    (uuid 3a7a4bf0-88e9-49b4-94cd-97266c4af127)
     (property "Reference" "R2" (at 175 77.3 0)
       (effects (font (size 1.27 1.27)))
     )
@@ -796,8 +796,8 @@
     (property "Datasheet" "~" (at 175 90 0)
       (effects (font (size 1.27 1.27)) hide)
     )
-    (pin "1" (uuid d49c0fa3-200e-48bc-a456-dbbc82a0ef88))
-    (pin "2" (uuid 4c29d36b-29bf-4522-9b9c-65216747830c))
+    (pin "1" (uuid cf6b5c56-5022-4d95-b204-6297555297d7))
+    (pin "2" (uuid 2622deef-0ba3-4d8d-8246-a12aec23a96c))
     (instances
       (project "collar-reva"
         (path "/7fffe17a-9ffb-4f1f-b4b6-a4342b258eee/722922c5-f112-4de2-9d1d-7f370e5d2a8b"
@@ -808,7 +808,7 @@
   )
   (symbol (lib_id "Device:R") (at 175 105 0) (unit 1)
     (in_bom yes) (on_board yes)
-    (uuid 7a088988-2d02-4835-978d-0a7f08223f9c)
+    (uuid 46183e84-c37e-4745-b971-2ee328653bcd)
     (property "Reference" "R3" (at 175 92.3 0)
       (effects (font (size 1.27 1.27)))
     )
@@ -821,8 +821,8 @@
     (property "Datasheet" "~" (at 175 105 0)
       (effects (font (size 1.27 1.27)) hide)
     )
-    (pin "1" (uuid 330139e7-5784-46d5-a7d6-1c440ac4e768))
-    (pin "2" (uuid bbd62dd4-c53c-4234-ab06-4e983c8be1b8))
+    (pin "1" (uuid 19e666f0-eb76-472d-9c94-9b4f808d913a))
+    (pin "2" (uuid 1872c1b0-3dba-43e6-aedf-c2f1096c4bbe))
     (instances
       (project "collar-reva"
         (path "/7fffe17a-9ffb-4f1f-b4b6-a4342b258eee/722922c5-f112-4de2-9d1d-7f370e5d2a8b"
@@ -833,7 +833,7 @@
   )
   (symbol (lib_id "Device:R") (at 50 100 0) (unit 1)
     (in_bom yes) (on_board yes)
-    (uuid 5b94a5ab-cc61-4eba-a096-c165d5008113)
+    (uuid 12b93f85-a989-429f-959a-259ef0a0d97d)
     (property "Reference" "R9" (at 50 87.3 0)
       (effects (font (size 1.27 1.27)))
     )
@@ -846,8 +846,8 @@
     (property "Datasheet" "~" (at 50 100 0)
       (effects (font (size 1.27 1.27)) hide)
     )
-    (pin "1" (uuid 7e241cc2-768c-4022-8a31-998bb5dcf277))
-    (pin "2" (uuid 8677124b-7912-4088-a747-8a1fa913aadf))
+    (pin "1" (uuid 159735a4-1f30-4ba3-9079-2e080d2bc2df))
+    (pin "2" (uuid b354acf8-0b63-43e1-875f-0444b6ce968e))
     (instances
       (project "collar-reva"
         (path "/7fffe17a-9ffb-4f1f-b4b6-a4342b258eee/722922c5-f112-4de2-9d1d-7f370e5d2a8b"
@@ -858,7 +858,7 @@
   )
   (symbol (lib_id "Device:R") (at 70 100 0) (unit 1)
     (in_bom yes) (on_board yes)
-    (uuid fabb5a66-642f-46e5-b680-3bfc154ac778)
+    (uuid 255c4293-744a-4d14-89ea-290c88b7d017)
     (property "Reference" "R10" (at 70 87.3 0)
       (effects (font (size 1.27 1.27)))
     )
@@ -871,8 +871,8 @@
     (property "Datasheet" "~" (at 70 100 0)
       (effects (font (size 1.27 1.27)) hide)
     )
-    (pin "1" (uuid 41ebb723-6d63-4ea7-ad76-5a3bea85e883))
-    (pin "2" (uuid c1efc520-43e2-4945-9cc4-5af89e3f4021))
+    (pin "1" (uuid 08780498-37f4-4298-a1f3-cb8d2a6fbb6e))
+    (pin "2" (uuid 3672e4f9-6baa-4c6b-85ba-75a92de3c758))
     (instances
       (project "collar-reva"
         (path "/7fffe17a-9ffb-4f1f-b4b6-a4342b258eee/722922c5-f112-4de2-9d1d-7f370e5d2a8b"
@@ -883,7 +883,7 @@
   )
   (symbol (lib_id "Device:C") (at 190 80 0) (unit 1)
     (in_bom yes) (on_board yes)
-    (uuid 8575bb3f-78b1-4e08-8c1d-04a6bbeed6b8)
+    (uuid 8a4b4794-a0a1-4f19-a058-ae5989ea0f11)
     (property "Reference" "C1" (at 190 67.3 0)
       (effects (font (size 1.27 1.27)))
     )
@@ -896,8 +896,8 @@
     (property "Datasheet" "~" (at 190 80 0)
       (effects (font (size 1.27 1.27)) hide)
     )
-    (pin "1" (uuid fd25e48d-25ad-478e-934f-72df094f4589))
-    (pin "2" (uuid 4a9fb2cb-1936-40f5-ab33-b7db27dc8abc))
+    (pin "1" (uuid f2ed20e6-6ac9-462f-9057-76410f1ad80c))
+    (pin "2" (uuid 24becaeb-7b6d-471f-82b7-16e4d0f854f7))
     (instances
       (project "collar-reva"
         (path "/7fffe17a-9ffb-4f1f-b4b6-a4342b258eee/722922c5-f112-4de2-9d1d-7f370e5d2a8b"
@@ -908,7 +908,7 @@
   )
   (symbol (lib_id "Device:C") (at 205 80 0) (unit 1)
     (in_bom yes) (on_board yes)
-    (uuid ac7652b2-5a10-402d-aa8d-e65670279089)
+    (uuid 95a837eb-b7a3-4556-84a0-e365a294db22)
     (property "Reference" "C2" (at 205 67.3 0)
       (effects (font (size 1.27 1.27)))
     )
@@ -921,8 +921,8 @@
     (property "Datasheet" "~" (at 205 80 0)
       (effects (font (size 1.27 1.27)) hide)
     )
-    (pin "1" (uuid 71755351-e088-4a0e-83f5-12dedfc55554))
-    (pin "2" (uuid bda8e1b8-def5-4968-be14-f8940ffefe4e))
+    (pin "1" (uuid f14d2a86-d13a-4d19-90e5-7b30909fe98e))
+    (pin "2" (uuid ae8a607d-6c60-4b51-b4ed-95e2d63eb1c3))
     (instances
       (project "collar-reva"
         (path "/7fffe17a-9ffb-4f1f-b4b6-a4342b258eee/722922c5-f112-4de2-9d1d-7f370e5d2a8b"
@@ -933,7 +933,7 @@
   )
   (symbol (lib_id "Device:C") (at 175 120 0) (unit 1)
     (in_bom yes) (on_board yes)
-    (uuid e306e2e9-b94a-45c3-a29e-d40880b638ff)
+    (uuid b723aab8-44bf-4a25-bd1b-2e293d372e07)
     (property "Reference" "C3" (at 175 107.3 0)
       (effects (font (size 1.27 1.27)))
     )
@@ -946,8 +946,8 @@
     (property "Datasheet" "~" (at 175 120 0)
       (effects (font (size 1.27 1.27)) hide)
     )
-    (pin "1" (uuid 7e698490-95e5-4b33-823e-05dc6bea3723))
-    (pin "2" (uuid ab6fdcb0-8892-498e-a452-2ae12eb93caa))
+    (pin "1" (uuid 141e6864-4ab5-449f-bca2-1e8e78b05d3f))
+    (pin "2" (uuid d4d75301-88cd-47e6-9029-1cf2d147bf72))
     (instances
       (project "collar-reva"
         (path "/7fffe17a-9ffb-4f1f-b4b6-a4342b258eee/722922c5-f112-4de2-9d1d-7f370e5d2a8b"
@@ -958,7 +958,7 @@
   )
   (symbol (lib_id "power:GND") (at 40 95 0) (unit 1)
     (in_bom yes) (on_board yes)
-    (uuid 16782e2a-21f9-4df5-aff5-f53f5e9fde6f)
+    (uuid 9a19d130-d5b9-4eaf-8101-8f2f0ff3dde2)
     (property "Reference" "#PWR01" (at 40 82.3 0)
       (effects (font (size 1.27 1.27)))
     )
@@ -971,7 +971,7 @@
     (property "Datasheet" "~" (at 40 95 0)
       (effects (font (size 1.27 1.27)) hide)
     )
-    (pin "1" (uuid cd91dcd6-a5b2-49e4-9db7-a1a6a7fcbc1d))
+    (pin "1" (uuid bd6f45ef-a063-40a3-8aa2-7ac6c730b6df))
     (instances
       (project "collar-reva"
         (path "/7fffe17a-9ffb-4f1f-b4b6-a4342b258eee/722922c5-f112-4de2-9d1d-7f370e5d2a8b"
@@ -982,7 +982,7 @@
   )
   (symbol (lib_id "power:+3V3") (at 215 40 0) (unit 1)
     (in_bom yes) (on_board yes)
-    (uuid 1b0cf70b-4e0a-400a-90b9-fb1e0fac70a9)
+    (uuid 8012a93d-4df6-46cb-8f4e-d3d7ae31b810)
     (property "Reference" "#PWR02" (at 215 27.3 0)
       (effects (font (size 1.27 1.27)))
     )
@@ -995,7 +995,7 @@
     (property "Datasheet" "~" (at 215 40 0)
       (effects (font (size 1.27 1.27)) hide)
     )
-    (pin "1" (uuid 34a3475d-62cc-4a1d-9996-c5c667b139f0))
+    (pin "1" (uuid b4515321-d102-42a6-9aa3-867fd5e9a370))
     (instances
       (project "collar-reva"
         (path "/7fffe17a-9ffb-4f1f-b4b6-a4342b258eee/722922c5-f112-4de2-9d1d-7f370e5d2a8b"
@@ -1006,42 +1006,42 @@
   )
   (global_label "VUSB" (shape input) (at 28 66.19 0) (fields_autoplaced)
     (effects (font (size 1.27 1.27)) (justify left))
-    (uuid 74c8868b-9b01-4b16-88cd-b8d753ae395d)
+    (uuid 5a1e9d17-05f4-42e5-968b-01f0108d9125)
   )
   (global_label "USB_DP" (shape input) (at 28 71.27 0) (fields_autoplaced)
     (effects (font (size 1.27 1.27)) (justify left))
-    (uuid b47f3b7c-e4d8-41ec-b183-3b7b6fc484eb)
+    (uuid 9c23f3b0-78a6-4522-acd3-8892ca9bb788)
   )
   (global_label "USB_DN" (shape input) (at 28 68.73 0) (fields_autoplaced)
     (effects (font (size 1.27 1.27)) (justify left))
-    (uuid 10bdcb89-3ad2-4c64-b8fb-e08b035fffe0)
+    (uuid 677214b6-0f26-4363-af76-a22cb35c401f)
   )
   (global_label "GND" (shape input) (at 28 73.81 0) (fields_autoplaced)
     (effects (font (size 1.27 1.27)) (justify left))
-    (uuid 9fbd0a2c-79f2-4953-9ad3-4d34c7a621f5)
+    (uuid 81e39666-4985-4fcc-bcd4-63fefe9677c1)
   )
   (global_label "VBAT" (shape input) (at 148 53.73 0) (fields_autoplaced)
     (effects (font (size 1.27 1.27)) (justify left))
-    (uuid 4ab62da8-7f39-4f8f-91cb-d593760c7dae)
+    (uuid 7542871d-05a9-4b91-9a94-88f6df4fa591)
   )
   (global_label "CHG_STAT" (shape input) (at 109 55 0) (fields_autoplaced)
     (effects (font (size 1.27 1.27)) (justify left))
-    (uuid d9a54ba1-0d1a-483d-809e-90893418fa3d)
+    (uuid b0658b69-a02d-4c92-9d50-80e9224c9dfa)
   )
   (global_label "VBAT_SENSE" (shape input) (at 175 97.54 0) (fields_autoplaced)
     (effects (font (size 1.27 1.27)) (justify left))
-    (uuid 68bd907d-de92-4a63-96d9-dc5cff281867)
+    (uuid 872e6d48-31a8-46de-8855-c37c174ba716)
   )
   (global_label "3V3" (shape input) (at 215 55 0) (fields_autoplaced)
     (effects (font (size 1.27 1.27)) (justify left))
-    (uuid 706abd41-aa1e-4acd-bf70-462b2217fd8d)
+    (uuid 33937ab3-837e-4094-8662-c43d7f677399)
   )
   (global_label "CC1" (shape input) (at 40 100 0) (fields_autoplaced)
     (effects (font (size 1.27 1.27)) (justify left))
-    (uuid 4848f842-fe61-4f9d-9f17-3b49be40ece1)
+    (uuid 760b9430-bbd5-4241-9194-0527c240ba19)
   )
   (global_label "CC2" (shape input) (at 60 100 0) (fields_autoplaced)
     (effects (font (size 1.27 1.27)) (justify left))
-    (uuid 15116232-8dac-467f-beba-c4ce85bc39a6)
+    (uuid d4b95c4f-ec13-4bba-a064-0af9e5ecbb01)
   )
 )
