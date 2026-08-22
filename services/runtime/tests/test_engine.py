@@ -4,8 +4,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import numpy as np
+import pytest
 
-from app.engine import STATE, _maybe_autofill_breed, gate_decision, process_frame, update_audio_modality
+from app.engine import STATE, _maybe_autofill_breed, gate_decision, process_frame, update_audio_modality, update_collar_modality
 
 
 def test_process_frame_synthetic() -> None:
@@ -42,6 +43,20 @@ def test_live_audio_modality_fused_into_features() -> None:
     finally:
         update_audio_modality()  # reset so other tests start clean
         STATE.latest_audio_modality = {}
+
+
+def test_live_collar_modality_fused_into_features() -> None:
+    update_collar_modality({"hr_bpm": 90, "rmssd_ms": 45, "imu_rms": 0.4, "still": False, "arousal": 0.6})
+    try:
+        frame = np.full((120, 160, 3), 140, dtype=np.uint8)
+        out = process_frame(frame)
+        feats = out["features"]
+        assert feats["ecg_hr_norm"] == pytest.approx(0.5)
+        assert feats["ecg_stress"] == pytest.approx(0.6)
+        assert feats["imu_activity"] == pytest.approx(0.4)
+        assert "audio_arousal" not in feats or feats.get("audio_arousal", 0) == 0
+    finally:
+        STATE.latest_collar_modality = {}
 
 
 def test_process_frame_exposes_bbox_and_breed_fields() -> None:

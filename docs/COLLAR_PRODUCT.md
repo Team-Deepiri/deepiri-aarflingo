@@ -11,7 +11,7 @@ Firmware `0.3.0`. Advertises `aarf-collar`.
 | Schematic + GPIO contract | Done — D4 PD, D5 660 nm, RT1 neck NTC, USB-C CC |
 | Firmware (ESP32-S3) | Done — BLE 1 Hz CBOR, I2S, I2C, CLIP to `/infer/audio` |
 | Pocket iOS / Android | Done — Settings → Listen to collar |
-| Laptop listener | Done — `python3 scripts/collar_listen.py` |
+| Laptop listener | Done — `python3 scripts/collar_listen.py [--runtime URL]` → `/infer/collar` |
 | Footprints / BOM | Done — `./kicad-launcher --sch bom` |
 | PCB layout / fab | 40×32 mm, parts placed, GND pours on F/B. Signals unrouted |
 | Enclosure / strap | Not designed. NFC tag + 180 mAh cell are in the BOM. |
@@ -30,7 +30,7 @@ Serial 115200 should print `aarf-collar rev-A fw 0.3.0` and any I2C hits (`0x68`
 
 1. Charge via USB-C (100 mA default PROG).
 2. Phone: Settings → **Listen to collar**. Allow Bluetooth.
-3. Or laptop: `pip install bleak && python3 scripts/collar_listen.py`
+3. Or laptop: `pip install bleak && python3 scripts/collar_listen.py --runtime http://127.0.0.1:8000`
 4. You should see 1 Hz JSON with `hr_bpm`, `rr_bpm`, `still`, `pant`, `arousal`, `skin_c`, `puck_c`, `gyro`, `red`, `vbat_v`, `fault`.
 
 Dog-state (ethogram + autonomic proxies, not blood work): [DOG_STATE.md](DOG_STATE.md).

@@ -26,7 +26,7 @@ Pocket: Settings → **Listen to collar** (iOS/Android). Same GATT UUIDs as this
 Laptop subscriber (needs `bleak`):
 
 ```bash
-python3 scripts/collar_listen.py
+python3 scripts/collar_listen.py --runtime http://127.0.0.1:8000
 ```
 
 Phone: scan for `aarf-collar`, subscribe to notify UUID `6e400003-b5a3-f393-e0a9-e50e24dcca9e`, decode CBOR. NVS namespace `collar`: `vbat_s` / `vbat_o`, and optional `wifi_ssid` / `wifi_pass` / `runtime` (e.g. `http://192.168.1.10:8000`) for bark → `POST /infer/audio`.

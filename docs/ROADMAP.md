@@ -180,9 +180,10 @@ and **your dog's home data** replacing the last synthetic/lab shapes.
 
 ### 1. Live vitals / IMU feed (unblocks ECG + IMU bars)
 
-- [ ] `vitals.pt` load path in runtime; `update_vitals_modality(features)` mirroring `update_audio_modality`; simulated 6-DoF IMU feed stub first, real BLE/serial next
-- [ ] `modality_from_vitals` (ECG HRV + IMU activity → stress/activity) fused into `process_frame` before TriadNet
-- [ ] Studio ECG stress + IMU activity bars animate from live vitals
+- [x] Collar BLE 1 Hz → `POST /infer/collar` / `update_collar_modality` → existing `ecg_*` / `imu_*` slots in `process_frame` (`scripts/collar_listen.py --runtime`). No new FEATURE_DIM. `vitals.pt` load path still open.
+- [x] Neck PPG + IMU activity from the puck fused into `process_frame` before TriadNet (`hr_bpm`/`rmssd`/`arousal`/`imu_rms`/`still`)
+- [x] Studio Heart/Body bars (`ecg_stress`, `imu_activity`) read those same feature keys
+- [ ] `vitals.pt` load path + PhysioZoo-trained HRV still open
 - [ ] PhysioZoo dog ECG download (`fetch_public_datasets.sh --physiozoo`) → real HRV labels for `lib/aarf-physio` train; manifest records dataset version + held-out acc
 
 **Done when:** studio shows live Audio + ECG + IMU bars while the dog is in frame, and `vitals.pt` val acc improves on real held-out HRV clips.

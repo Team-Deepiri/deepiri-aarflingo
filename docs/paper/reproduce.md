@@ -35,6 +35,12 @@ PYTHONPATH=.:services/edge-runtime python3 -m app.cli status
 
 The collar flashes with `./scripts/flash_collar.sh`. It does not run this image.
 
+Live puck → triad slots (laptop or phone on the same LAN as runtime):
+
+```bash
+python3 scripts/collar_listen.py --runtime http://127.0.0.1:8000
+```
+
 ## Home eval
 
 1. Capture and label sessions (`docs/HOME_CAPTURE.md`, studio feedback).

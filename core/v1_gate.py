@@ -29,10 +29,12 @@ def _labels(rows: list[dict[str, Any]]) -> list[str]:
 
 def dog_split_metrics(rows: list[dict[str, Any]]) -> dict[str, Any]:
     dogs = {str(r.get("dog_id", "")) for r in rows if r.get("dog_id")}
+    collar_rows = sum(1 for r in rows if isinstance(r.get("collar"), dict))
     if not rows:
         return {
             "n_dogs": 0,
             "n_rows": 0,
+            "collar_rows": 0,
             "accuracy": None,
             "macro_f1": None,
             "split": "dog-held-out",
@@ -51,6 +53,7 @@ def dog_split_metrics(rows: list[dict[str, Any]]) -> dict[str, Any]:
     return {
         "n_dogs": len(dogs),
         "n_rows": len(rows),
+        "collar_rows": collar_rows,
         "accuracy": acc,
         "macro_f1": sum(f1s) / len(f1s) if f1s else 0.0,
         "split": "dog-held-out",
@@ -111,6 +114,31 @@ def jetson_ready(root: Path) -> dict[str, Any]:
     }
 
 
+def hardware_ready(root: Path) -> dict[str, Any]:
+    pins = root / "firmware" / "collar" / "include" / "pins.h"
+    product = root / "firmware" / "collar" / "include" / "product.h"
+    nets = root / "scripts" / "aarf_sch" / "nets.py"
+    bom = root / "hardware" / "collar-reva" / "BOM.csv"
+    features = root / "core" / "collar_features.py"
+    pins_txt = pins.read_text(encoding="utf-8") if pins.is_file() else ""
+    product_txt = product.read_text(encoding="utf-8") if product.is_file() else ""
+    nets_txt = nets.read_text(encoding="utf-8") if nets.is_file() else ""
+    checks = {
+        "pins_skin": "PIN_SKIN_SENSE" in pins_txt,
+        "adv_name": "aarf-collar" in product_txt,
+        "nets_skin": "SKIN_SENSE" in nets_txt,
+        "board": 'BOARD = "collar-reva"' in nets_txt,
+        "bom": bom.is_file(),
+        "features": features.is_file(),
+    }
+    return {
+        "ok": all(checks.values()),
+        "board": "collar-reva",
+        "checks": checks,
+        "role": "ESP32-S3 puck — BLE CBOR into existing triad slots",
+    }
+
+
 def collect_report(root: Path) -> dict[str, Any]:
     manifest = _load_manifest(root)
     home = dog_split_metrics(_load_jsonl(root / EVAL_JSONL))
@@ -119,6 +147,7 @@ def collect_report(root: Path) -> dict[str, Any]:
     physio_acc = (manifest.get("physio") or {}).get("best_val_acc")
     paper = paper_ready(root)
     jetson = jetson_ready(root)
+    hardware = hardware_ready(root)
     acc_ok = meets_accuracy_bar(home)
     blockers: list[str] = []
     if not acc_ok:
@@ -131,6 +160,9 @@ def collect_report(root: Path) -> dict[str, Any]:
         blockers.append(f"paper files missing: {', '.join(missing)}")
     if not jetson["ok"]:
         blockers.append("jetson.Dockerfile is not a working edge-runtime hub image")
+    if not hardware["ok"]:
+        missing = [k for k, v in hardware["checks"].items() if not v]
+        blockers.append(f"Rev-A puck contract incomplete: {', '.join(missing)}")
     return {
         "bar": {
             "name": "v1.0",
@@ -158,7 +190,8 @@ def collect_report(root: Path) -> dict[str, Any]:
         },
         "paper": paper,
         "jetson": jetson,
-        "bar_met": acc_ok and paper["ok"] and jetson["ok"],
+        "hardware": hardware,
+        "bar_met": acc_ok and paper["ok"] and jetson["ok"] and hardware["ok"],
         "blockers": blockers,
     }
 
@@ -184,6 +217,8 @@ def render_results_md(report: dict[str, Any]) -> str:
         f"| Home dog-split accuracy | {acc_s} | dog-held-out | yes |",
         f"| Home dog-split macro-F1 | {f1_s} | dog-held-out | yes |",
         f"| Home dogs / rows | {home.get('n_dogs', 0)} / {home.get('n_rows', 0)} | dog-held-out | yes |",
+        f"| Home rows with collar CBOR | {home.get('collar_rows', 0)} | dog-held-out | no |",
+        f"| Rev-A puck contract | {'ok' if report.get('hardware', {}).get('ok') else 'missing'} | hardware | yes |",
         f"| Triad best_val_acc | {triad if triad is not None else '—'} | synthetic-or-unknown | no |",
         f"| Vocal best_val_acc | {vocal if vocal is not None else '—'} | mixed-or-unknown | no |",
         "",

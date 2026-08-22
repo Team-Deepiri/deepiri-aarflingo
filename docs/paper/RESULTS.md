@@ -10,6 +10,8 @@ Numbers below that are context only and do **not** count.
 | Home dog-split accuracy | — | dog-held-out | yes |
 | Home dog-split macro-F1 | — | dog-held-out | yes |
 | Home dogs / rows | 0 / 0 | dog-held-out | yes |
+| Home rows with collar CBOR | 0 | dog-held-out | no |
+| Rev-A puck contract | ok | hardware | yes |
 | Triad best_val_acc | 1.0 | synthetic-or-unknown | no |
 | Vocal best_val_acc | 0.18333333333333332 | mixed-or-unknown | no |
 

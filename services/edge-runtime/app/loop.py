@@ -24,6 +24,7 @@ def _setup_imports(root: Path) -> None:
 def run_edge(camera: str | int = 0, use_onnx: bool = True, max_frames: int | None = None) -> None:
     root = repo_root()
     _setup_imports(root)
+    from core.collar_features import merge_live_collar  # noqa: E402
     from core.feature_spec import SEQUENCE_LEN, vectorize  # noqa: E402
     from core.onnx_decode import decode_onnx_outputs  # noqa: E402
     from app.pipeline import run_pipeline_frame  # type: ignore  # noqa: E402
@@ -48,6 +49,7 @@ def run_edge(camera: str | int = 0, use_onnx: bool = True, max_frames: int | Non
             time.sleep(0.05)
             continue
         features = run_pipeline_frame(frame)
+        merge_live_collar(root, features)
         seq.append(vectorize(features))
         payload: dict = {
             "intent": "rest",

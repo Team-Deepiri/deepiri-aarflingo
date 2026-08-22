@@ -37,6 +37,16 @@ def test_dog_split_metrics_three_dogs_at_95_passes_accuracy_only() -> None:
     assert meets_accuracy_bar(m) is True
 
 
+def test_collar_rows_are_counted() -> None:
+    from core.v1_gate import dog_split_metrics
+
+    rows = [
+        {"dog_id": "a", "y_true": "play", "y_pred": "play", "collar": {"hr_bpm": 90}},
+        {"dog_id": "a", "y_true": "play", "y_pred": "play"},
+    ]
+    assert dog_split_metrics(rows)["collar_rows"] == 1
+
+
 def test_empty_eval_does_not_meet_bar() -> None:
     from core.v1_gate import dog_split_metrics, meets_accuracy_bar
 
@@ -68,6 +78,18 @@ def test_jetson_dockerfile_is_hub_not_wearable() -> None:
     assert info["is_wearable"] is False
     assert "app.cli" in text
     assert "firmware/collar" not in text.split("CMD")[-1]
+
+
+def test_hardware_ready_requires_rev_a_puck() -> None:
+    from core.v1_gate import collect_report, hardware_ready
+
+    info = hardware_ready(ROOT)
+    assert info["ok"] is True
+    assert info["board"] == "collar-reva"
+    report = collect_report(ROOT)
+    assert report["hardware"]["ok"] is True
+    if not report["bar_met"]:
+        assert any("dog-split" in b or "home" in b.lower() for b in report["blockers"])
 
 
 def test_paper_scaffold_lists_required_files() -> None:

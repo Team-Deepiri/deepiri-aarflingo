@@ -25,7 +25,13 @@ Target: accuracy ≥ 0.95 and macro-F1 reported beside it. Calibration (ECE) and
 
 - Home hub: USB or MIPI camera on a Jetson Orin-class box (`infra/docker/jetson.Dockerfile`)
 - Wearable: ESP32-S3 collar, BLE notify-only CBOR (`firmware/collar`). The Jetson image does not run on the puck.
-- Optional: neck PPG / IMU / mic features fused in runtime when the collar is paired
+- Wearable 1 Hz CBOR maps onto existing triad slots (no new FEATURE_DIM):
+  `hr_bpm` → `ecg_hr_norm`, `rmssd_ms` → `ecg_rmssd_norm`, `arousal` → `ecg_stress`,
+  `imu_rms` → `imu_activity`, `still` → `imu_posture_static`.
+  Path: BLE notify → `scripts/collar_listen.py --runtime` → `POST /infer/collar`
+  (same HTTP family as `/infer/audio`). The Jetson hub also reads
+  `artifacts/eval/collar_latest.json` when the file is younger than 3 s.
+- Optional eval field: `"collar": { ... }` on a `dog_split.jsonl` row. Camera-only rows stay valid.
 
 ## Ethics
 

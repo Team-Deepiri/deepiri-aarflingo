@@ -113,6 +113,8 @@ If on-puck TriadNet is absent (Rev-A default), omit intent/emotion/behavior or s
 
 **Clip upload (Wi-Fi, on bark):** `POST {runtime}/infer/audio` with the existing studio JSON (`audio_arousal`, `audio_valence`, `audio_bark_prob`). NVS keys `wifi_ssid`, `wifi_pass`, `runtime`. WAV PCM16 is built in `wav.c` for a later multipart if runtime grows a file ingest; do not invent a fourth endpoint.
 
+**1 Hz vitals (laptop):** `python3 scripts/collar_listen.py --runtime http://HOST:8000` POSTs the decoded CBOR map to `POST {runtime}/infer/collar`. That fills the existing ECG/IMU slots (`ecg_hr_norm`, `ecg_stress`, `imu_activity`, …). Same HTTP family as `/infer/audio`.
+
 Baseline sync: pull `record-baseline.sh` output over BLE or Wi-Fi as already described in PHASE2 — add a command byte to this CBOR map later (`"cmd": "baseline"`), do not stand up a parallel ASCII protocol.
 
 ## Faults

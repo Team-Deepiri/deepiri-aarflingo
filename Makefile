@@ -32,7 +32,7 @@ flash-collar:
 	./scripts/flash_collar.sh
 
 v1-gate:
-	python3 -m pytest -q core/tests/test_v1_gate.py
+	python3 -m pytest -q core/tests/test_v1_gate.py core/tests/test_collar_features.py
 	python3 scripts/v1_gate.py
 
 test:

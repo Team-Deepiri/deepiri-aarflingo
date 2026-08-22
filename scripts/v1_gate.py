@@ -19,7 +19,7 @@ def main() -> int:
     parser.add_argument(
         "--require-bar",
         action="store_true",
-        help="exit 1 unless dog-split ≥95% on ≥3 dogs and paper + Jetson hub are ready",
+        help="exit 1 unless dog-split ≥95% on ≥3 dogs and paper + Jetson hub + Rev-A puck are ready",
     )
     args = parser.parse_args()
     report = collect_report(ROOT)

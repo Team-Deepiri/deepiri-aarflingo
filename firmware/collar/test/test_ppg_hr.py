@@ -664,6 +664,14 @@ def test_pocket_gatt_matches_firmware_uuids():
         assert "SHOCK" not in text
 
 
+def test_listen_forwards_cbor_to_existing_infer_collar():
+    repo = Path(__file__).resolve().parents[3]
+    text = (repo / "scripts" / "collar_listen.py").read_text(encoding="utf-8")
+    assert "--runtime" in text
+    assert "/infer/collar" in text
+    assert "write_collar_latest" in text
+
+
 def test_firmware_has_no_actuator_drivers():
     banned = ("SHOCK", "STIM", "VIBE", "HAPTIC", "SOLENOID", "MOTOR", "STRIKE", "PUNISH")
     for path in (COLLAR / "src").rglob("*"):
