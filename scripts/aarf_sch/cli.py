@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Collar schematic craftsmanship: status / verify / next."""
+"""Collar schematic craftsmanship: status / verify / next / bom."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from bom import LINES, all_refs, emit_csv, emit_markdown
 from nets import (
     BOARD,
     FORBIDDEN_NETS,
@@ -26,7 +27,10 @@ PINS_H = HARDWARE / "pins.h"
 
 LABEL_RE = re.compile(r'\((?:global_)?label\s+"([^"]+)"')
 REF_RE = re.compile(r'\(property\s+"Reference"\s+"([^"]+)"')
+INSTANCE_REF_RE = re.compile(r"^[A-Z]+\d+$")
 PIN_DEFINE_RE = re.compile(r"#define\s+PIN_([A-Z0-9_]+)\s+(\d+)")
+LAYOUT_ONLY_REFS = {"D4", "R9", "R10"}
+MECH_REFS = {"BT1", "TAG1"}
 
 
 def sheet_path(name: str) -> Path:
@@ -46,6 +50,10 @@ def labels_in(text: str) -> set[str]:
 
 def refs_in(text: str) -> set[str]:
     return {r for r in REF_RE.findall(text) if not r.startswith("#")}
+
+
+def instance_refs(text: str) -> set[str]:
+    return {r for r in refs_in(text) if INSTANCE_REF_RE.match(r)}
 
 
 def cmd_status() -> int:
@@ -116,6 +124,24 @@ def cmd_verify() -> int:
         for ref in REQUIRED_PARTS.get(sheet, ()):
             if ref not in refs:
                 errors.append(f"{sheet}: missing required part {ref}")
+        bom_refs = all_refs()
+        for ref in instance_refs(text):
+            if ref not in bom_refs:
+                errors.append(f"{sheet}: {ref} missing from BOM")
+
+    for line in LINES:
+        for ref in line.refs:
+            if ref in LAYOUT_ONLY_REFS or ref in MECH_REFS:
+                continue
+            if line.sheet not in SHEET_NETS:
+                continue
+            try:
+                present = instance_refs(read_sheet(line.sheet))
+            except FileNotFoundError as exc:
+                errors.append(str(exc))
+                break
+            if ref not in present:
+                errors.append(f"BOM {ref} not on {line.sheet} sheet")
 
     if errors:
         print("FAIL")
@@ -133,19 +159,32 @@ def cmd_next() -> int:
     return 0
 
 
+def cmd_bom() -> int:
+    md = HARDWARE / "BOM.md"
+    csv_path = HARDWARE / "BOM.csv"
+    md.write_text(emit_markdown(), encoding="utf-8")
+    csv_path.write_text(emit_csv(), encoding="utf-8")
+    print(f"wrote {md}")
+    print(f"wrote {csv_path}")
+    print(f"lines: {len(LINES)}  refs: {len(all_refs())}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="aarf_sch", description=__doc__)
     parser.add_argument(
         "command",
         nargs="?",
         default="status",
-        choices=("status", "verify", "next"),
+        choices=("status", "verify", "next", "bom"),
     )
     args = parser.parse_args(argv)
     if args.command == "status":
         return cmd_status()
     if args.command == "verify":
         return cmd_verify()
+    if args.command == "bom":
+        return cmd_bom()
     return cmd_next()
 
 

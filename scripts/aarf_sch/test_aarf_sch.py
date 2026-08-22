@@ -8,8 +8,19 @@ import pytest
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
-from cli import cmd_next, cmd_status, cmd_verify, labels_in, parse_pins_h, read_sheet  # noqa: E402
-from nets import FORBIDDEN_NETS, GPIO, SHEET_NETS  # noqa: E402
+from bom import LINES, RPROG_STUFFED, all_refs, emit_markdown  # noqa: E402
+from cli import (  # noqa: E402
+    LAYOUT_ONLY_REFS,
+    cmd_bom,
+    cmd_next,
+    cmd_status,
+    cmd_verify,
+    instance_refs,
+    labels_in,
+    parse_pins_h,
+    read_sheet,
+)
+from nets import FORBIDDEN_NETS, GPIO, I2C_PULLUP_OHMS, SHEET_NETS, VBAT_DIV_BOT_OHMS, VBAT_DIV_TOP_OHMS  # noqa: E402
 
 
 def test_verify_passes_on_emitted_board():
@@ -54,6 +65,53 @@ def test_no_live_net_on_strapping_pins():
 def test_vbat_sense_is_adc1_not_adc2():
     # ESP32-S3 ADC2 conflicts with Wi-Fi. GPIO1 is ADC1_CH0.
     assert GPIO["VBAT_SENSE"] == 1
+
+
+def test_bom_passives_match_nets():
+    assert VBAT_DIV_TOP_OHMS == VBAT_DIV_BOT_OHMS == 100_000
+    assert I2C_PULLUP_OHMS == 4700
+    assert next(line for line in LINES if "R2" in line.refs).value == "100k"
+    assert next(line for line in LINES if "R7" in line.refs).value == "4.7k"
+
+
+def test_bom_rprog_is_100_ma_not_500():
+    assert RPROG_STUFFED == "10k"
+    r1 = next(line for line in LINES if "R1" in line.refs)
+    assert r1.value == "10k"
+    assert "2k" not in r1.value
+
+
+def test_bom_covers_every_sheet_instance_ref():
+    covered = all_refs()
+    for sheet in SHEET_NETS:
+        missing = instance_refs(read_sheet(sheet)) - covered
+        assert not missing, f"{sheet} refs not in BOM: {missing}"
+
+
+def test_bom_has_photodiode_and_usb_cc():
+    refs = all_refs()
+    assert "D4" in refs
+    assert "R9" in refs and "R10" in refs
+    assert LAYOUT_ONLY_REFS <= refs
+    assert "SFH 2704" in emit_markdown()
+
+
+def test_bom_has_no_actuators():
+    text = emit_markdown().upper()
+    for bad in FORBIDDEN_NETS:
+        assert bad not in text
+
+
+def test_cmd_bom_writes_files(tmp_path, monkeypatch):
+    import cli as cli_mod
+
+    monkeypatch.setattr(cli_mod, "HARDWARE", tmp_path)
+    assert cmd_bom() == 0
+    assert (tmp_path / "BOM.md").is_file()
+    assert (tmp_path / "BOM.csv").is_file()
+    md = (tmp_path / "BOM.md").read_text(encoding="utf-8")
+    assert "MCP73831T-2ACI/OT" in md
+    assert "AFE4404YZPR" in md
 
 
 def test_kicad_cli_loads_sheets(tmp_path):

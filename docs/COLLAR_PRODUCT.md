@@ -13,7 +13,7 @@ Firmware `0.1.0`. Advertises `aarf-collar`.
 | Pocket iOS / Android | Done — Settings → Listen to collar |
 | Laptop listener | Done — `python3 scripts/collar_listen.py` |
 | PCB layout / fab | Outline only — assign footprints, then layout |
-| Enclosure / BOM stuff | See [hardware/collar-reva/BOM.md](../hardware/collar-reva/BOM.md) |
+| Enclosure / BOM stuff | PCB + cell + NFC: [hardware/collar-reva/BOM.md](../hardware/collar-reva/BOM.md). Strap/enclosure not designed. |
 
 ## Flash
 

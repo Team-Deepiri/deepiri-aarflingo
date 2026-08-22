@@ -8,7 +8,7 @@
 #   ./kicad-launcher --check
 #   ./kicad-launcher --list
 #   ./kicad-launcher --run [NAME]
-#   ./kicad-launcher --sch [status|verify|next]
+#   ./kicad-launcher --sch [status|verify|next|bom]
 #   ./kicad-launcher --install    # apt KiCad + ngspice (Debian/Ubuntu/WSL)
 #
 # Env:
@@ -237,6 +237,7 @@ cat <<EOF
   ./kicad-launcher --sch status     # sheet / net inventory
   ./kicad-launcher --sch verify     # GPIO + ethics + required parts
   ./kicad-launcher --sch next       # layout / ERC checklist
+  ./kicad-launcher --sch bom        # write hardware/collar-reva/BOM.md + BOM.csv
   ./kicad-launcher --install        # only if kicad is missing
 EOF
 echo

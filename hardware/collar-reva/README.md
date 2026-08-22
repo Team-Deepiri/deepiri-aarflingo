@@ -6,6 +6,7 @@ Physical device **on the dog** (collar or harness), not a human bracelet.
 ./kicad-launcher --run collar
 ./kicad-launcher --sch status
 ./kicad-launcher --sch verify
+./kicad-launcher --sch bom        # BOM.md + BOM.csv
 ```
 
 | Path | Role |
@@ -14,6 +15,7 @@ Physical device **on the dog** (collar or harness), not a human bracelet.
 | `collar-reva.kicad_sch` | Root: Power / MCU / Sensors |
 | `pins.h` | Firmware GPIO contract (from `scripts/aarf_sch/nets.py`) |
 | `DESIGN_SPEC.md` | Power budget, GPIO, floorplan |
+| `BOM.md` / `BOM.csv` | Stuffed parts (R1 = 10 kΩ → 100 mA) |
 
 Regenerate sheets after editing `nets.py`:
 
