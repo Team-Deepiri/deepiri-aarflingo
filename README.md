@@ -50,6 +50,17 @@ See [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md), [docs/ELECTRON.md](docs/ELECTR
 - `POST /live/retrain` — export feedback → fine-tune checkpoint
 - `WS /ws/live` — streaming predictions
 
+## Hardware (dog-worn collar)
+
+KiCad for the physical puck on the dog lives in this repo — `./setup.sh` is unchanged (software only).
+
+```bash
+./kicad-launcher --run collar     # open hardware/collar-reva
+./kicad-launcher --sch verify     # GPIO + ethics denylist
+```
+
+See [hardware/README.md](hardware/README.md) and [docs/PHASE2_COLLAR.md](docs/PHASE2_COLLAR.md).
+
 ## Hardware deploy
 
 ```bash

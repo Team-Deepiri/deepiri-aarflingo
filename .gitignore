@@ -58,6 +58,14 @@ data/clips/
 .env.*
 !**/.env.example
 
+# KiCad
+**/fp-info-cache
+**/*.kicad_prl
+**/*-backups/
+**/*.lck
+**/_autosave-*
+**/~*
+
 # OS
 .DS_Store
 Thumbs.db

@@ -11,6 +11,17 @@ git pull origin dev
 git checkout -b feat/my-change
 ```
 
+## Hardware (KiCad)
+
+The collar schematic lives in `hardware/collar-reva/`. Do not clone an external launcher.
+
+```bash
+./kicad-launcher --check
+./kicad-launcher --run collar
+./kicad-launcher --sch verify
+python3 -m pytest -q scripts/aarf_sch
+```
+
 ## Local setup
 
 ```bash
