@@ -1,6 +1,6 @@
 # Aarflingo hardware
 
-KiCad lives **in this repo**. There is no sibling launcher, no Exovra clone, and `./setup.sh` stays the software installer.
+KiCad lives **in this repo**. `./setup.sh` stays the software installer.
 
 ```bash
 ./kicad-launcher                 # tool status + next steps

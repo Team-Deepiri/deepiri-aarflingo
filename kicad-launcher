@@ -2,7 +2,7 @@
 # Aarflingo hardware launcher — install/check KiCad, open this repo's
 # collar project, run the schematic craftsmanship CLI.
 #
-# Lives in deepiri-aarflingo. Does not call, import, or clone Exovra tooling.
+# Lives in deepiri-aarflingo. Original Aarflingo hardware tooling.
 #
 #   ./kicad-launcher              # status + next steps
 #   ./kicad-launcher --check
