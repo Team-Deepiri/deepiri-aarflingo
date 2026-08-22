@@ -1,4 +1,4 @@
-.PHONY: setup test smoke dev runtime studio electron train verify mobile-android mobile-verify web home-capture home-train kicad kicad-sch firmware firmware-test flash-collar
+.PHONY: setup test smoke dev runtime studio electron train verify mobile-android mobile-verify web home-capture home-train kicad kicad-sch firmware firmware-test flash-collar v1-gate
 
 setup:
 	./setup.sh
@@ -30,6 +30,10 @@ firmware:
 
 flash-collar:
 	./scripts/flash_collar.sh
+
+v1-gate:
+	python3 -m pytest -q core/tests/test_v1_gate.py
+	python3 scripts/v1_gate.py
 
 test:
 	python3 core/metrics/test_anticipate.py

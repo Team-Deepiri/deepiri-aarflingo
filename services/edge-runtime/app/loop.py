@@ -1,4 +1,4 @@
-"""Edge device inference loop (Jetson / collar pod)."""
+"""Edge device inference loop (Jetson home hub)."""
 from __future__ import annotations
 
 import json

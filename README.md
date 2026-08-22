@@ -22,6 +22,13 @@ Then in studio → **Live camera** → **WSL bridge** → **Start**. See [docs/W
 
 See [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md), [docs/ELECTRON.md](docs/ELECTRON.md), and [docs/ROADMAP.md](docs/ROADMAP.md).
 
+v1.0 bar (dog-held-out ≥95% on ≥3 dogs — not synthetic acc):
+
+```bash
+make v1-gate                      # report + docs/paper/RESULTS.md
+python3 scripts/v1_gate.py --require-bar   # fails until the bar is real
+```
+
 ## Architecture
 
 | Path | Role |

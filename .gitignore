@@ -38,6 +38,8 @@ artifacts/manifests/*
 artifacts/feedback/*.db
 artifacts/models/
 artifacts/voice/
+artifacts/eval/*
+!artifacts/eval/.gitkeep
 
 # Bundled mobile model manifests (produced by scripts/mobile/bundle-mobile-models.sh)
 apps/aarf-pocket-android/app/src/main/assets/models/triad_manifest.json
