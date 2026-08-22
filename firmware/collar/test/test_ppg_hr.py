@@ -162,6 +162,56 @@ int main(void) {
     _compile_and_run([SRC / "imu_feat.c"], extra, "test_imu", tmp_path)
 
 
+def test_bmi270_lsb_to_g_full_scale(tmp_path):
+    extra = r"""
+#include "bmi270.h"
+int main(void) {
+    if (BMI270_I2C_ADDR != 0x68) return 2;
+    if (BMI270_CHIP_ID != 0x24) return 3;
+    float g = bmi270_lsb_to_g(32767);
+    if (g < 7.99f || g > 8.01f) return 4;
+    if (bmi270_lsb_to_g(0) != 0.f) return 5;
+    return 0;
+}
+"""
+    _compile_and_run([SRC / "bmi270.c"], extra, "test_bmi", tmp_path)
+
+
+def test_audio_rms_and_bark(tmp_path):
+    extra = r"""
+#include "audio_feat.h"
+int main(void) {
+    int32_t s[4] = {3, 0, -4, 0};
+    float r = audio_rms(s, 4);
+    if (r < 2.49f || r > 2.51f) return 2;
+    if (!audio_bark(0.05f, 0.02f)) return 3;
+    if (audio_bark(0.01f, 0.02f)) return 4;
+    return 0;
+}
+"""
+    _compile_and_run([SRC / "audio_feat.c"], extra, "test_audio", tmp_path)
+
+
+def test_vbat_midscale_is_3v1_times_two(tmp_path):
+    extra = r"""
+#include "vbat.h"
+int main(void) {
+    float v = vbat_from_raw(2048, 4095, 3.10f, 1.0f, 0.0f);
+    if (v < 3.09f || v > 3.11f) return 2;
+    return 0;
+}
+"""
+    _compile_and_run([SRC / "vbat.c"], extra, "test_vbat", tmp_path)
+
+
+def test_ble_link_is_notify_only():
+    text = (COLLAR / "include" / "ble_link.h").read_text(encoding="utf-8")
+    assert "COLLAR_BLE_NOTIFY_UUID" in text
+    assert "COLLAR_BLE_MTU" in text
+    assert "WRITE" not in text
+    assert "SHOCK" not in text
+
+
 def test_firmware_has_no_actuator_drivers():
     banned = ("SHOCK", "STIM", "VIBE", "HAPTIC", "SOLENOID", "MOTOR", "STRIKE", "PUNISH")
     for path in (COLLAR / "src").rglob("*"):
