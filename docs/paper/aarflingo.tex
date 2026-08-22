@@ -54,9 +54,11 @@ Random-frame splits and synthetic validation accuracy can be perfect while every
 \texttt{scripts/v1\_gate.py -{}-require-bar} is the test a later home set must pass.
 It fails today.
 
-Protocol files that a reviewer can run without this prose live in \texttt{docs/paper/}
-(\texttt{METHODS.md}, generated \texttt{RESULTS.md}, \texttt{DATASHEET.md}, \texttt{reproduce.md}).
-Source: \url{https://github.com/Team-Deepiri/deepiri-aarflingo}.
+Protocol files that a reviewer can run without this prose live in
+\texttt{docs/paper/} (\texttt{METHODS.md}, generated \texttt{RESULTS.md},
+\texttt{DATASHEET.md}, \texttt{reproduce.md}).
+The repository is
+\url{https://github.com/Team-Deepiri/deepiri-aarflingo}.
 
 \section{Related work}
 
@@ -119,12 +121,9 @@ It does not run on the ESP32.
 
 \section{Ethogram and coupling}
 
-Intents: \texttt{approach}, \texttt{avoid}, \texttt{solicit\_play}, \texttt{rest},
-\texttt{guard\_resource}, \texttt{explore}, \texttt{alert}, \texttt{outside}, \texttt{play}, \texttt{food}.
-Emotions: \texttt{calm}, \texttt{content}, \texttt{excited}, \texttt{anxious}, \texttt{fearful},
-\texttt{frustrated}, \texttt{conflicted}.
-Behaviors: \texttt{tail\_wag\_loose}, \texttt{tail\_tucked}, \texttt{play\_bow}, \texttt{lip\_lick},
-\texttt{whale\_eye}, \texttt{hard\_stare}, \texttt{yawning}, \texttt{sniff\_ground}, \texttt{freeze}, \texttt{bark}.
+Intents: approach, avoid, solicit-play, rest, guard-resource, explore, alert, outside, play, food.
+Emotions: calm, content, excited, anxious, fearful, frustrated, conflicted.
+Behaviors: loose tail-wag, tucked tail, play-bow, lip-lick, whale-eye, hard stare, yawning, sniff-ground, freeze, bark.
 
 The coupling matrix lists weighted triples (play + excited + play-bow at 0.9) and forbidden pairs
 (rest + play-bow; avoid + play-bow; rest + excited).
@@ -149,14 +148,11 @@ Time-to-contact is $\tau_z = d_z / \max(\dot{d}_z, \varepsilon)$, inverted again
 so that a large \texttt{tau\_*} means imminent arrival.
 Heading is $\hat{v} \cdot \hat{u}_z$.
 
-The 1\,Hz collar map is projected onto slots the triad already has:
-\texttt{hr\_bpm}$/180 \to$ \texttt{ecg\_hr\_norm},
-\texttt{rmssd\_ms}$/150 \to$ \texttt{ecg\_rmssd\_norm},
-\texttt{arousal} $\to$ \texttt{ecg\_stress},
-\texttt{imu\_rms} $\to$ \texttt{imu\_activity},
-\texttt{still} $\to$ \texttt{imu\_posture\_static}
-(all clamped to $[0,1]$).
-Laptop path: \texttt{collar\_listen.py -{}-runtime} posts each notify to \texttt{POST /infer/collar}.
+The 1\,Hz collar map is projected onto slots the triad already has
+(\texttt{hr\_bpm}$/180$, \texttt{rmssd\_ms}$/150$, arousal, IMU RMS, still;
+all clamped to $[0,1]$).
+\texttt{scripts/collar\_listen.py} with \texttt{-{}-runtime} posts each notify
+to \texttt{POST /infer/collar}.
 
 \section{Models}
 

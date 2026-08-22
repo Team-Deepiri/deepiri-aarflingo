@@ -37,7 +37,8 @@ v1-gate:
 
 paper:
 	python3 -m pytest -q core/tests/test_v1_gate.py::test_paper_scaffold_lists_required_files core/tests/test_v1_gate.py::test_manuscript_does_not_claim_home_bar
-	@echo "Manuscript: docs/paper/PAPER.md"
+	cd docs/paper && pdflatex -interaction=nonstopmode aarflingo.tex >/dev/null && bibtex aarflingo && pdflatex -interaction=nonstopmode aarflingo.tex >/dev/null && pdflatex -interaction=nonstopmode aarflingo.tex >/dev/null
+	@echo "PDF: docs/paper/aarflingo.pdf"
 
 test:
 	python3 core/metrics/test_anticipate.py

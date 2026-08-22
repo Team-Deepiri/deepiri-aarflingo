@@ -10,6 +10,10 @@ This preprint does **not** claim 95% home-dog accuracy. `python3 scripts/v1_gate
 # regenerate the results table
 python3 scripts/v1_gate.py
 
-# PDF (optional; needs pdflatex + bibtex)
+# PDF (TeX Live: pdflatex + bibtex)
+make paper
+# or
 cd docs/paper && pdflatex aarflingo.tex && bibtex aarflingo && pdflatex aarflingo.tex && pdflatex aarflingo.tex
 ```
+
+Built file: [aarflingo.pdf](aarflingo.pdf).
