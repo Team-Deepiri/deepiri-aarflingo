@@ -32,7 +32,9 @@ int collar_loop_step(CollarLoop *L, const int32_t *ir, size_t n, int fs_hz,
     L->last.ppg_ok = hr.ok;
     L->last.hr_bpm = hr.ok ? hr.hr_bpm : 0;
     L->last.rmssd_ms = hr.ok ? hr.rmssd_ms : 0;
-    if (!hr.ok) {
+    if (vbat_v < COLLAR_VBAT_EMPTY_V) {
+        L->last.fault = "vbat";
+    } else if (!hr.ok) {
         L->last.fault = "ppg";
     }
 

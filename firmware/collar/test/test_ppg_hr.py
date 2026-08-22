@@ -192,6 +192,28 @@ int main(void) {
     _compile_and_run([SRC / "audio_feat.c"], extra, "test_audio", tmp_path)
 
 
+def test_collar_loop_vbat_fault_wins_over_ppg(tmp_path):
+    extra = r"""
+#include "collar_loop.h"
+#include <string.h>
+int main(void) {
+    int32_t ir[8] = {0};
+    CollarLoop L;
+    collar_loop_init(&L);
+    int n = collar_loop_step(&L, ir, 8, 50, 0.1f, 0.2f, 0.01f, 0, 3.00f);
+    if (n < 10) return 2;
+    if (L.last.fault == NULL || strcmp(L.last.fault, "vbat") != 0) return 3;
+    return 0;
+}
+"""
+    _compile_and_run(
+        [SRC / "ppg_hr.c", SRC / "frame.c", SRC / "collar_loop.c"],
+        extra,
+        "test_vbat_fault",
+        tmp_path,
+    )
+
+
 def test_vbat_midscale_is_3v1_times_two(tmp_path):
     extra = r"""
 #include "vbat.h"

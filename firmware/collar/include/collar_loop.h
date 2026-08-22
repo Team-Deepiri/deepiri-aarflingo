@@ -30,6 +30,8 @@ int collar_loop_step(CollarLoop *L, const int32_t *ir, size_t n, int fs_hz,
                      float imu_rms, float imu_peak, float audio_rms, int bark,
                      float vbat_v);
 
+#define COLLAR_VBAT_EMPTY_V 3.10f
+
 #ifdef __cplusplus
 }
 #endif
