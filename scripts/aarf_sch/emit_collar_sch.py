@@ -10,6 +10,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from nets import BOARD, GPIO, TITLE
+from bom import footprint_for
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 OUT = REPO_ROOT / "hardware" / BOARD
@@ -211,6 +212,49 @@ LIB_SYMBOLS = r'''
         (pin passive line (at -5.08 -3.81 0) (length 3.81)
           (name "Pin_4" (effects (font (size 1.27 1.27))))
           (number "4" (effects (font (size 1.27 1.27))))
+        )
+      )
+    )
+    (symbol "Connector:Conn_01x06" (pin_names (offset 1.016) hide) (in_bom yes) (on_board yes)
+      (property "Reference" "J" (at 0 7.62 0)
+        (effects (font (size 1.27 1.27)))
+      )
+      (property "Value" "Conn_01x06" (at 0 -10.16 0)
+        (effects (font (size 1.27 1.27)))
+      )
+      (property "Footprint" "" (at 0 0 0)
+        (effects (font (size 1.27 1.27)) hide)
+      )
+      (property "Datasheet" "~" (at 0 0 0)
+        (effects (font (size 1.27 1.27)) hide)
+      )
+      (symbol "Conn_01x06_1_1"
+        (rectangle (start -1.27 -7.62) (end 1.27 7.62)
+          (stroke (width 0.254) (type default)) (fill (type background))
+        )
+        (pin passive line (at -5.08 6.35 0) (length 3.81)
+          (name "Pin_1" (effects (font (size 1.27 1.27))))
+          (number "1" (effects (font (size 1.27 1.27))))
+        )
+        (pin passive line (at -5.08 3.81 0) (length 3.81)
+          (name "Pin_2" (effects (font (size 1.27 1.27))))
+          (number "2" (effects (font (size 1.27 1.27))))
+        )
+        (pin passive line (at -5.08 1.27 0) (length 3.81)
+          (name "Pin_3" (effects (font (size 1.27 1.27))))
+          (number "3" (effects (font (size 1.27 1.27))))
+        )
+        (pin passive line (at -5.08 -1.27 0) (length 3.81)
+          (name "Pin_4" (effects (font (size 1.27 1.27))))
+          (number "4" (effects (font (size 1.27 1.27))))
+        )
+        (pin passive line (at -5.08 -3.81 0) (length 3.81)
+          (name "Pin_5" (effects (font (size 1.27 1.27))))
+          (number "5" (effects (font (size 1.27 1.27))))
+        )
+        (pin passive line (at -5.08 -6.35 0) (length 3.81)
+          (name "Pin_6" (effects (font (size 1.27 1.27))))
+          (number "6" (effects (font (size 1.27 1.27))))
         )
       )
     )
@@ -622,8 +666,10 @@ def symbol(
     pins: list[str],
     path: str,
     rotation: int = 0,
+    footprint: str = "",
 ) -> str:
     pin_block = "\n".join(f'    (pin "{p}" (uuid {uid()}))' for p in pins)
+    fp = footprint or footprint_for(ref)
     return f'''  (symbol (lib_id "{lib_id}") (at {x} {y} {rotation}) (unit 1)
     (in_bom yes) (on_board yes)
     (uuid {uid()})
@@ -633,7 +679,7 @@ def symbol(
     (property "Value" "{value}" (at {x} {y + 12.7} 0)
       (effects (font (size 1.27 1.27)))
     )
-    (property "Footprint" "" (at {x} {y} 0)
+    (property "Footprint" "{fp}" (at {x} {y} 0)
       (effects (font (size 1.27 1.27)) hide)
     )
     (property "Datasheet" "~" (at {x} {y} 0)
@@ -723,15 +769,17 @@ def emit_power() -> str:
     path = f"/{ROOT_UUID}/{POWER_SHEET_UUID}"
     b = header(POWER_FILE_UUID, f"{TITLE} — Power", "USB-C → TVS → PTC → MCP73831 → LiPo → AP2112K-3.3")
     b += text("Dirty zone: USB / charger. Keep away from I2S mic.", 20, 20)
-    b += symbol("Connector:Conn_01x04", "J1", "USB-C", 40, 70, ["1", "2", "3", "4"], path)
+    b += symbol("Connector:Conn_01x06", "J1", "USB-C", 40, 70, ["1", "2", "3", "4", "5", "6"], path)
     b += symbol("Device:D_TVS", "D1", "USBLC6", 65, 55, ["1", "2"], path)
     b += symbol("Device:Fuse", "F1", "PTC 500mA", 90, 50, ["1", "2"], path)
     b += symbol("aarf:IC5", "U2", "MCP73831", 120, 55, ["1", "2", "3", "4", "5"], path)
     b += symbol("Connector:Conn_01x02", "J2", "JST-PH LiPo", 155, 55, ["1", "2"], path)
     b += symbol("aarf:IC5", "U3", "AP2112K-3.3", 190, 55, ["1", "2", "3", "4", "5"], path)
-    b += symbol("Device:R", "R1", "2k PROG", 120, 80, ["1", "2"], path)
+    b += symbol("Device:R", "R1", "10k PROG", 120, 80, ["1", "2"], path)
     b += symbol("Device:R", "R2", "100k", 175, 90, ["1", "2"], path)
     b += symbol("Device:R", "R3", "100k", 175, 105, ["1", "2"], path)
+    b += symbol("Device:R", "R9", "5.1k CC1", 50, 100, ["1", "2"], path)
+    b += symbol("Device:R", "R10", "5.1k CC2", 70, 100, ["1", "2"], path)
     b += symbol("Device:C", "C1", "10uF", 190, 80, ["1", "2"], path)
     b += symbol("Device:C", "C2", "10uF", 205, 80, ["1", "2"], path)
     b += symbol("Device:C", "C3", "100nF", 175, 120, ["1", "2"], path)
@@ -746,6 +794,8 @@ def emit_power() -> str:
         ("CHG_STAT", 109, 55),
         ("VBAT_SENSE", 175, 97.54),
         ("3V3", 215, 55),
+        ("CC1", 40, 100),
+        ("CC2", 60, 100),
     ):
         b += glabel(name, x, y)
     b += footer()
@@ -799,6 +849,7 @@ def emit_sensors() -> str:
     b += symbol("aarf:MIC", "U5", "INMP441", 160, 70, ["1", "2", "3", "4", "5", "6"], path)
     b += symbol("aarf:PPG", "U6", "AFE4404", 80, 140, ["1", "2", "3", "4", "5", "6", "7", "8"], path)
     b += symbol("Device:LED", "D3", "IR neck", 130, 140, ["1", "2"], path)
+    b += symbol("Device:LED", "D4", "PD neck", 155, 140, ["1", "2"], path)
     b += symbol("Device:C", "C8", "0.1uF PPG", 55, 140, ["1", "2"], path)
     b += symbol("Device:R", "R7", "4.7k", 110, 45, ["1", "2"], path)
     b += symbol("Device:R", "R8", "4.7k", 125, 45, ["1", "2"], path)
@@ -817,6 +868,8 @@ def emit_sensors() -> str:
         ("I2S_SD", 177, 70),
         ("PPG_RDY", 100, 132.38),
         ("PPG_RST", 100, 134.92),
+        ("PPG_TXP", 145, 140),
+        ("PPG_INP", 170, 140),
         ("SDA", 60, 142.54),
         ("SCL", 60, 140),
     ):

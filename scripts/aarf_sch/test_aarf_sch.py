@@ -96,6 +96,27 @@ def test_bom_has_photodiode_and_usb_cc():
     assert "SFH 2704" in emit_markdown()
 
 
+def test_optics_and_usb_cc_are_on_the_sheets():
+    assert not LAYOUT_ONLY_REFS
+    power = read_sheet("power")
+    sensors = read_sheet("sensors")
+    assert {"R9", "R10"} <= instance_refs(power)
+    assert {"CC1", "CC2"} <= labels_in(power)
+    assert "D4" in instance_refs(sensors)
+    assert {"PPG_TXP", "PPG_INP"} <= labels_in(sensors)
+
+
+def test_sheet_instances_have_bom_footprints():
+    from bom import footprint_for
+
+    for sheet in SHEET_NETS:
+        text = read_sheet(sheet)
+        for ref in instance_refs(text):
+            fp = footprint_for(ref)
+            assert fp, f"{ref} has no BOM footprint"
+            assert fp in text, f"{sheet} {ref} missing footprint {fp}"
+
+
 def test_bom_has_no_actuators():
     text = emit_markdown().upper()
     for bad in FORBIDDEN_NETS:

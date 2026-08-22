@@ -85,7 +85,7 @@ Entry order (dirty zone, threat first):
 
 `USB-C VBUS → USBLC6 (or SMBJ5.0A on VBUS) → PTC 500 mA → MCP73831 VDD`
 
-D+/D− go through the same USBLC6 to GPIO19/20 (USB-JTAG). Series 22–27 Ω on D+/D− if layout is long; skip if the TVS sits on the connector pads.
+CC1 and CC2 each have **5.1 kΩ to GND** (R9, R10) so a C-to-C cable presents VBUS. D+/D− go through the same USBLC6 to GPIO19/20 (USB-JTAG). Series 22–27 Ω on D+/D− if layout is long; skip if the TVS sits on the connector pads.
 
 ## 8. I2S mic (INMP441)
 

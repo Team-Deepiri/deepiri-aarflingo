@@ -13,13 +13,14 @@ Dog-worn observational puck (collar or harness). Not a human bracelet. Not a gat
 ## Topology
 
 ```
-USB-C  → TVS (USBLC6) → PTC 500 mA → MCP73831 → LiPo (JST-PH)
+USB-C (CC1/CC2 = 5.1 kΩ) → TVS (USBLC6) → PTC 500 mA → MCP73831 → LiPo (JST-PH)
                                            │
                                          VBAT ── 100k/100k divider + 100 nF → GPIO1 (ADC1)
                                            │
                                       AP2112K-3.3 → 3V3 → ESP32-S3-MINI-1
                                                       ├─ I2C  BMI270 (SDA/SCL + INT1)
                                                       ├─ I2C  TI AFE4404 neck PPG (SDA/SCL + RDY/RST)
+                                                      │      IR LED D3 on TXP, PD D4 on INP
                                                       └─ I2S  INMP441 (SCK/WS/SD)
 ```
 

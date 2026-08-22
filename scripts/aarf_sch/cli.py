@@ -29,7 +29,7 @@ LABEL_RE = re.compile(r'\((?:global_)?label\s+"([^"]+)"')
 REF_RE = re.compile(r'\(property\s+"Reference"\s+"([^"]+)"')
 INSTANCE_REF_RE = re.compile(r"^[A-Z]+\d+$")
 PIN_DEFINE_RE = re.compile(r"#define\s+PIN_([A-Z0-9_]+)\s+(\d+)")
-LAYOUT_ONLY_REFS = {"D4", "R9", "R10"}
+LAYOUT_ONLY_REFS: set[str] = set()
 MECH_REFS = {"BT1", "TAG1"}
 
 

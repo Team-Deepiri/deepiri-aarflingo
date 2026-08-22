@@ -52,6 +52,8 @@ SHEET_NETS = {
         "CHG_STAT",
         "USB_DP",
         "USB_DN",
+        "CC1",
+        "CC2",
     ),
     "mcu": (
         "3V3",
@@ -83,13 +85,15 @@ SHEET_NETS = {
         "IMU_INT",
         "PPG_RDY",
         "PPG_RST",
+        "PPG_TXP",
+        "PPG_INP",
     ),
 }
 
 REQUIRED_PARTS = {
-    "power": ("J1", "D1", "F1", "U2", "U3", "J2"),
+    "power": ("J1", "D1", "F1", "U2", "U3", "J2", "R9", "R10"),
     "mcu": ("U1",),
-    "sensors": ("U4", "U5", "U6"),
+    "sensors": ("U4", "U5", "U6", "D3", "D4"),
 }
 
 # MCP73831: IREG = 1 V / RPROG. Schematic 2 kΩ = 500 mA max pad.
@@ -102,8 +106,8 @@ LED_SERIES_OHMS = 330
 
 NEXT_STEPS = (
     "Open the board: ./kicad-launcher --run collar",
-    "Assign footprints (USB-C, JST-PH, ESP32-S3-MINI-1, SOT-23-5 charger/LDO)",
+    "Footprints are on the symbols. Layout: USB/charger dirty zone opposite I2S mic; solid GND plane",
     "Run schematic ERC in KiCad (or kicad-cli sch erc on KiCad 9+)",
-    "Layout: USB/charger dirty zone opposite I2S mic; solid GND plane",
+    "Update gerbers after copper; stuff from hardware/collar-reva/BOM.csv",
     "Firmware: keep hardware/collar-reva/pins.h in lockstep with scripts/aarf_sch/nets.py",
 )
