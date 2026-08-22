@@ -58,6 +58,9 @@ data/clips/
 .env.*
 !**/.env.example
 
+# PlatformIO
+firmware/**/.pio/
+
 # KiCad
 **/fp-info-cache
 **/*.kicad_prl

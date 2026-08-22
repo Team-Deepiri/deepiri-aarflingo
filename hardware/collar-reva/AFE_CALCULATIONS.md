@@ -107,7 +107,25 @@ Classic-ESP32 rules (GPIO2/5/12/15 strapping, GPIO6–11 flash) **do not apply**
 
 USB-JTAG is GPIO19 (D−) / GPIO20 (D+). Do not reuse.
 
-## 11. What this board deliberately omits
+## 11. Neck PPG (TI AFE4404)
+
+Ventral-neck photoplethysmography. IR LED + photodiode look at carotid-adjacent tissue. Observational only — no stim, no current into the animal except the optical pulse.
+
+AFE4404 I2C address `0x58`. Shares SDA/SCL with BMI270. `ADC_RDY` → GPIO8, `RESET` (active low) → GPIO9. Neither is an S3 strap.
+
+LED current is programmed in the AFE, not a series resistor on the schematic. Average extra drain:
+
+\[
+I_{LED,avg} = I_{pulse}\cdot D
+\]
+
+Rev-A bring-up: \(I_{pulse} = 4\ \mathrm{mA}\), \(D = 0.25\) → \(1\ \mathrm{mA}\) average. At 180 mAh that is ~5 % of the IMU+mic budget. Do not stuff 50 mA pulses on a small pouch without measuring skin heating.
+
+Photodiode current is nanoamps; the AFE integrates it. No extra ADC pin — do not put PPG on ADC2.
+
+Firmware: 50 Hz IR FIFO → peak detect → `hr_bpm` and `rmssd_ms` (`firmware/collar/src/ppg_hr.c`).
+
+## 12. What this board deliberately omits
 
 | Omitted | Why | Cost of omission |
 |---------|-----|------------------|
@@ -127,3 +145,4 @@ USB-JTAG is GPIO19 (D−) / GPIO20 (D+). Do not reuse.
 - [x] Power budget: see [DESIGN_SPEC.md](DESIGN_SPEC.md) + [MATH.md](MATH.md)
 - [x] Pin map = `nets.py` = `pins.h`
 - [x] Calibration: DMM vs ADC at three cell voltages
+- [x] Neck PPG AFE4404: I_LED,avg = 1 mA at 4 mA × 25 % duty

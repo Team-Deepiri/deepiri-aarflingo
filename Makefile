@@ -24,6 +24,7 @@ kicad-sch:
 test:
 	python3 core/metrics/test_anticipate.py
 	python3 -m pytest -q scripts/aarf_sch
+	python3 -m pytest -q firmware/collar/test
 	PYTHONPATH=. poetry run pytest -q core/tests
 	PYTHONPATH=.:services/ingest poetry run pytest -q services/ingest/tests
 	PYTHONPATH=.:services/perception poetry run pytest -q services/perception/tests

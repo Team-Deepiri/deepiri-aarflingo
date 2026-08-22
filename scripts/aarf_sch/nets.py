@@ -33,6 +33,8 @@ GPIO = {
     "VBAT_SENSE": 1,  # ADC1_CH0 — never ADC2 (Wi-Fi conflict)
     "CHG_STAT": 2,
     "LED_STAT": 6,
+    "PPG_RDY": 8,  # TI AFE4404 ADC_RDY
+    "PPG_RST": 9,  # TI AFE4404 RESET (active low)
 }
 
 BOOT_GPIO = 0
@@ -63,6 +65,8 @@ SHEET_NETS = {
         "VBAT_SENSE",
         "CHG_STAT",
         "LED_STAT",
+        "PPG_RDY",
+        "PPG_RST",
         "USB_DP",
         "USB_DN",
         "EN",
@@ -77,13 +81,15 @@ SHEET_NETS = {
         "I2S_WS",
         "I2S_SD",
         "IMU_INT",
+        "PPG_RDY",
+        "PPG_RST",
     ),
 }
 
 REQUIRED_PARTS = {
     "power": ("J1", "D1", "F1", "U2", "U3", "J2"),
     "mcu": ("U1",),
-    "sensors": ("U4", "U5"),
+    "sensors": ("U4", "U5", "U6"),
 }
 
 # MCP73831: IREG = 1 V / RPROG. Schematic 2 kΩ = 500 mA max pad.

@@ -2,7 +2,7 @@
 
 ## Goal
 
-Stream low-rate triad predictions from a **physical device on the dog** (collar / harness puck: IMU + mic) to aarf-pocket via BLE.
+Stream low-rate triad predictions from a **physical device on the dog** (collar / harness puck: IMU + mic + neck PPG) to aarf-pocket via BLE.
 
 KiCad: `./kicad-launcher --run collar`. Verify: `./kicad-launcher --sch verify`.
 

@@ -11,8 +11,8 @@ KiCad: `./kicad-launcher --run collar`. Electrical math: [hardware/collar-reva/A
 | Item | Value |
 |------|--------|
 | Module | ESP32-S3-MINI-1 |
-| Framework (Rev-A) | ESP-IDF or Arduino+NimBLE — pick one in the first firmware PR; do not mix |
-| Sensors | BMI270 (I2C), INMP441 (I2S) |
+| Framework (Rev-A) | Arduino + host-tested C (`ppg_hr`, `frame`, `collar_loop`). NimBLE notify is the next increment; Serial JSON is bring-up. |
+| Sensors | BMI270 (I2C), INMP441 (I2S), TI AFE4404 neck PPG (I2C) |
 | Radio | BLE notify 1 Hz; Wi-Fi only for triggered clip upload |
 | Actuation | **None** |
 
@@ -31,6 +31,8 @@ Include `hardware/collar-reva/pins.h`. Live buses:
 | `PIN_I2S_WS` | 15 | I2S WS |
 | `PIN_I2S_SD` | 16 | I2S DIN |
 | `PIN_IMU_INT` | 17 | BMI270 INT1 |
+| `PIN_PPG_RDY` | 8 | AFE4404 ADC_RDY |
+| `PIN_PPG_RST` | 9 | AFE4404 RESET |
 
 USB-JTAG is GPIO19/20 (not in `pins.h` live list). GPIO0 is boot. Never drive GPIO 0/3/45/46 as a bus.
 
@@ -87,7 +89,10 @@ Phase 2 already specified this. Collar firmware **extends** it; it does not repl
   "audio_rms": <float>,
   "bark": <bool>,
   "vbat_v": <float>,
-  "fault": <str or null>   // "imu" | "mic" | "vbat" | null
+  "hr_bpm": <int, 0 if ppg_ok is false>,
+  "rmssd_ms": <int>,
+  "ppg_ok": <bool>,
+  "fault": <str or null>   // "imu" | "mic" | "vbat" | "ppg" | null
 }
 ```
 
@@ -105,6 +110,7 @@ Baseline sync: pull `record-baseline.sh` output over BLE or Wi-Fi as already des
 |-----------|------|-----|
 | IMU NAK | `fault=imu`, keep advertising | slow blink |
 | I2S timeout | `fault=mic` | slow blink |
+| PPG NAK / no peaks | `fault=ppg` | slow blink |
 | \(V_{BAT}<3.1\ \mathrm{V}\) (after cal) | `fault=vbat` | solid dim |
 | Healthy 1 Hz | `fault=null` | 10 ms tick |
 
@@ -124,4 +130,4 @@ IMU features in **g**, not LSB. Convert with the BMI270 full-scale setting actua
 
 ## Out of scope (Rev-A)
 
-OTA, deep sleep, on-puck YOLO, gate MOSFET, ECG analog front-end, 32 kHz RTC crystal.
+OTA, deep sleep, on-puck YOLO, gate MOSFET, wet-electrode ECG, 32 kHz RTC crystal. Neck **PPG** (AFE4404) is in Rev-A.

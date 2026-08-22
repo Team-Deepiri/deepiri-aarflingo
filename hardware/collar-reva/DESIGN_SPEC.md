@@ -19,6 +19,7 @@ USB-C  → TVS (USBLC6) → PTC 500 mA → MCP73831 → LiPo (JST-PH)
                                            │
                                       AP2112K-3.3 → 3V3 → ESP32-S3-MINI-1
                                                       ├─ I2C  BMI270 (SDA/SCL + INT1)
+                                                      ├─ I2C  TI AFE4404 neck PPG (SDA/SCL + RDY/RST)
                                                       └─ I2S  INMP441 (SCK/WS/SD)
 ```
 
@@ -37,6 +38,8 @@ Passive 125 kHz / NFC tag rides in the enclosure for pet-door identity. It is no
 | I2S_WS | 15 | INMP441 WS. Blocks 32.768 kHz crystal (Rev-B move). |
 | I2S_SD | 16 | INMP441 SD |
 | IMU_INT | 17 | BMI270 INT1 |
+| PPG_RDY | 8 | TI AFE4404 ADC_RDY |
+| PPG_RST | 9 | TI AFE4404 RESET, active low |
 | USB_DN / USB_DP | 19 / 20 | USB-JTAG |
 | GPIO0 | 0 | Boot button only. 10 kΩ to 3V3. Not a live bus. |
 

@@ -510,6 +510,59 @@ LIB_SYMBOLS = r'''
         )
       )
     )
+    (symbol "aarf:PPG" (in_bom yes) (on_board yes)
+      (property "Reference" "U" (at 0 10.16 0)
+        (effects (font (size 1.27 1.27)))
+      )
+      (property "Value" "AFE4404" (at 0 -10.16 0)
+        (effects (font (size 1.27 1.27)))
+      )
+      (property "Footprint" "" (at 0 0 0)
+        (effects (font (size 1.27 1.27)) hide)
+      )
+      (property "Datasheet" "https://www.ti.com/product/AFE4404" (at 0 0 0)
+        (effects (font (size 1.27 1.27)) hide)
+      )
+      (symbol "PPG_0_1"
+        (rectangle (start -12.7 -10.16) (end 12.7 10.16)
+          (stroke (width 0.254) (type default)) (fill (type background))
+        )
+      )
+      (symbol "PPG_1_1"
+        (pin power_in line (at -15.24 7.62 0) (length 2.54)
+          (name "VDD" (effects (font (size 1.27 1.27))))
+          (number "1" (effects (font (size 1.27 1.27))))
+        )
+        (pin power_in line (at -15.24 5.08 0) (length 2.54)
+          (name "GND" (effects (font (size 1.27 1.27))))
+          (number "2" (effects (font (size 1.27 1.27))))
+        )
+        (pin bidirectional line (at -15.24 2.54 0) (length 2.54)
+          (name "SDA" (effects (font (size 1.27 1.27))))
+          (number "3" (effects (font (size 1.27 1.27))))
+        )
+        (pin bidirectional line (at -15.24 0 0) (length 2.54)
+          (name "SCL" (effects (font (size 1.27 1.27))))
+          (number "4" (effects (font (size 1.27 1.27))))
+        )
+        (pin output line (at 15.24 7.62 180) (length 2.54)
+          (name "ADC_RDY" (effects (font (size 1.27 1.27))))
+          (number "5" (effects (font (size 1.27 1.27))))
+        )
+        (pin input line (at 15.24 5.08 180) (length 2.54)
+          (name "RESET" (effects (font (size 1.27 1.27))))
+          (number "6" (effects (font (size 1.27 1.27))))
+        )
+        (pin output line (at 15.24 2.54 180) (length 2.54)
+          (name "TXP" (effects (font (size 1.27 1.27))))
+          (number "7" (effects (font (size 1.27 1.27))))
+        )
+        (pin input line (at 15.24 0 180) (length 2.54)
+          (name "INP" (effects (font (size 1.27 1.27))))
+          (number "8" (effects (font (size 1.27 1.27))))
+        )
+      )
+    )
   )
 '''
 
@@ -730,6 +783,8 @@ def emit_mcu() -> str:
         ("VBAT_SENSE", 135, 92.7),
         ("CHG_STAT", 135, 97.78),
         ("LED_STAT", 155, 110),
+        ("PPG_RDY", 155, 120),
+        ("PPG_RST", 155, 125),
     ):
         b += glabel(name, x, y)
     b += footer()
@@ -738,10 +793,13 @@ def emit_mcu() -> str:
 
 def emit_sensors() -> str:
     path = f"/{ROOT_UUID}/{SENSORS_SHEET_UUID}"
-    b = header(SENSORS_FILE_UUID, f"{TITLE} — Sensors", "BMI270 I2C + INMP441 I2S. Clean analog/digital island.")
-    b += text("I2C pull-ups 4.7k to 3V3. INMP441 L/R tied to GND (left channel).", 20, 20)
+    b = header(SENSORS_FILE_UUID, f"{TITLE} — Sensors", "BMI270 + INMP441 + TI AFE4404 neck PPG.")
+    b += text("I2C pull-ups 4.7k. AFE4404 optical AFE faces the ventral neck (carotid).", 20, 20)
     b += symbol("aarf:IMU", "U4", "BMI270", 80, 70, ["1", "2", "3", "4", "5", "6"], path)
     b += symbol("aarf:MIC", "U5", "INMP441", 160, 70, ["1", "2", "3", "4", "5", "6"], path)
+    b += symbol("aarf:PPG", "U6", "AFE4404", 80, 140, ["1", "2", "3", "4", "5", "6", "7", "8"], path)
+    b += symbol("Device:LED", "D3", "IR neck", 130, 140, ["1", "2"], path)
+    b += symbol("Device:C", "C8", "0.1uF PPG", 55, 140, ["1", "2"], path)
     b += symbol("Device:R", "R7", "4.7k", 110, 45, ["1", "2"], path)
     b += symbol("Device:R", "R8", "4.7k", 125, 45, ["1", "2"], path)
     b += symbol("Device:C", "C6", "0.1uF IMU", 80, 95, ["1", "2"], path)
@@ -757,6 +815,10 @@ def emit_sensors() -> str:
         ("I2S_SCK", 177, 64.92),
         ("I2S_WS", 177, 67.46),
         ("I2S_SD", 177, 70),
+        ("PPG_RDY", 100, 132.38),
+        ("PPG_RST", 100, 134.92),
+        ("SDA", 60, 142.54),
+        ("SCL", 60, 140),
     ):
         b += glabel(name, x, y)
     b += footer()
@@ -942,8 +1004,12 @@ def main() -> None:
     (OUT / "sensors.kicad_sch").write_text(emit_sensors(), encoding="utf-8")
     (OUT / "collar-reva.kicad_pro").write_text(emit_pro(), encoding="utf-8")
     (OUT / "collar-reva.kicad_pcb").write_text(emit_pcb(), encoding="utf-8")
-    (OUT / "pins.h").write_text(emit_pins_h(), encoding="utf-8")
-    print(f"wrote {OUT}")
+    pins = emit_pins_h()
+    (OUT / "pins.h").write_text(pins, encoding="utf-8")
+    fw_pins = REPO_ROOT / "firmware" / "collar" / "include" / "pins.h"
+    fw_pins.parent.mkdir(parents=True, exist_ok=True)
+    fw_pins.write_text(pins, encoding="utf-8")
+    print(f"wrote {OUT} and {fw_pins}")
 
 
 if __name__ == "__main__":
