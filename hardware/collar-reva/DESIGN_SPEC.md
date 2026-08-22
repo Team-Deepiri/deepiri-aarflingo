@@ -13,12 +13,14 @@ Dog-worn observational puck (collar or harness). Not a human bracelet. Not a gat
 ## Topology
 
 ```
-USB-C  → TVS (USBLC6) → PTC 500 mA → MCP73831 → LiPo (JST-PH)
+USB-C (CC1/CC2 = 5.1 kΩ) → TVS (USBLC6) → PTC 500 mA → MCP73831 → LiPo (JST-PH)
                                            │
                                          VBAT ── 100k/100k divider + 100 nF → GPIO1 (ADC1)
                                            │
                                       AP2112K-3.3 → 3V3 → ESP32-S3-MINI-1
                                                       ├─ I2C  BMI270 (SDA/SCL + INT1)
+                                                      ├─ I2C  TI AFE4404 neck PPG (SDA/SCL + RDY/RST)
+                                                      │      IR LED D3 on TXP, PD D4 on INP
                                                       └─ I2S  INMP441 (SCK/WS/SD)
 ```
 
@@ -37,6 +39,8 @@ Passive 125 kHz / NFC tag rides in the enclosure for pet-door identity. It is no
 | I2S_WS | 15 | INMP441 WS. Blocks 32.768 kHz crystal (Rev-B move). |
 | I2S_SD | 16 | INMP441 SD |
 | IMU_INT | 17 | BMI270 INT1 |
+| PPG_RDY | 8 | TI AFE4404 ADC_RDY |
+| PPG_RST | 9 | TI AFE4404 RESET, active low |
 | USB_DN / USB_DP | 19 / 20 | USB-JTAG |
 | GPIO0 | 0 | Boot button only. 10 kΩ to 3V3. Not a live bus. |
 
@@ -56,11 +60,14 @@ Charger: MCP73831. Schematic pad allows 2 kΩ (500 mA). **BOM default RPROG = 10
 
 ## Floorplan
 
+Board is **40×32 mm** (30×30 cannot fit MINI-1 + USB-C). Antenna keepout `RF_KEEP` on the −Y edge, opposite the optical window.
+
 | Zone | Contents |
 |------|----------|
-| Dirty | USB-C, TVS, PTC, MCP73831, JST |
+| Dirty (−X) | USB-C, TVS, PTC, MCP73831, JST, CC pulldowns |
 | Brain | ESP32-S3, 0.1 µF + 10 µF on 3V3, crystal is on-module |
-| Clean | BMI270, INMP441, I2C pull-ups. Far from charger loop. |
+| Clean (+X) | BMI270, INMP441, I2C pull-ups. Far from charger loop. |
+| Optical (+Y) | IR LED D3 + photodiode D4 toward ventral neck |
 
 ## Ethics / safety
 

@@ -1,0 +1,271 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{times}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{natbib}
+\usepackage{url}
+
+\title{AARFLingo: An Observational System and Evaluation Protocol\\
+for Multimodal Canine Intent Forecasting}
+\author{Deepiri\\
+\texttt{dev@deepiri.dev}}
+\date{21 August 2026\\[0.4em]
+\textit{Preprint. Not a claim of 95\% home-dog accuracy.}}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Owners and researchers need a forecast of what a dog is about to do, not a shock after the fact.
+AARFLingo predicts a coupled triad---intent $\times$ emotion $\times$ surface behavior---from a room camera,
+an optional vocal encoder, and a notify-only neck-worn sensor puck.
+A 73-dimensional perception vector, stacked over 15 frames, feeds a multi-head classifier whose illegal
+combinations are rejected by an ethogram coupling matrix.
+The wearable is an ESP32-S3 puck (inertial measurement unit, I2S microphone, dual-wavelength neck
+photoplethysmography, skin thermistor) with no writable actuation characteristic.
+We report only numbers that exist in the companion repository.
+Stanford Dogs breed top-1 is 74.6\% on public photographs.
+Barkopedia-held-out vocal accuracy is 34.5\% on 298 real clips; synthetic vocal accuracy (80.9\%) does not count.
+Triad and vitals checkpoints reach validation accuracy 1.0 on synthetic rows; those scores do not count toward v1.0.
+The v1.0 field bar is dog-held-out intent accuracy $\ge 0.95$ on at least three home dogs.
+As of this writing the home eval file is empty, so the bar is unmet.
+The contribution of this preprint is the system, the ethics constraint, and the evaluation protocol a later labeled set must pass.
+\end{abstract}
+
+\section{Introduction}
+
+Canine affect work often stops at a single axis (arousal, ``happy/sad'') or a single sensor.
+Intent is a destination: the door, the toy, the bowl, withdrawal.
+AARFLingo treats intent, emotion, and behavior as one structured prediction so a play-bow cannot be
+paired with rest, and a door-oriented freeze can be read as ``wants out'' rather than as generic anxiety.
+
+Three design choices follow.
+First, the label space is an ethogram: ten intents, seven emotions, and ten behaviors, with a coupling
+matrix that names allowed triples and forbidden pairs.
+Second, the wearable is observational.
+The Rev-A collar streams inertial, acoustic, and neck-photoplethysmographic features at 1\,Hz over a
+notify-only GATT map.
+Firmware and schematic tests fail if shock, vibe, motor, or solenoid nets appear.
+Inference stays on a laptop, phone, or Jetson-class hub; the puck does not run a detector.
+Third, the accuracy bar is dog-held-out.
+Random-frame splits and synthetic validation accuracy can be perfect while every new dog fails.
+\texttt{scripts/v1\_gate.py -{}-require-bar} is the test a later home set must pass.
+It fails today.
+
+Protocol files that a reviewer can run without this prose live in
+\texttt{docs/paper/} (\texttt{METHODS.md}, generated \texttt{RESULTS.md},
+\texttt{DATASHEET.md}, \texttt{reproduce.md}).
+The repository is
+\url{https://github.com/Team-Deepiri/deepiri-aarflingo}.
+
+\section{Related work}
+
+Khosla et al.\ released Stanford Dogs (120 breeds, 20{,}580 photographs) as a fine-grained
+categorization set~\citep{khosla2011stanford}.
+We use it to pre-train a MobileNetV3 breed head (held-out top-1 74.6\%) and as a source of real
+feature rows through the perception pipeline.
+Runtime detection is YOLOv8n, class dog, with an OpenCV motion fallback~\citep{yolov8}.
+
+Barkopedia and DogSpeak provide labeled canine vocalizations~\citep{barkopedia,dogspeak}.
+Our vocal encoder is trained on all 298 real Barkopedia clips available in-tree plus synthetic fillers;
+checkpoint selection uses real held-out accuracy (34.5\%).
+
+PhysioZoo publishes canine electrocardiograms with R-peaks and heart-rate variability
+annotations~\citep{physiozoo}.
+The in-repo vitals encoder is shaped after those corpora; the shipped checkpoint was trained on
+synthetic windows and reports validation accuracy 1.0, which we treat as a smoke test.
+
+Quaranta et al.\ showed that tail laterality tracks approach versus withdrawal~\citep{quaranta2007tail}.
+Ren et al.\ measured attractor-like wag dynamics~\citep{ren2022tail}.
+DogFACS catalogs facial action units for dogs~\citep{waller2013dogfacs}.
+AARFLingo reserves named slots for those quantities; they are zeros when the camera cannot see the dog.
+Lee's $\tau$ is the distance-over-closing-rate used as an approach feature toward annotated gaze
+zones~\citep{lee1976tau}.
+
+We do not claim a prior field study of this triad on home dogs.
+That study is the v1.0 bar, and it has not been run.
+
+\section{Ethics and scope}
+
+AARFLingo is observational.
+It does not automate punishment, vibration, or restraint.
+The GATT map is notify-only.
+Owner opt-in is required.
+Clinic recordings need an institutional review board or equivalent.
+Delete-on-request is 30 days.
+
+Collar keys named \texttt{arousal}, \texttt{still}, and \texttt{red} are autonomic or contact correlates.
+They are not valence, core temperature, cortisol, or $\mathrm{SpO}_2$.
+The red LED path is a second photoplethysmographic perfusion index, not a blood-gas measurement.
+Low-confidence or forbidden triples default to human review.
+
+\section{System}
+
+A live session is a loop.
+A USB or MIPI camera produces frames.
+Perception emits a 55-dimensional visual base vector (presence, box, gaze zones, approach geometry,
+optional tail, face, and gait).
+Optional \texttt{POST /infer/audio} writes vocal arousal, valence, and bark probability.
+Optional \texttt{POST /infer/collar} maps the puck's 1\,Hz CBOR map onto the existing electrocardiogram
+and inertial slots---no fourth wire protocol, and no new feature dimension.
+Cross-modal synchrony (phase-locking value, lag correlation, a two-state Kalman fusion) fills
+\texttt{sync\_*} when both streams are present.
+Fifteen frames are flattened and scored by TriadNet.
+A coupling gate returns pass, review, or reject.
+A human can correct the triad; \texttt{POST /live/retrain} fine-tunes from that log.
+
+The Jetson image is an L4T hub.
+It does not run on the ESP32.
+
+\section{Ethogram and coupling}
+
+Intents: approach, avoid, solicit-play, rest, guard-resource, explore, alert, outside, play, food.
+Emotions: calm, content, excited, anxious, fearful, frustrated, conflicted.
+Behaviors: loose tail-wag, tucked tail, play-bow, lip-lick, whale-eye, hard stare, yawning, sniff-ground, freeze, bark.
+
+The coupling matrix lists weighted triples (play + excited + play-bow at 0.9) and forbidden pairs
+(rest + play-bow; avoid + play-bow; rest + excited).
+Training adds a coupling loss $\lambda \mathcal{L}_c$ with default $\lambda = 0.3$.
+At inference the gate rejects forbidden pairs and only passes a listed triple when mean-head
+confidence is at least 0.55.
+
+\section{Features}
+
+Let $x_t \in \mathbb{R}^{73}$ be the concatenated vector at frame $t$.
+The first 55 names are visual; the last 18 are modality outputs.
+A window of $T=15$ frames is left-padded and flattened to $\mathbb{R}^{1095}$.
+
+For each zone $z$ with center $c_z$, dog position $p$ and velocity $v$,
+\begin{equation}
+  d_z = \|c_z - p\|,\qquad
+  \hat{u}_z = (c_z - p)/d_z,\qquad
+  \dot{d}_z = v \cdot \hat{u}_z.
+\end{equation}
+Closing rate is a clamped $\dot{d}_z$.
+Time-to-contact is $\tau_z = d_z / \max(\dot{d}_z, \varepsilon)$, inverted against a 60-frame horizon
+so that a large \texttt{tau\_*} means imminent arrival.
+Heading is $\hat{v} \cdot \hat{u}_z$.
+
+The 1\,Hz collar map is projected onto slots the triad already has
+(\texttt{hr\_bpm}$/180$, \texttt{rmssd\_ms}$/150$, arousal, IMU RMS, still;
+all clamped to $[0,1]$).
+\texttt{scripts/collar\_listen.py} with \texttt{-{}-runtime} posts each notify
+to \texttt{POST /infer/collar}.
+
+\section{Models}
+
+Shipped TriadNet is a two-layer multilayer perceptron (hidden 128, dropout 0.15) over the flattened
+window, with three linear heads.
+Confidence is the mean of the three selected softmax masses.
+Margin is the mean top-1 minus top-2 gap; a small margin is treated as review even when confidence is high.
+
+\texttt{TriadNetTemporal} is a bidirectional LSTM with Bahdanau attention and extra arousal/valence
+heads.
+It is separately trainable and is not the default, because promoting it would break the shipped
+checkpoint layout.
+
+If no checkpoint loads, gaze zones and motion pick a triple.
+That fallback is a bring-up aid, not a reported model.
+
+\section{Wearable}
+
+Rev-A board: $40\times 32$\,mm.
+Microcontroller ESP32-S3-MINI-1.
+Inertial measurement unit Bosch BMI270 on I2C ($0\mathrm{x}68$).
+Microphone INMP441 on I2S.
+Neck photoplethysmography Texas Instruments AFE4404 ($0\mathrm{x}58$) with infrared and 660\,nm
+emitters.
+Contact temperature is a $10\,\mathrm{k}\Omega$ $\beta 3950$ thermistor.
+Charge default is 100\,mA.
+Firmware 0.3.0 advertises \texttt{aarf-collar}, requests MTU 247, and notifies a 23-key CBOR map at 1\,Hz.
+The printed circuit is not yet signal-routed and is not fab-ready.
+
+\section{Evaluation protocol}
+
+The only number that can satisfy v1.0 is dog-held-out intent accuracy on a home set:
+at least three dogs; split by \texttt{dog\_id}; labels from the ethogram; rows in
+\texttt{data/dog/eval/dog\_split.jsonl}; scored by \texttt{python3 scripts/v1\_gate.py -{}-require-bar}.
+Target: accuracy $\ge 0.95$ and macro-F1 reported beside it.
+Camera-only rows are valid; an optional \texttt{collar} object is counted but does not by itself meet the bar.
+
+What does not count: synthetic triad or vitals \texttt{best\_val\_acc}, mixed vocal accuracy,
+Stanford Dogs breed top-1, and collar proxies used as intent labels.
+
+\section{Results}
+
+Table~\ref{tab:results} is the generated report from \texttt{python3 scripts/v1\_gate.py} on
+21 August 2026, plus public-corpus context from in-repo metric files.
+
+\begin{table}[t]
+\centering
+\caption{Honest scoreboard. Generated rows come from \texttt{docs/paper/RESULTS.md}.}
+\label{tab:results}
+\begin{tabular}{lrl}
+\toprule
+Metric & Value & Counts toward v1.0? \\
+\midrule
+Home dog-split accuracy & --- & yes \\
+Home dogs / rows & 0 / 0 & yes \\
+Rev-A puck contract & ok & yes \\
+Jetson hub image & ok & yes \\
+Triad \texttt{best\_val\_acc} (synthetic, $n{=}40$) & 1.0 & no \\
+Vocal real held-out (298 Barkopedia clips) & 0.345 & no \\
+Vocal synthetic held-out & 0.809 & no \\
+Vitals \texttt{best\_val\_acc} (synthetic) & 1.0 & no \\
+Breed top-1 (Stanford Dogs) & 0.746 & no \\
+\midrule
+\texttt{bar\_met} & false & \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The blocker is the missing home JSONL.
+The vocal encoder beats chance on 298 real clips.
+The breed head is a public-photo number.
+The triad checkpoint memorizes its synthetic draw.
+None of those sentences is a home-dog result.
+
+\section{Limitations}
+
+The home set does not exist yet.
+Named visual features (facial units, Lyapunov wag, gait phase) are estimated from a 2D box and a
+lightweight pose.
+Collar heart-rate and RMSSD assume a still neck; motion and fur will corrupt peaks.
+Gyro RMS is not a behavior classifier.
+Package temperature is not skin; skin is not core.
+\texttt{TriadNetTemporal}, PhysioZoo-trained vitals, and a routed board are unfinished.
+The 95\% target may be too high for dog-held-out intent with $N=3$; the gate will say so if the
+labeled file exists and falls short.
+
+\section{Reproducibility}
+
+From a clone, without a GPU:
+\begin{verbatim}
+python3 scripts/v1_gate.py
+python3 scripts/v1_gate.py --require-bar
+./scripts/train_aarflingo.sh
+python3 scripts/verify_artifacts.py
+\end{verbatim}
+The last command checks that a checkpoint loads.
+It is not the v1.0 bar.
+
+\section{Conclusion}
+
+AARFLingo is an observational triad forecaster with a room camera, a vocal encoder, and a
+notify-only neck puck, scored by a dog-held-out gate that synthetic accuracy cannot pass.
+The software and the Rev-A contract are in the repository.
+The home-dog measurement is not.
+That is the next experiment, not a number we will invent.
+
+\section*{Acknowledgements}
+
+Public corpora: Stanford Dogs, Barkopedia, DogSpeak, AudioSet (whimper), PhysioZoo, Mendeley inertial sets.
+No animal was stimulated by this system.
+Code is Apache-2.0~\citep{aarflingo2026}.
+
+\bibliographystyle{plainnat}
+\bibliography{refs}
+
+\end{document}

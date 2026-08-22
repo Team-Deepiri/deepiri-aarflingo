@@ -9,6 +9,9 @@ from __future__ import annotations
 BOARD = "collar-reva"
 TITLE = "Aarflingo Collar Rev-A"
 MCU = "ESP32-S3-MINI-1"
+# 40×32 mm: USB/charger dirty, module, optical/clean. 30×30 cannot fit MINI-1 + USB-C.
+BOARD_W_MM = 40.0
+BOARD_H_MM = 32.0
 
 # Observational wearable only. These substrings must never appear as net names.
 FORBIDDEN_NETS = (
@@ -33,6 +36,9 @@ GPIO = {
     "VBAT_SENSE": 1,  # ADC1_CH0 — never ADC2 (Wi-Fi conflict)
     "CHG_STAT": 2,
     "LED_STAT": 6,
+    "PPG_RDY": 8,  # TI AFE4404 ADC_RDY
+    "PPG_RST": 9,  # TI AFE4404 RESET (active low)
+    "SKIN_SENSE": 10,  # ADC1_CH9 — 10k NTC divider, not a strap
 }
 
 BOOT_GPIO = 0
@@ -50,6 +56,8 @@ SHEET_NETS = {
         "CHG_STAT",
         "USB_DP",
         "USB_DN",
+        "CC1",
+        "CC2",
     ),
     "mcu": (
         "3V3",
@@ -63,6 +71,9 @@ SHEET_NETS = {
         "VBAT_SENSE",
         "CHG_STAT",
         "LED_STAT",
+        "PPG_RDY",
+        "PPG_RST",
+        "SKIN_SENSE",
         "USB_DP",
         "USB_DN",
         "EN",
@@ -77,13 +88,19 @@ SHEET_NETS = {
         "I2S_WS",
         "I2S_SD",
         "IMU_INT",
+        "PPG_RDY",
+        "PPG_RST",
+        "PPG_TXP",
+        "PPG_TX2",
+        "PPG_INP",
+        "SKIN_SENSE",
     ),
 }
 
 REQUIRED_PARTS = {
-    "power": ("J1", "D1", "F1", "U2", "U3", "J2"),
+    "power": ("J1", "D1", "F1", "U2", "U3", "J2", "R9", "R10"),
     "mcu": ("U1",),
-    "sensors": ("U4", "U5"),
+    "sensors": ("U4", "U5", "U6", "D3", "D4", "D5", "RT1"),
 }
 
 # MCP73831: IREG = 1 V / RPROG. Schematic 2 kΩ = 500 mA max pad.
@@ -96,8 +113,8 @@ LED_SERIES_OHMS = 330
 
 NEXT_STEPS = (
     "Open the board: ./kicad-launcher --run collar",
-    "Assign footprints (USB-C, JST-PH, ESP32-S3-MINI-1, SOT-23-5 charger/LDO)",
-    "Run schematic ERC in KiCad (or kicad-cli sch erc on KiCad 9+)",
-    "Layout: USB/charger dirty zone opposite I2S mic; solid GND plane",
+    "GND pours are on F.Cu/B.Cu. In KiCad: Update PCB from schematic, then Edit → Fill All Zones",
+    "Route USB D+/D−, I2C, I2S, and VBAT after official module footprints replace courtyards",
+    "Export gerbers only after signals are routed; stuff from hardware/collar-reva/BOM.csv",
     "Firmware: keep hardware/collar-reva/pins.h in lockstep with scripts/aarf_sch/nets.py",
 )

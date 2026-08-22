@@ -17,7 +17,7 @@
 | Collar EE + firmware design docs | ✅ [DESIGN_SPEC](../hardware/collar-reva/DESIGN_SPEC.md), [AFE](../hardware/collar-reva/AFE_CALCULATIONS.md), [MATH](../hardware/collar-reva/MATH.md), [FIRMWARE_COLLAR](FIRMWARE_COLLAR.md) |
 | Windows webcam bridge | ⛔ not running — start it before capture (command below) |
 | Runtime server (port 8765) | ⛔ down — old pre-PR#23 process was killed; restart loads current code (cv2 import chain verified fixed) |
-| Live vitals/IMU feed (`vitals.pt` in runtime) | ⬜ not started — Completion §1 |
+| Live vitals/IMU feed | ✅ collar CBOR → `/infer/collar` → existing ECG/IMU slots; ⬜ `vitals.pt` still open |
 | Mobile voice display + offline fallback | ⬜ not started — Completion §3 |
 
 ## Your dog session (do this)
@@ -52,12 +52,10 @@ ROADMAP Completion §2 boxes.
 
 1. Merge PR #33 (all checks green locally; CI will confirm).
 2. Tick ROADMAP Completion §2 items that passed.
-3. Next build item per roadmap: **Completion §1 live vitals/IMU feed**
-   (`vitals.pt` load path in runtime mirroring `update_audio_modality`,
-   simulated 6-DoF stub first) — unblocks ECG/IMU bars and the paper's
-   physiology ablation.
-4. Paper track starts once home data exists: dataset protocol in ROADMAP
-   "Research paper" §2 (`docs/paper/METHODS.md` etc.).
+3. Next on Completion §1: `vitals.pt` + PhysioZoo HRV labels. Collar 1 Hz
+   already fills studio Heart/Body bars via `POST /infer/collar`.
+4. Methods preprint is in `docs/paper/PAPER.md`. Home JSONL is still the
+   missing measurement (`python3 scripts/v1_gate.py --require-bar`).
 
 ## Gotchas learned this session
 

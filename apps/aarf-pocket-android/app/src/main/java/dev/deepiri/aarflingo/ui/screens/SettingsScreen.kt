@@ -1,5 +1,9 @@
 package dev.deepiri.aarflingo.ui.screens
 
+import android.Manifest
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -24,6 +28,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import dev.deepiri.aarflingo.data.AppViewModel
@@ -65,6 +70,58 @@ fun SettingsScreen(vm: AppViewModel, modifier: Modifier = Modifier) {
             Spacer(Modifier.height(8.dp))
             Text(
                 "Connects to Aarflingo runtime for live TriadNet inference (v0.2).",
+                color = AarflingoColors.Muted,
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+
+        AarflingoCard {
+            Text("Collar", fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(8.dp))
+            val ctx = LocalContext.current
+            val blePerms = if (Build.VERSION.SDK_INT >= 31) {
+                arrayOf(Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT)
+            } else {
+                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION)
+            }
+            val permLaunch = rememberLauncherForActivityResult(
+                ActivityResultContracts.RequestMultiplePermissions(),
+            ) { granted ->
+                if (granted.values.all { it }) vm.setCollarListen(ctx, true)
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("Listen to collar", color = AarflingoColors.Text)
+                Switch(
+                    checked = vm.collarListen,
+                    onCheckedChange = { on ->
+                        if (!on) {
+                            vm.setCollarListen(ctx, false)
+                        } else {
+                            permLaunch.launch(blePerms)
+                        }
+                    },
+                    colors = SwitchDefaults.colors(checkedThumbColor = AarflingoColors.Accent),
+                )
+            }
+            vm.collarVitals?.let { v ->
+                Text(
+                    "HR ${v.hrBpm} · RR ${v.rrBpm} · ${"%.0f".format(v.arousal * 100)}% arousal · " +
+                        "${if (v.still) "still" else "moving"}" +
+                        "${if (v.pant) " · pant" else ""}" +
+                        "${if (v.bark) " · bark" else ""} · " +
+                        "skin ${"%.1f".format(v.skinC)}°C",
+                )
+            } ?: Text(
+                vm.collarStatus ?: if (vm.collarListen) "Waiting for aarf-collar" else "Off",
+                color = AarflingoColors.Muted,
+                style = MaterialTheme.typography.bodySmall,
+            )
+            Text(
+                "Observational BLE notify only. Does not write actuation chars.",
                 color = AarflingoColors.Muted,
                 style = MaterialTheme.typography.bodySmall,
             )

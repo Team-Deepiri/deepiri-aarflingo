@@ -48,9 +48,19 @@ fun DashboardScreen(vm: AppViewModel, modifier: Modifier = Modifier) {
             Spacer(Modifier.height(4.dp))
             SignalBar("Audio arousal", 0.62f, AarflingoColors.Warn)
             Spacer(Modifier.height(4.dp))
-            SignalBar("ECG stress", 0.22f, AarflingoColors.Danger)
+            SignalBar("Autonomic arousal", vm.collarVitals?.arousal ?: 0.22f, AarflingoColors.Danger)
             Spacer(Modifier.height(4.dp))
-            SignalBar("IMU activity", 0.74f, AarflingoColors.Accent)
+            SignalBar("IMU activity", vm.collarVitals?.imuRms?.coerceIn(0f, 1f) ?: 0.74f, AarflingoColors.Accent)
+            vm.collarVitals?.let { v ->
+                Spacer(Modifier.height(8.dp))
+                MetricRow("Collar HR", "${v.hrBpm} bpm")
+                MetricRow("Collar RR", "${v.rrBpm} /min")
+                MetricRow("Body", if (v.still) "still" else "moving")
+                MetricRow("Skin / puck", "%.1f / %.1f °C".format(v.skinC, v.puckC))
+                MetricRow("Gyro RMS", "%.0f °/s".format(v.gyroRms))
+                MetricRow("Red PI", "%.2f".format(v.red))
+                MetricRow("Collar VBAT", "%.2f V".format(v.vbatV))
+            }
         }
 
         ConfidenceTrendSection(vm)
