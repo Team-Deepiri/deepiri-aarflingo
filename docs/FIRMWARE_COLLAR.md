@@ -44,7 +44,7 @@ I2C pull-ups are **on the PCB** (4.7 kΩ). Do not also enable fat internal pulls
 2. Flash via USB-JTAG. Serial 115200.
 3. I2C scan — BMI270 at 0x68 (typical, SA0 low). Treat NAK as `imu_fault`.
 4. IMU 100 Hz burst → RMS/peak on serial.
-5. I2S clap → audio RMS on serial.
+5. I2S clap → audio RMS on serial (`driver/i2s` RX on GPIO 7/15/16).
 6. ADC1 VBAT vs DMM at three voltages; store a two-point cal in NVS.
 7. BLE advertise; phone sees 1 Hz notify.
 8. Only then: Wi-Fi clip path.
