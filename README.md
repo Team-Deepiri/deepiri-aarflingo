@@ -59,7 +59,7 @@ KiCad for the physical puck on the dog lives in this repo — `./setup.sh` is un
 ./kicad-launcher --sch verify     # GPIO + ethics denylist
 ```
 
-See [hardware/README.md](hardware/README.md) and [docs/PHASE2_COLLAR.md](docs/PHASE2_COLLAR.md).
+See [hardware/README.md](hardware/README.md), [docs/FIRMWARE_COLLAR.md](docs/FIRMWARE_COLLAR.md), and [docs/PHASE2_COLLAR.md](docs/PHASE2_COLLAR.md).
 
 ## Hardware deploy
 

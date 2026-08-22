@@ -22,6 +22,8 @@ The collar schematic lives in `hardware/collar-reva/`. Do not clone an external 
 python3 -m pytest -q scripts/aarf_sch
 ```
 
+Firmware contract: [FIRMWARE_COLLAR.md](FIRMWARE_COLLAR.md). EE math: [hardware/collar-reva/AFE_CALCULATIONS.md](../hardware/collar-reva/AFE_CALCULATIONS.md).
+
 ## Local setup
 
 ```bash

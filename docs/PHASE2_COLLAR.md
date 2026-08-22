@@ -4,7 +4,14 @@
 
 Stream low-rate triad predictions from a **physical device on the dog** (collar / harness puck: IMU + mic) to aarf-pocket via BLE.
 
-KiCad for that puck lives in this repo: `hardware/collar-reva/`. Open it with `./kicad-launcher --run collar`. Schematic contract: `./kicad-launcher --sch verify`. Spec: [hardware/collar-reva/DESIGN_SPEC.md](../hardware/collar-reva/DESIGN_SPEC.md).
+KiCad: `./kicad-launcher --run collar`. Verify: `./kicad-launcher --sch verify`.
+
+| Doc | Role |
+|-----|------|
+| [hardware/collar-reva/DESIGN_SPEC.md](../hardware/collar-reva/DESIGN_SPEC.md) | Topology, GPIO, floorplan |
+| [hardware/collar-reva/AFE_CALCULATIONS.md](../hardware/collar-reva/AFE_CALCULATIONS.md) | Derived passives / ADC / PDN |
+| [hardware/collar-reva/MATH.md](../hardware/collar-reva/MATH.md) | Energy and sampling model |
+| [FIRMWARE_COLLAR.md](FIRMWARE_COLLAR.md) | State machine, BLE/CBOR, bring-up |
 
 ## Contract
 

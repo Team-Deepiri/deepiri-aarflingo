@@ -13,6 +13,8 @@
 |------|--------|
 | Roadmap through v1.0 + research paper | ✅ merged (PR #32) |
 | Home-capture tooling (bridge-aware capture, auto-label, breed extra-stills) | ✅ built, tests green — **in open PR #33** |
+| Collar Rev-A KiCad + in-repo `kicad-launcher` | ✅ on this branch — `./kicad-launcher --sch verify` |
+| Collar EE + firmware design docs | ✅ [DESIGN_SPEC](../hardware/collar-reva/DESIGN_SPEC.md), [AFE](../hardware/collar-reva/AFE_CALCULATIONS.md), [MATH](../hardware/collar-reva/MATH.md), [FIRMWARE_COLLAR](FIRMWARE_COLLAR.md) |
 | Windows webcam bridge | ⛔ not running — start it before capture (command below) |
 | Runtime server (port 8765) | ⛔ down — old pre-PR#23 process was killed; restart loads current code (cv2 import chain verified fixed) |
 | Live vitals/IMU feed (`vitals.pt` in runtime) | ⬜ not started — Completion §1 |

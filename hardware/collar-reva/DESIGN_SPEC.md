@@ -2,6 +2,14 @@
 
 Dog-worn observational puck (collar or harness). Not a human bracelet. Not a gate actuator.
 
+| Doc | Role |
+|-----|------|
+| This file | Topology, GPIO, floorplan, bring-up |
+| [AFE_CALCULATIONS.md](AFE_CALCULATIONS.md) | Derived passives, ADC, PDN, ESD |
+| [MATH.md](MATH.md) | Sampling / energy model (invariants, Π groups, state) |
+| [docs/FIRMWARE_COLLAR.md](../../docs/FIRMWARE_COLLAR.md) | State machine, BLE/CBOR, faults |
+| `scripts/aarf_sch/nets.py` | Net/GPIO source of truth |
+
 ## Topology
 
 ```
@@ -44,7 +52,7 @@ Do not put live buses on GPIO 0, 3, 45, 46.
 
 LDO: AP2112K-3.3, 600 mA, 10 µF in / 10 µF out. Dropout is fine from 3.5–4.2 V LiPo.
 
-Charger: MCP73831, RPROG = 2 kΩ → ~500 mA. USB-C is charge + bring-up, not a field cable.
+Charger: MCP73831. Schematic pad allows 2 kΩ (500 mA). **BOM default RPROG = 10 kΩ → 100 mA** so a 180 mAh pouch is not charged at ~2.8 C. USB-C is charge + bring-up, not a field cable. Derivation: [AFE_CALCULATIONS.md](AFE_CALCULATIONS.md) §1.
 
 ## Floorplan
 

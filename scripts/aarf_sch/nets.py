@@ -86,7 +86,8 @@ REQUIRED_PARTS = {
     "sensors": ("U4", "U5"),
 }
 
-# MCP73831: IREG ≈ 1000 / RPROG_kΩ → 2 kΩ ≈ 500 mA.
+# MCP73831: IREG = 1 V / RPROG. Schematic 2 kΩ = 500 mA max pad.
+# BOM default: 10 kΩ → 100 mA (see hardware/collar-reva/AFE_CALCULATIONS.md).
 RPROG_OHMS = 2000
 VBAT_DIV_TOP_OHMS = 100_000
 VBAT_DIV_BOT_OHMS = 100_000
