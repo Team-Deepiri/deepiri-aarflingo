@@ -1,6 +1,7 @@
 #include "afe4404.h"
 #include "audio_feat.h"
 #include "ble_link.h"
+#include "ble_tx.h"
 #include "bmi270.h"
 #include "collar_loop.h"
 #include "imu_feat.h"
@@ -142,8 +143,11 @@ void loop() {
     g_nimu = 0;
     g_npcm = 0;
     if (n > 0) {
-        Serial.write(g_loop.tx, (size_t)n);
-        Serial.write('\n');
+        uint8_t notify[256];
+        int pn = collar_ble_pack(g_loop.tx, n, notify, sizeof notify, COLLAR_BLE_MTU);
+        if (pn > 0) {
+            Serial.write(notify, (size_t)pn);
+        }
     }
     digitalWrite(PIN_LED_STAT, !digitalRead(PIN_LED_STAT));
 }

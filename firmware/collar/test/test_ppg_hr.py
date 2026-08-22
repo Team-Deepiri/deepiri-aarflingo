@@ -229,6 +229,24 @@ int main(void) {
     _compile_and_run([SRC / "vbat.c"], extra, "test_vbat", tmp_path)
 
 
+def test_ble_pack_fits_mtu_minus_three(tmp_path):
+    extra = r"""
+#include "ble_tx.h"
+#include <string.h>
+int main(void) {
+    uint8_t in[40];
+    uint8_t out[40];
+    memset(in, 0xAB, sizeof in);
+    int n = collar_ble_pack(in, 40, out, sizeof out, 23);
+    if (n != 20) return 2;
+    int m = collar_ble_pack(in, 10, out, sizeof out, COLLAR_BLE_MTU);
+    if (m != 10) return 3;
+    return 0;
+}
+"""
+    _compile_and_run([SRC / "ble_tx.c"], extra, "test_ble_tx", tmp_path)
+
+
 def test_ble_link_is_notify_only():
     text = (COLLAR / "include" / "ble_link.h").read_text(encoding="utf-8")
     assert "COLLAR_BLE_NOTIFY_UUID" in text
