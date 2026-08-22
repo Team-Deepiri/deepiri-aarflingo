@@ -72,6 +72,15 @@ void setup() {
     pinMode(PIN_PPG_RST, OUTPUT);
     digitalWrite(PIN_PPG_RST, HIGH);
     Wire.begin(PIN_SDA, PIN_SCL);
+    Wire.beginTransmission(BMI270_I2C_ADDR);
+    Wire.write(BMI270_REG_CHIP_ID);
+    uint8_t chip = 0;
+    if (Wire.endTransmission(false) == 0 && Wire.requestFrom((int)BMI270_I2C_ADDR, 1) == 1) {
+        chip = (uint8_t)Wire.read();
+    }
+    if (!bmi270_chip_ok(chip)) {
+        Serial.println("imu_fault");
+    }
     collar_loop_init(&g_loop);
     analogReadResolution(12);
 
@@ -84,6 +93,7 @@ void setup() {
     i2s_cfg.dma_buf_count = 4;
     i2s_cfg.dma_buf_len = 64;
     i2s_pin_config_t i2s_pins = {};
+    i2s_pins.mck_io_num = I2S_PIN_NO_CHANGE;
     i2s_pins.bck_io_num = PIN_I2S_SCK;
     i2s_pins.ws_io_num = PIN_I2S_WS;
     i2s_pins.data_in_num = PIN_I2S_SD;

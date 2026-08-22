@@ -82,6 +82,7 @@ int main(void) {
     uint8_t buf[256];
     int n = collar_frame_encode(&s, buf, sizeof buf);
     if (n < 20) return 2;
+    if ((buf[0] & 0xE0) != 0xA0) return 7;
     if (!collar_frame_contains(buf, n, "hr_bpm")) return 3;
     if (!collar_frame_contains(buf, n, "rmssd_ms")) return 4;
     if (!collar_frame_contains(buf, n, "vbat_v")) return 5;
@@ -171,6 +172,8 @@ int main(void) {
     float g = bmi270_lsb_to_g(32767);
     if (g < 7.99f || g > 8.01f) return 4;
     if (bmi270_lsb_to_g(0) != 0.f) return 5;
+    if (!bmi270_chip_ok(0x24)) return 6;
+    if (bmi270_chip_ok(0x00)) return 7;
     return 0;
 }
 """

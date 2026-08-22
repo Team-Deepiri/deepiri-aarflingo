@@ -8,6 +8,8 @@ Host tests (no board):
 python3 -m pytest -q firmware/collar/test
 ```
 
+1 Hz frames are **CBOR** (Phase 2 keys), printed on Serial for bring-up. Decode with any CBOR tool; do not expect JSON.
+
 Flash (PlatformIO):
 
 ```bash

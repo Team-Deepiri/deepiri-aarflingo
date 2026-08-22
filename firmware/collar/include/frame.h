@@ -21,7 +21,7 @@ typedef struct {
     const char *fault; /* NULL or static string */
 } CollarSample;
 
-/* Compact diagnostic map (JSON text, Phase-2 keys). Fits BLE MTU-3. */
+/* Compact CBOR map (Phase-2 keys). Fits BLE MTU-3. */
 int collar_frame_encode(const CollarSample *s, uint8_t *buf, size_t cap);
 
 int collar_frame_contains(const uint8_t *buf, int n, const char *key);

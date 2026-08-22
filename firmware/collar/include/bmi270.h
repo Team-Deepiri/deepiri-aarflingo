@@ -14,6 +14,8 @@ extern "C" {
 /* ±8 g, 16-bit two's complement. */
 float bmi270_lsb_to_g(int16_t lsb);
 
+int bmi270_chip_ok(uint8_t chip_id);
+
 #ifdef __cplusplus
 }
 #endif
