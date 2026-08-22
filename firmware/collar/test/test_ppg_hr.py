@@ -11,7 +11,7 @@ COLLAR = Path(__file__).resolve().parents[1]
 SRC = COLLAR / "src"
 
 
-def _compile_and_run(sources: list[Path], extra_c: str, bin_name: str, tmp_path: Path) -> str:
+def _compile(sources: list[Path], extra_c: str, bin_name: str, tmp_path: Path) -> Path:
     driver = tmp_path / "driver.c"
     driver.write_text(extra_c, encoding="utf-8")
     out = tmp_path / bin_name
@@ -31,6 +31,11 @@ def _compile_and_run(sources: list[Path], extra_c: str, bin_name: str, tmp_path:
     ]
     built = subprocess.run(cmd, capture_output=True, text=True)
     assert built.returncode == 0, built.stderr
+    return out
+
+
+def _compile_and_run(sources: list[Path], extra_c: str, bin_name: str, tmp_path: Path) -> str:
+    out = _compile(sources, extra_c, bin_name, tmp_path)
     ran = subprocess.run([str(out)], capture_output=True, text=True)
     assert ran.returncode == 0, ran.stderr + ran.stdout
     return ran.stdout
@@ -336,6 +341,93 @@ def test_ble_link_is_notify_only():
     assert "COLLAR_BLE_MTU" in text
     assert "COLLAR_GATT_WRITE_PROPS" in text
     assert "SHOCK" not in text
+
+
+def test_wav_pcm16_riff_header(tmp_path):
+    src = SRC / "wav.c"
+    if not src.is_file():
+        pytest.fail("wav.c missing — implement after this red test")
+    extra = r"""
+#include "wav.h"
+#include <string.h>
+int main(void) {
+    int16_t pcm[4] = {1, -1, 2, -2};
+    uint8_t buf[128];
+    int n = collar_wav_pcm16(buf, sizeof buf, pcm, 4, 16000);
+    if (n != 44 + 8) return 2;
+    if (memcmp(buf, "RIFF", 4) != 0) return 3;
+    if (memcmp(buf + 8, "WAVE", 4) != 0) return 4;
+    if (memcmp(buf + 12, "fmt ", 4) != 0) return 5;
+    return 0;
+}
+"""
+    _compile_and_run([src], extra, "test_wav", tmp_path)
+
+
+def test_infer_audio_body_matches_runtime_contract(tmp_path):
+    src = SRC / "clip.c"
+    if not src.is_file():
+        pytest.fail("clip.c missing — implement after this red test")
+    extra = r"""
+#include "clip.h"
+#include <string.h>
+int main(void) {
+    if (collar_clip_should_upload(0, 1)) return 2;
+    if (collar_clip_should_upload(1, 0)) return 3;
+    if (!collar_clip_should_upload(1, 1)) return 4;
+    char buf[128];
+    int n = collar_audio_body(buf, sizeof buf, 0.80f, 0.50f, 0.95f);
+    if (n < 20) return 5;
+    if (!strstr(buf, "\"audio_arousal\":")) return 6;
+    if (!strstr(buf, "\"audio_valence\":")) return 7;
+    if (!strstr(buf, "\"audio_bark_prob\":")) return 8;
+    if (strstr(buf, "SHOCK")) return 9;
+    return 0;
+}
+"""
+    _compile_and_run([src], extra, "test_clip", tmp_path)
+
+
+def test_afe4404_init_table_is_4ma_class(tmp_path):
+    extra = r"""
+#include "afe4404.h"
+int main(void) {
+    if (AFE4404_INIT_COUNT < 3) return 2;
+    if (afe4404_init[0].reg != AFE4404_REG_CONTROL0) return 3;
+    if (AFE4404_LED_STEP_UA != 800) return 4;
+    if (afe4404_led_code_4ma() != 5) return 5;
+    return 0;
+}
+"""
+    _compile_and_run([SRC / "afe4404.c"], extra, "test_afe_init", tmp_path)
+
+
+def test_cbor_roundtrip_hr_bpm(tmp_path):
+    extra = r"""
+#include "frame.h"
+#include <stdio.h>
+int main(void) {
+    CollarSample s = {0};
+    s.v = 1;
+    s.ts_ms = 42;
+    s.hr_bpm = 96;
+    s.ppg_ok = 1;
+    s.vbat_v = 3.8f;
+    uint8_t buf[256];
+    int n = collar_frame_encode(&s, buf, sizeof buf);
+    if (n < 20) return 2;
+    fwrite(buf, 1, (size_t)n, stdout);
+    return 0;
+}
+"""
+    dump = _compile([SRC / "frame.c"], extra, "dump_frame", tmp_path)
+    dumped = subprocess.run([str(dump)], capture_output=True)
+    assert dumped.returncode == 0
+    payload = dumped.stdout
+    assert b"hr_bpm" in payload
+    assert b"source" in payload
+    assert b"sensors" in payload
+    assert len(payload) <= 200
 
 
 def test_firmware_has_no_actuator_drivers():

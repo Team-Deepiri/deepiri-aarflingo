@@ -65,8 +65,11 @@ int collar_frame_encode(const CollarSample *s, uint8_t *buf, size_t cap) {
         return -1;
     }
     int n = 0;
-    /* 11-key map */
-    if (put(buf, cap, &n, 0xAB) != 0) {
+    /* 12-key map */
+    if (put(buf, cap, &n, 0xAC) != 0) {
+        return -1;
+    }
+    if (put_text(buf, cap, &n, "source") || put_text(buf, cap, &n, "sensors")) {
         return -1;
     }
     if (put_text(buf, cap, &n, "v") || put_uint(buf, cap, &n, (uint32_t)s->v)) {

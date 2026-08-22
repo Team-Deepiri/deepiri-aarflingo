@@ -100,7 +100,7 @@ If on-puck TriadNet is absent (Rev-A default), omit intent/emotion/behavior or s
 
 **MTU:** call `NimBLEDevice::setMTU(247)` (or IDF equivalent) after init. Serialized CBOR must fit in `(negotiated_MTU − 3)` or fragment. Default 23-byte MTU **will truncate**.
 
-**Clip upload (Wi-Fi, on trigger):** HTTP POST of a short WAV/Opus clip to the runtime ingest URL already used by studio. Same host config as aarf-pocket. Not a new binary framing.
+**Clip upload (Wi-Fi, on bark):** `POST {runtime}/infer/audio` with the existing studio JSON (`audio_arousal`, `audio_valence`, `audio_bark_prob`). NVS keys `wifi_ssid`, `wifi_pass`, `runtime`. WAV PCM16 is built in `wav.c` for a later multipart if runtime grows a file ingest; do not invent a fourth endpoint.
 
 Baseline sync: pull `record-baseline.sh` output over BLE or Wi-Fi as already described in PHASE2 — add a command byte to this CBOR map later (`"cmd": "baseline"`), do not stand up a parallel ASCII protocol.
 

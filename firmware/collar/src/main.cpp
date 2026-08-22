@@ -4,6 +4,8 @@
 #include "ble_radio.h"
 #include "ble_tx.h"
 #include "bmi270.h"
+#include "clip.h"
+#include "clip_wifi.h"
 #include "collar_loop.h"
 #include "imu_feat.h"
 #include "led_stat.h"
@@ -27,6 +29,7 @@ static int32_t g_pcm[64];
 static size_t g_npcm;
 static int g_imu_ok;
 static VbatCal g_vbat_cal;
+static char g_runtime_url[96];
 
 static int i2c_write8(uint8_t addr, uint8_t reg, uint8_t val) {
     Wire.beginTransmission(addr);
@@ -63,6 +66,15 @@ static int32_t afe4404_read_led1(void) {
     b[1] = (uint8_t)Wire.read();
     b[2] = (uint8_t)Wire.read();
     return afe4404_sample_from_be24(b);
+}
+
+static void afe4404_write24(uint8_t reg, uint32_t val) {
+    Wire.beginTransmission(AFE4404_I2C_ADDR);
+    Wire.write(reg);
+    Wire.write((uint8_t)(val >> 16));
+    Wire.write((uint8_t)(val >> 8));
+    Wire.write((uint8_t)val);
+    Wire.endTransmission();
 }
 
 static void sample_imu_once(void) {
@@ -104,6 +116,9 @@ void setup() {
     delay(10);
 
     Wire.begin(PIN_SDA, PIN_SCL);
+    for (size_t i = 0; i < AFE4404_INIT_COUNT; i++) {
+        afe4404_write24(afe4404_init[i].reg, afe4404_init[i].val);
+    }
     Wire.beginTransmission(BMI270_I2C_ADDR);
     Wire.write(BMI270_REG_CHIP_ID);
     uint8_t chip = 0;
@@ -123,7 +138,13 @@ void setup() {
     g_vbat_cal = vbat_cal_default();
     g_vbat_cal.scale = prefs.getFloat("vbat_s", VBAT_CAL_DEFAULT_SCALE);
     g_vbat_cal.offset = prefs.getFloat("vbat_o", VBAT_CAL_DEFAULT_OFFSET);
+    char ssid[33] = {0};
+    char pass[65] = {0};
+    prefs.getString("wifi_ssid", ssid, sizeof ssid);
+    prefs.getString("wifi_pass", pass, sizeof pass);
+    prefs.getString("runtime", g_runtime_url, sizeof g_runtime_url);
     prefs.end();
+    collar_wifi_begin(ssid, pass);
 
     collar_loop_init(&g_loop);
     analogReadResolution(12);
@@ -200,6 +221,15 @@ void loop() {
         int pn = collar_ble_pack(g_loop.tx, n, notify, sizeof notify, COLLAR_BLE_MTU);
         if (pn > 0) {
             collar_ble_notify(notify, pn);
+        }
+        if (collar_clip_should_upload(bark, collar_wifi_ok())) {
+            char body[128];
+            float bark_p = bark ? 0.95f : 0.0f;
+            if (collar_audio_body(body, sizeof body, ar > 1.0f ? 1.0f : ar, 0.50f, bark_p) > 0) {
+                esp_task_wdt_reset();
+                collar_clip_post(g_runtime_url, body);
+                esp_task_wdt_reset();
+            }
         }
     }
 }
