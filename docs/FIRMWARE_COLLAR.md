@@ -4,7 +4,7 @@ Who: firmware for the **physical puck on the dog** (`hardware/collar-reva/`). Wh
 
 This document is the firmware contract. Pin numbers come from `scripts/aarf_sch/nets.py` via `hardware/collar-reva/pins.h`. Do not fork a second map.
 
-KiCad: `./kicad-launcher --run collar`. Electrical math: [hardware/collar-reva/AFE_CALCULATIONS.md](../hardware/collar-reva/AFE_CALCULATIONS.md). Sampling math: [hardware/collar-reva/MATH.md](../hardware/collar-reva/MATH.md). Product freeze: [PHASE2_COLLAR.md](PHASE2_COLLAR.md).
+KiCad: `./kicad-launcher --run collar`. Electrical math: [hardware/collar-reva/AFE_CALCULATIONS.md](../hardware/collar-reva/AFE_CALCULATIONS.md). Sampling math: [hardware/collar-reva/MATH.md](../hardware/collar-reva/MATH.md). Product freeze: [PHASE2_COLLAR.md](PHASE2_COLLAR.md). Flash + pair: [COLLAR_PRODUCT.md](COLLAR_PRODUCT.md).
 
 ## Target
 

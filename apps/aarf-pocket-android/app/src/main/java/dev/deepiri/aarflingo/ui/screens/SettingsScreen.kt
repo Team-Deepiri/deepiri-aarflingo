@@ -1,5 +1,9 @@
 package dev.deepiri.aarflingo.ui.screens
 
+import android.Manifest
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -24,9 +28,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.platform.LocalContext
 import dev.deepiri.aarflingo.data.AppViewModel
 import dev.deepiri.aarflingo.ui.components.AarflingoCard
 import dev.deepiri.aarflingo.ui.theme.AarflingoColors
@@ -75,6 +79,16 @@ fun SettingsScreen(vm: AppViewModel, modifier: Modifier = Modifier) {
             Text("Collar", fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.height(8.dp))
             val ctx = LocalContext.current
+            val blePerms = if (Build.VERSION.SDK_INT >= 31) {
+                arrayOf(Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT)
+            } else {
+                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION)
+            }
+            val permLaunch = rememberLauncherForActivityResult(
+                ActivityResultContracts.RequestMultiplePermissions(),
+            ) { granted ->
+                if (granted.values.all { it }) vm.setCollarListen(ctx, true)
+            }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -83,7 +97,13 @@ fun SettingsScreen(vm: AppViewModel, modifier: Modifier = Modifier) {
                 Text("Listen to collar", color = AarflingoColors.Text)
                 Switch(
                     checked = vm.collarListen,
-                    onCheckedChange = { vm.setCollarListen(ctx, it) },
+                    onCheckedChange = { on ->
+                        if (!on) {
+                            vm.setCollarListen(ctx, false)
+                        } else {
+                            permLaunch.launch(blePerms)
+                        }
+                    },
                     colors = SwitchDefaults.colors(checkedThumbColor = AarflingoColors.Accent),
                 )
             }

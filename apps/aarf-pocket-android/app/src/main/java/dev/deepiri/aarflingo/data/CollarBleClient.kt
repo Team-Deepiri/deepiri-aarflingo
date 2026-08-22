@@ -6,6 +6,7 @@ import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCallback
 import android.bluetooth.BluetoothGattCharacteristic
+import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothProfile
 import android.bluetooth.le.ScanCallback
@@ -77,6 +78,11 @@ class CollarBleClient(
             val svc = g.getService(UUID.fromString(CollarGatt.SERVICE_UUID)) ?: return
             val ch = svc.getCharacteristic(UUID.fromString(CollarGatt.NOTIFY_UUID)) ?: return
             g.setCharacteristicNotification(ch, true)
+            val cccd = ch.getDescriptor(UUID.fromString("00002902-0000-1000-8000-00805f9b34fb"))
+            if (cccd != null) {
+                cccd.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
+                g.writeDescriptor(cccd)
+            }
         }
 
         @Deprecated("Deprecated in Java")

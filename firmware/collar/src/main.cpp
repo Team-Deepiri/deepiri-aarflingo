@@ -11,6 +11,7 @@
 #include "imu_isr.h"
 #include "led_stat.h"
 #include "pins.h"
+#include "product.h"
 #include "vbat.h"
 #include "wdt.h"
 
@@ -186,8 +187,11 @@ void setup() {
     esp_task_wdt_init(COLLAR_WDT_S, true);
     esp_task_wdt_add(NULL);
 
-    Serial.print("adv ");
-    Serial.println(COLLAR_BLE_ADV_NAME);
+    Serial.print(COLLAR_PRODUCT_NAME);
+    Serial.print(" rev-");
+    Serial.print(COLLAR_PRODUCT_REV);
+    Serial.print(" fw ");
+    Serial.println(COLLAR_FW_VERSION);
 }
 
 void loop() {

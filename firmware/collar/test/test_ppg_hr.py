@@ -515,6 +515,36 @@ int main(void) {
     _compile_and_run([src], extra, "test_isr", tmp_path)
 
 
+def test_product_version_is_rev_a():
+    text = (COLLAR / "include" / "product.h").read_text(encoding="utf-8")
+    assert "0.1.0" in text
+    assert "aarf-collar" in text
+    flash = Path(__file__).resolve().parents[3] / "scripts" / "flash_collar.sh"
+    assert flash.is_file()
+    assert "platformio run -t upload" in flash.read_text(encoding="utf-8")
+
+
+def test_android_enables_notify_cccd():
+    repo = Path(__file__).resolve().parents[3]
+    kt = (
+        repo
+        / "apps"
+        / "aarf-pocket-android"
+        / "app"
+        / "src"
+        / "main"
+        / "java"
+        / "dev"
+        / "deepiri"
+        / "aarflingo"
+        / "data"
+        / "CollarBleClient.kt"
+    )
+    text = kt.read_text(encoding="utf-8")
+    assert "00002902-0000-1000-8000-00805f9b34fb" in text
+    assert "ENABLE_NOTIFICATION_VALUE" in text
+
+
 def test_pocket_gatt_matches_firmware_uuids():
     repo = Path(__file__).resolve().parents[3]
     header = (repo / "firmware" / "collar" / "include" / "ble_link.h").read_text(encoding="utf-8")

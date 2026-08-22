@@ -13,9 +13,11 @@ Advertises **`aarf-collar`**. 1 Hz frames are **CBOR** on the notify characteris
 Flash (PlatformIO):
 
 ```bash
-make firmware          # host tests + pio compile
-cd firmware/collar && pio run -t upload
+./scripts/flash_collar.sh   # tests + upload
+make firmware               # host tests + pio compile
 ```
+
+Product: [docs/COLLAR_PRODUCT.md](../../docs/COLLAR_PRODUCT.md).
 
 Pocket: Settings → **Listen to collar** (iOS/Android). Same GATT UUIDs as this firmware. Observational notify only.
 
