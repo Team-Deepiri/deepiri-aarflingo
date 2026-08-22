@@ -1,4 +1,4 @@
-.PHONY: setup test smoke dev runtime studio electron train verify mobile-android mobile-verify web home-capture home-train kicad kicad-sch
+.PHONY: setup test smoke dev runtime studio electron train verify mobile-android mobile-verify web home-capture home-train kicad kicad-sch firmware firmware-test
 
 setup:
 	./setup.sh
@@ -20,6 +20,13 @@ kicad:
 
 kicad-sch:
 	./kicad-launcher --sch verify
+
+firmware-test:
+	python3 -m pytest -q firmware/collar/test
+
+firmware:
+	python3 -m pytest -q firmware/collar/test
+	cd firmware/collar && platformio run
 
 test:
 	python3 core/metrics/test_anticipate.py

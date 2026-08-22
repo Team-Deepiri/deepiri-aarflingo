@@ -174,6 +174,8 @@ int main(void) {
     if (bmi270_lsb_to_g(0) != 0.f) return 5;
     if (!bmi270_chip_ok(0x24)) return 6;
     if (bmi270_chip_ok(0x00)) return 7;
+    if (BMI270_ACC_RANGE_8G != 0x02) return 8;
+    if (BMI270_PWR_ACC_EN != 0x04) return 9;
     return 0;
 }
 """
@@ -223,6 +225,8 @@ def test_vbat_midscale_is_3v1_times_two(tmp_path):
 int main(void) {
     float v = vbat_from_raw(2048, 4095, 3.10f, 1.0f, 0.0f);
     if (v < 3.09f || v > 3.11f) return 2;
+    VbatCal c = vbat_cal_default();
+    if (c.scale != 1.0f || c.offset != 0.0f) return 3;
     return 0;
 }
 """

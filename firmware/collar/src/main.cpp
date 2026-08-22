@@ -12,6 +12,7 @@
 #include "wdt.h"
 
 #include <Arduino.h>
+#include <Preferences.h>
 #include <Wire.h>
 #include <driver/i2s.h>
 #include <esp_task_wdt.h>
@@ -25,6 +26,14 @@ static size_t g_nimu;
 static int32_t g_pcm[64];
 static size_t g_npcm;
 static int g_imu_ok;
+static VbatCal g_vbat_cal;
+
+static int i2c_write8(uint8_t addr, uint8_t reg, uint8_t val) {
+    Wire.beginTransmission(addr);
+    Wire.write(reg);
+    Wire.write(val);
+    return Wire.endTransmission() == 0;
+}
 
 static int16_t i2c_read_le16(uint8_t addr, uint8_t reg) {
     Wire.beginTransmission(addr);
@@ -102,6 +111,19 @@ void setup() {
         chip = (uint8_t)Wire.read();
     }
     g_imu_ok = bmi270_chip_ok(chip);
+    if (g_imu_ok) {
+        i2c_write8(BMI270_I2C_ADDR, BMI270_REG_CMD, BMI270_CMD_SOFTRESET);
+        delay(2);
+        i2c_write8(BMI270_I2C_ADDR, BMI270_REG_PWR_CTRL, BMI270_PWR_ACC_EN);
+        i2c_write8(BMI270_I2C_ADDR, BMI270_REG_ACC_RANGE, BMI270_ACC_RANGE_8G);
+    }
+
+    Preferences prefs;
+    prefs.begin("collar", true);
+    g_vbat_cal = vbat_cal_default();
+    g_vbat_cal.scale = prefs.getFloat("vbat_s", VBAT_CAL_DEFAULT_SCALE);
+    g_vbat_cal.offset = prefs.getFloat("vbat_o", VBAT_CAL_DEFAULT_OFFSET);
+    prefs.end();
 
     collar_loop_init(&g_loop);
     analogReadResolution(12);
@@ -164,7 +186,8 @@ void loop() {
     float imu_peak = imu_peak_g(g_xyz, g_nimu);
     float ar = audio_rms(g_pcm, g_npcm);
     int bark = audio_bark(ar, 500.0f);
-    float vbat = vbat_from_raw(analogRead(PIN_VBAT_SENSE), 4095, 3.10f, 1.0f, 0.0f);
+    float vbat = vbat_from_raw(analogRead(PIN_VBAT_SENSE), 4095, 3.10f, g_vbat_cal.scale,
+                                g_vbat_cal.offset);
     int mic_ok = g_npcm > 0;
 
     int n = collar_loop_step(&g_loop, g_ir, g_nir, 50, imu_rms, imu_peak, ar, bark, vbat,
