@@ -82,6 +82,7 @@ def test_no_live_net_on_strapping_pins():
 def test_vbat_sense_is_adc1_not_adc2():
     # ESP32-S3 ADC2 conflicts with Wi-Fi. GPIO1 is ADC1_CH0.
     assert GPIO["VBAT_SENSE"] == 1
+    assert GPIO["SKIN_SENSE"] == 10
 
 
 def test_bom_passives_match_nets():
@@ -108,6 +109,8 @@ def test_bom_covers_every_sheet_instance_ref():
 def test_bom_has_photodiode_and_usb_cc():
     refs = all_refs()
     assert "D4" in refs
+    assert "D5" in refs
+    assert "RT1" in refs and "R11" in refs
     assert "R9" in refs and "R10" in refs
     assert LAYOUT_ONLY_REFS <= refs
     assert "SFH 2704" in emit_markdown()
@@ -119,8 +122,8 @@ def test_optics_and_usb_cc_are_on_the_sheets():
     sensors = read_sheet("sensors")
     assert {"R9", "R10"} <= instance_refs(power)
     assert {"CC1", "CC2"} <= labels_in(power)
-    assert "D4" in instance_refs(sensors)
-    assert {"PPG_TXP", "PPG_INP"} <= labels_in(sensors)
+    assert {"D4", "D5", "RT1", "R11"} <= instance_refs(sensors)
+    assert {"PPG_TXP", "PPG_TX2", "PPG_INP", "SKIN_SENSE"} <= labels_in(sensors)
 
 
 def test_sheet_instances_have_bom_footprints():

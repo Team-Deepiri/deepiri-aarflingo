@@ -19,6 +19,9 @@ data class CollarVitals(
     val pant: Boolean,
     val rrBpm: Int,
     val arousal: Float,
+    val gyroRms: Float,
+    val puckC: Float,
+    val skinC: Float,
     val fault: String?,
     val source: String,
 )
@@ -49,6 +52,9 @@ object CollarCbor {
             pant = (map["pant"] as? Boolean) ?: false,
             rrBpm = (map["rr_bpm"] as? Int) ?: 0,
             arousal = (map["arousal"] as? Float) ?: 0f,
+            gyroRms = (map["gyro"] as? Float) ?: 0f,
+            puckC = (map["puck_c"] as? Float) ?: 0f,
+            skinC = (map["skin_c"] as? Float) ?: 0f,
             fault = map["fault"] as? String,
             source = (map["source"] as? String) ?: "sensors",
         )

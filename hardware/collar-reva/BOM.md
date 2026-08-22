@@ -18,6 +18,8 @@ Footprints are assigned on the schematic (`./kicad-launcher --sch bom`). PCB cop
 | 1 | D2 | Green LED | LTST-C190KGKT | 0402 | LED_SMD:LED_0402_1005Metric | mcu | STAT, MCU sink via R6 |
 | 1 | D3 | 940 nm IR LED | SFH 4451 | SMD 0805-class | LED_SMD:LED_0805_2012Metric | sensors | PPG emitter toward ventral neck |
 | 1 | D4 | 940 nm photodiode | SFH 2704 | SMD | Diode_SMD:D_0805_2012Metric | sensors | PPG detector |
+| 1 | D5 | 660 nm red LED | LTST-C170KRKT | SMD 0805 | LED_SMD:LED_0805_2012Metric | sensors | AFE LED2 second wavelength |
+| 1 | RT1 | 10k NTC β3950 | NCP15XH103F03RC | 0402 | Resistor_SMD:R_0402_1005Metric | sensors | Neck-contact skin temp |
 | 1 | F1 | PTC 500 mA | MF-MSMF050-2 | 1812 | Fuse:Fuse_1812_4532Metric | power | USB inrush |
 | 1 | J1 | USB-C receptacle | USB4105-GF-A | 16-pin SMD | Connector_USB:USB_C_Receptacle_USB4105-xx-A_16P_TopMnt_Horizontal | power | Charge + USB-JTAG D+/D− |
 | 1 | J2 | JST-PH 2 | S2B-PH-SM4-TB | SMD 2.0 mm | Connector_JST:JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal | power | LiPo |
@@ -31,6 +33,7 @@ Footprints are assigned on the schematic (`./kicad-launcher --sch bom`). PCB cop
 | 1 | R8 | 4.7k | RC0402FR-074K7L | 0402 1% | Resistor_SMD:R_0402_1005Metric | sensors | I2C SCL pull-up |
 | 1 | R9 | 5.1k | RC0402FR-075K1L | 0402 1% | Resistor_SMD:R_0402_1005Metric | power | USB-C CC1 pulldown |
 | 1 | R10 | 5.1k | RC0402FR-075K1L | 0402 1% | Resistor_SMD:R_0402_1005Metric | power | USB-C CC2 pulldown |
+| 1 | R11 | 10k | RC0402FR-0710KL | 0402 1% | Resistor_SMD:R_0402_1005Metric | sensors | NTC divider to 3V3 |
 | 1 | C1 | 10uF 16V | CL21A106KOQNNNE | 0805 X5R | Capacitor_SMD:C_0805_2012Metric | power | LDO VIN |
 | 1 | C2 | 10uF 16V | CL21A106KOQNNNE | 0805 X5R | Capacitor_SMD:C_0805_2012Metric | power | LDO VOUT |
 | 1 | C3 | 100nF 16V | CC0402KRX7R7BB104 | 0402 X7R | Capacitor_SMD:C_0402_1005Metric | power | VBAT anti-alias |
@@ -44,7 +47,7 @@ Footprints are assigned on the schematic (`./kicad-launcher --sch bom`). PCB cop
 
 ## Notes
 
-- D4 (photodiode) and R9/R10 (USB-C CC) are on the sheets. Layout next.
+- D4 (photodiode), D5 (660 nm), RT1/R11 (neck NTC), and R9/R10 (USB-C CC) are on the sheets.
 - Passives are 0402 / 0805 16 V ceramics. 10 µF on LDO and module per AFE §6.
 - Observational only. If a line looks like actuation, it is a spec bug.
 - Enclosure / collar strap / epoxy over the optical window are not in this PCB BOM.
@@ -55,6 +58,8 @@ Footprints are assigned on the schematic (`./kicad-launcher --sch bom`). PCB cop
 - **U6:** Reflow; not a hand-solder first proto
 - **D3:** U6 TXP. Keep If at the AFE 4 mA bring-up current
 - **D4:** U6 INP, cathode to GND
+- **D5:** Already programmed at 4 mA in LEDCNTRL. Not SpO2 until both paths are calibrated
+- **RT1:** Divider with R11. Package β is ~3380 — firmware uses 3950 until NVS cal
 - **J1:** CC1/CC2 pulldowns R9/R10 are on the power sheet
 - **R1:** Do not stuff 2 kΩ on a ~180 mAh pouch (≈2.8 C)
 - **R6:** 330 Ω → ~3.9 mA

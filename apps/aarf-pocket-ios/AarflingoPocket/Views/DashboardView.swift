@@ -27,6 +27,8 @@ struct DashboardView: View {
                             MetricRow(label: "Collar HR", value: "\(v.hrBpm) bpm")
                             MetricRow(label: "Collar RR", value: "\(v.rrBpm) /min")
                             MetricRow(label: "Body", value: v.still ? "still" : "moving")
+                            MetricRow(label: "Skin / puck", value: String(format: "%.1f / %.1f °C", v.skinC, v.puckC))
+                            MetricRow(label: "Gyro RMS", value: String(format: "%.0f °/s", v.gyroRms))
                             MetricRow(label: "Collar VBAT", value: String(format: "%.2f V", v.vbatV))
                         }
                     }

@@ -56,6 +56,8 @@ fun DashboardScreen(vm: AppViewModel, modifier: Modifier = Modifier) {
                 MetricRow("Collar HR", "${v.hrBpm} bpm")
                 MetricRow("Collar RR", "${v.rrBpm} /min")
                 MetricRow("Body", if (v.still) "still" else "moving")
+                MetricRow("Skin / puck", "%.1f / %.1f °C".format(v.skinC, v.puckC))
+                MetricRow("Gyro RMS", "%.0f °/s".format(v.gyroRms))
                 MetricRow("Collar VBAT", "%.2f V".format(v.vbatV))
             }
         }

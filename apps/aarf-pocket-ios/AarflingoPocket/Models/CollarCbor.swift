@@ -19,6 +19,9 @@ struct CollarVitals: Equatable {
     var pant: Bool
     var rrBpm: Int
     var arousal: Double
+    var gyroRms: Double
+    var puckC: Double
+    var skinC: Double
     var fault: String?
     var source: String
 }
@@ -47,6 +50,9 @@ enum CollarCbor {
             pant: map["pant"] as? Bool ?? false,
             rrBpm: map["rr_bpm"] as? Int ?? 0,
             arousal: map["arousal"] as? Double ?? 0,
+            gyroRms: map["gyro"] as? Double ?? 0,
+            puckC: map["puck_c"] as? Double ?? 0,
+            skinC: map["skin_c"] as? Double ?? 0,
             fault: map["fault"] as? String,
             source: map["source"] as? String ?? "sensors"
         )

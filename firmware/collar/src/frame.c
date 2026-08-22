@@ -65,8 +65,8 @@ int collar_frame_encode(const CollarSample *s, uint8_t *buf, size_t cap) {
         return -1;
     }
     int n = 0;
-    /* 19-key map: sensors + ethogram/autonomic proxies */
-    if (put(buf, cap, &n, 0xB3) != 0) {
+    /* 22-key map: sensors + ethogram + gyro/temp */
+    if (put(buf, cap, &n, 0xB6) != 0) {
         return -1;
     }
     if (put_text(buf, cap, &n, "source") || put_text(buf, cap, &n, "sensors")) {
@@ -131,6 +131,15 @@ int collar_frame_encode(const CollarSample *s, uint8_t *buf, size_t cap) {
         return -1;
     }
     if (put_text(buf, cap, &n, "arousal") || put_f32(buf, cap, &n, s->arousal)) {
+        return -1;
+    }
+    if (put_text(buf, cap, &n, "gyro") || put_f32(buf, cap, &n, s->gyro_rms)) {
+        return -1;
+    }
+    if (put_text(buf, cap, &n, "puck_c") || put_f32(buf, cap, &n, s->puck_c)) {
+        return -1;
+    }
+    if (put_text(buf, cap, &n, "skin_c") || put_f32(buf, cap, &n, s->skin_c)) {
         return -1;
     }
     return n;
@@ -290,7 +299,8 @@ int collar_frame_decode(const uint8_t *buf, int n, CollarSample *out, char *faul
         } else if (strcmp(key, "imu_rms") == 0 || strcmp(key, "imu_peak") == 0 ||
                    strcmp(key, "audio_rms") == 0 || strcmp(key, "vbat_v") == 0 ||
                    strcmp(key, "pitch") == 0 || strcmp(key, "pi") == 0 ||
-                   strcmp(key, "arousal") == 0) {
+                   strcmp(key, "arousal") == 0 || strcmp(key, "gyro") == 0 ||
+                   strcmp(key, "puck_c") == 0 || strcmp(key, "skin_c") == 0) {
             uint8_t t;
             if (take(buf, n, &i, &t) != 0 || t != 0xFA || i + 4 > n) {
                 return -1;
@@ -305,12 +315,18 @@ int collar_frame_decode(const uint8_t *buf, int n, CollarSample *out, char *faul
             conv.u = u;
             if (key[0] == 'v') {
                 out->vbat_v = conv.f;
+            } else if (key[0] == 'p' && key[1] == 'u') {
+                out->puck_c = conv.f;
             } else if (key[0] == 'p' && key[1] == 'i' && key[2] == '\0') {
                 out->pi = conv.f;
             } else if (key[0] == 'p') {
                 out->pitch = conv.f;
             } else if (key[0] == 'a' && key[1] == 'r') {
                 out->arousal = conv.f;
+            } else if (key[0] == 'g') {
+                out->gyro_rms = conv.f;
+            } else if (key[0] == 's') {
+                out->skin_c = conv.f;
             } else if (key[4] == 'r') {
                 out->imu_rms = conv.f;
             } else if (key[4] == 'p') {

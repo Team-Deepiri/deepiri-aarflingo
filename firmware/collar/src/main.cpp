@@ -12,10 +12,12 @@
 #include "led_stat.h"
 #include "pins.h"
 #include "product.h"
+#include "skin.h"
 #include "vbat.h"
 #include "wdt.h"
 
 #include <Arduino.h>
+#include <math.h>
 #include <Preferences.h>
 #include <Wire.h>
 #include <driver/i2s.h>
@@ -27,6 +29,8 @@ static int32_t g_ir[50];
 static size_t g_nir;
 static float g_xyz[100 * 3];
 static size_t g_nimu;
+static float g_gyro_ss;
+static size_t g_ngyro;
 static int32_t g_pcm[64];
 static size_t g_npcm;
 static int g_imu_ok;
@@ -95,6 +99,11 @@ static void sample_imu_once(void) {
     g_xyz[3 * g_nimu + 1] = bmi270_lsb_to_g(y);
     g_xyz[3 * g_nimu + 2] = bmi270_lsb_to_g(z);
     g_nimu++;
+    float gx = bmi270_lsb_to_dps(i2c_read_le16(BMI270_I2C_ADDR, BMI270_REG_GYR_X_LSB));
+    float gy = bmi270_lsb_to_dps(i2c_read_le16(BMI270_I2C_ADDR, BMI270_REG_GYR_X_LSB + 2));
+    float gz = bmi270_lsb_to_dps(i2c_read_le16(BMI270_I2C_ADDR, BMI270_REG_GYR_X_LSB + 4));
+    g_gyro_ss += gx * gx + gy * gy + gz * gz;
+    g_ngyro++;
 }
 
 static void drive_led(uint32_t now) {
@@ -143,7 +152,8 @@ void setup() {
     if (g_imu_ok) {
         i2c_write8(BMI270_I2C_ADDR, BMI270_REG_CMD, BMI270_CMD_SOFTRESET);
         delay(2);
-        i2c_write8(BMI270_I2C_ADDR, BMI270_REG_PWR_CTRL, BMI270_PWR_ACC_EN);
+        i2c_write8(BMI270_I2C_ADDR, BMI270_REG_PWR_CONF, BMI270_PWR_CONF_DISABLE_APS);
+        i2c_write8(BMI270_I2C_ADDR, BMI270_REG_PWR_CTRL, BMI270_PWR_ACC_GYR_TEMP);
         i2c_write8(BMI270_I2C_ADDR, BMI270_REG_ACC_RANGE, BMI270_ACC_RANGE_8G);
         i2c_write8(BMI270_I2C_ADDR, BMI270_REG_INT1_IO_CTRL, BMI270_INT1_IO_OUT_AH);
         i2c_write8(BMI270_I2C_ADDR, BMI270_REG_INT_MAP_DATA, BMI270_INT_MAP_DRDY_INT1);
@@ -234,12 +244,19 @@ void loop() {
     float vbat = vbat_from_raw(analogRead(PIN_VBAT_SENSE), 4095, 3.10f, g_vbat_cal.scale,
                                 g_vbat_cal.offset);
     int mic_ok = g_npcm > 0;
+    float gyro_rms = (g_ngyro > 0) ? sqrtf(g_gyro_ss / (float)g_ngyro) : 0.0f;
+    float puck_c = g_imu_ok ? bmi270_temp_c(i2c_read_le16(BMI270_I2C_ADDR, BMI270_REG_TEMP_LSB))
+                            : 0.0f;
+    float skin_c = skin_c_from_raw(analogRead(PIN_SKIN_SENSE), 4095);
 
     int n = collar_loop_step(&g_loop, g_ir, g_nir, 50, imu_rms, imu_peak, ar, bark, vbat,
-                             g_imu_ok, mic_ok, g_xyz, g_nimu, g_pcm, g_npcm);
+                             g_imu_ok, mic_ok, g_xyz, g_nimu, g_pcm, g_npcm, gyro_rms, puck_c,
+                             skin_c);
     g_nir = 0;
     g_nimu = 0;
     g_npcm = 0;
+    g_gyro_ss = 0.0f;
+    g_ngyro = 0;
     if (n > 0) {
         uint8_t notify[256];
         int pn = collar_ble_pack(g_loop.tx, n, notify, sizeof notify, COLLAR_BLE_MTU);

@@ -26,6 +26,9 @@ typedef struct {
     int rr_bpm;
     float pi;
     float arousal;
+    float gyro_rms;
+    float puck_c;
+    float skin_c;
 } CollarSample;
 
 /* Compact CBOR map (Phase-2 keys). Fits BLE MTU-3. */

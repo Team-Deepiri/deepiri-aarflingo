@@ -94,6 +94,9 @@ int main(void) {
     if (n > 244) return 6;
     if (!collar_frame_contains(buf, n, "still")) return 8;
     if (!collar_frame_contains(buf, n, "arousal")) return 9;
+    if (!collar_frame_contains(buf, n, "gyro")) return 10;
+    if (!collar_frame_contains(buf, n, "puck_c")) return 11;
+    if (!collar_frame_contains(buf, n, "skin_c")) return 12;
     printf("%d\n", n);
     return 0;
 }
@@ -106,6 +109,7 @@ def test_pins_h_has_ppg_rdy_and_rst():
     text = pins.read_text(encoding="utf-8")
     assert "#define PIN_PPG_RDY" in text
     assert "#define PIN_PPG_RST" in text
+    assert "#define PIN_SKIN_SENSE" in text
 
 
 def test_afe4404_be24_twos_complement(tmp_path):
@@ -138,7 +142,7 @@ int main(void) {
     }
     CollarLoop L;
     collar_loop_init(&L);
-    int n = collar_loop_step(&L, ir, N, FS, 0.1f, 0.2f, 0.01f, 0, 3.8f, 1, 1, NULL, 0, NULL, 0);
+    int n = collar_loop_step(&L, ir, N, FS, 0.1f, 0.2f, 0.01f, 0, 3.8f, 1, 1, NULL, 0, NULL, 0, 0.f, 0.f, 0.f);
     if (n < 20) return 2;
     if (L.state != COLLAR_IDLE) return 3;
     if (!L.last.ppg_ok) return 4;
@@ -185,10 +189,30 @@ int main(void) {
     if (BMI270_PWR_ACC_EN != 0x04) return 9;
     if (BMI270_REG_INT1_IO_CTRL != 0x53) return 10;
     if (BMI270_REG_INT_MAP_DATA != 0x58) return 11;
+    if (BMI270_PWR_ACC_GYR_TEMP != 0x0E) return 12;
+    float dps = bmi270_lsb_to_dps(32767);
+    if (dps < 1999.0f || dps > 2001.0f) return 13;
+    if (bmi270_temp_c(0) < 22.9f || bmi270_temp_c(0) > 23.1f) return 14;
     return 0;
 }
 """
     _compile_and_run([SRC / "bmi270.c"], extra, "test_bmi", tmp_path)
+
+
+def test_skin_ntc_midscale_is_25c(tmp_path):
+    extra = r"""
+#include "skin.h"
+int main(void) {
+    float t = skin_c_from_raw(2048, 4095);
+    if (t < 24.0f || t > 26.0f) return 2;
+    if (SKIN_ADC_GPIO == 0 || SKIN_ADC_GPIO == 3) return 3;
+    return 0;
+}
+"""
+    src = SRC / "skin.c"
+    if not src.is_file():
+        pytest.fail("skin.c missing — implement after this red test")
+    _compile_and_run([src], extra, "test_skin", tmp_path)
 
 
 def test_dog_state_still_shake_pant_and_arousal(tmp_path):
@@ -239,7 +263,7 @@ int main(void) {
     int32_t ir[8] = {0};
     CollarLoop L;
     collar_loop_init(&L);
-    int n = collar_loop_step(&L, ir, 8, 50, 0.1f, 0.2f, 0.01f, 0, 3.00f, 1, 1, NULL, 0, NULL, 0);
+    int n = collar_loop_step(&L, ir, 8, 50, 0.1f, 0.2f, 0.01f, 0, 3.00f, 1, 1, NULL, 0, NULL, 0, 0.f, 0.f, 0.f);
     if (n < 10) return 2;
     if (L.last.fault == NULL || strcmp(L.last.fault, "vbat") != 0) return 3;
     return 0;
@@ -350,7 +374,7 @@ int main(void) {
     int32_t ir[8] = {0};
     CollarLoop L;
     collar_loop_init(&L);
-    int n = collar_loop_step(&L, ir, 8, 50, 0.f, 0.f, 0.01f, 0, 3.80f, 0, 1, NULL, 0, NULL, 0);
+    int n = collar_loop_step(&L, ir, 8, 50, 0.f, 0.f, 0.01f, 0, 3.80f, 0, 1, NULL, 0, NULL, 0, 0.f, 0.f, 0.f);
     if (n < 10) return 2;
     if (L.last.fault == NULL || strcmp(L.last.fault, "imu") != 0) return 3;
     return 0;
@@ -486,6 +510,16 @@ int main(void) {
     if (out.ts_ms != 42) return 5;
     if (strcmp(fault, "ppg") != 0) return 6;
     if (out.vbat_v < 3.79f || out.vbat_v > 3.81f) return 7;
+    s.gyro_rms = 4.0f;
+    s.puck_c = 23.0f;
+    s.skin_c = 31.0f;
+    s.pitch = 10.0f;
+    n = collar_frame_encode(&s, buf, sizeof buf);
+    if (collar_frame_decode(buf, n, &out, fault, sizeof fault) != 0) return 8;
+    if (out.gyro_rms < 3.9f || out.gyro_rms > 4.1f) return 9;
+    if (out.puck_c < 22.9f || out.puck_c > 23.1f) return 10;
+    if (out.skin_c < 30.9f || out.skin_c > 31.1f) return 11;
+    if (out.pitch < 9.9f || out.pitch > 10.1f) return 12;
     return 0;
 }
 """
@@ -523,6 +557,9 @@ int main(void) {
     assert frame["ts_ms"] == 99
     assert frame["source"] == "sensors"
     assert frame["v"] == 1
+    assert "gyro" in frame
+    assert "puck_c" in frame
+    assert "skin_c" in frame
 
 
 def test_imu_isr_only_sets_flag(tmp_path):
@@ -546,7 +583,7 @@ int main(void) {
 
 def test_product_version_is_rev_a():
     text = (COLLAR / "include" / "product.h").read_text(encoding="utf-8")
-    assert "0.1.0" in text
+    assert "0.2.0" in text
     assert "aarf-collar" in text
     flash = Path(__file__).resolve().parents[3] / "scripts" / "flash_collar.sh"
     assert flash.is_file()
@@ -607,6 +644,9 @@ def test_pocket_gatt_matches_firmware_uuids():
         assert "hr_bpm" in text
         assert "arousal" in text
         assert "still" in text
+        assert "skin_c" in text
+        assert "gyro" in text
+        assert "puck_c" in text
         assert "SHOCK" not in text
 
 

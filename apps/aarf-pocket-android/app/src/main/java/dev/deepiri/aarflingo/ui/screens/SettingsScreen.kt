@@ -112,7 +112,8 @@ fun SettingsScreen(vm: AppViewModel, modifier: Modifier = Modifier) {
                     "HR ${v.hrBpm} · RR ${v.rrBpm} · ${"%.0f".format(v.arousal * 100)}% arousal · " +
                         "${if (v.still) "still" else "moving"}" +
                         "${if (v.pant) " · pant" else ""}" +
-                        "${if (v.bark) " · bark" else ""}",
+                        "${if (v.bark) " · bark" else ""} · " +
+                        "skin ${"%.1f".format(v.skinC)}°C",
                 )
             } ?: Text(
                 vm.collarStatus ?: if (vm.collarListen) "Waiting for aarf-collar" else "Off",

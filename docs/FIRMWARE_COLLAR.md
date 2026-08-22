@@ -99,7 +99,10 @@ Phase 2 already specified this. Collar firmware **extends** it; it does not repl
   "pitch": <float deg, uncalibrated neck tilt>,
   "rr_bpm": <int, 0 unless still>,
   "pi": <float, PPG perfusion AC/DC>,
-  "arousal": <float 0..1, autonomic proxy — not valence>
+  "arousal": <float 0..1, autonomic proxy — not valence>,
+  "gyro": <float dps RMS>,
+  "puck_c": <float, BMI270 die °C — package, not skin>,
+  "skin_c": <float, neck NTC °C — contact, not core>
 }
 ```
 

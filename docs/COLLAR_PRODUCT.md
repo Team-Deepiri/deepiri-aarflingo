@@ -2,13 +2,13 @@
 
 Observational puck on the dog. Streams IMU, mic, neck PPG, and battery to aarf-pocket over BLE. **No shock, vibe, motor, or door strike.**
 
-Firmware `0.1.0`. Advertises `aarf-collar`.
+Firmware `0.2.0`. Advertises `aarf-collar`.
 
 ## What you get
 
 | Piece | Status |
 |-------|--------|
-| Schematic + GPIO contract | Done — includes D4 photodiode and USB-C CC pulldowns |
+| Schematic + GPIO contract | Done — D4 PD, D5 660 nm, RT1 neck NTC, USB-C CC |
 | Firmware (ESP32-S3) | Done — BLE 1 Hz CBOR, I2S, I2C, CLIP to `/infer/audio` |
 | Pocket iOS / Android | Done — Settings → Listen to collar |
 | Laptop listener | Done — `python3 scripts/collar_listen.py` |
@@ -24,14 +24,14 @@ Firmware `0.1.0`. Advertises `aarf-collar`.
 cd firmware/collar && pio run -t upload
 ```
 
-Serial 115200 should print `aarf-collar rev-A fw 0.1.0` and any I2C hits (`0x68` IMU, `0x58` PPG).
+Serial 115200 should print `aarf-collar rev-A fw 0.2.0` and any I2C hits (`0x68` IMU, `0x58` PPG).
 
 ## Pair
 
 1. Charge via USB-C (100 mA default PROG).
 2. Phone: Settings → **Listen to collar**. Allow Bluetooth.
 3. Or laptop: `pip install bleak && python3 scripts/collar_listen.py`
-4. You should see 1 Hz JSON with `hr_bpm`, `rr_bpm`, `still`, `pant`, `arousal`, `vbat_v`, `fault`.
+4. You should see 1 Hz JSON with `hr_bpm`, `rr_bpm`, `still`, `pant`, `arousal`, `skin_c`, `puck_c`, `gyro`, `vbat_v`, `fault`.
 
 Dog-state (ethogram + autonomic proxies, not blood work): [DOG_STATE.md](DOG_STATE.md).
 
@@ -40,7 +40,7 @@ Optional Wi-Fi CLIP (bark → existing runtime): NVS `collar` keys `wifi_ssid`, 
 ## Build (after layout + fab)
 
 1. Buy [hardware/collar-reva/BOM.csv](../hardware/collar-reva/BOM.csv). Stuff R1 = 10 kΩ.
-2. Optical window toward the ventral neck: D3 IR out, D4 PD in.
+2. Optical window toward the ventral neck: D3 IR + D5 red out, D4 PD in. RT1 on the skin face.
 3. `./scripts/flash_collar.sh` then pair as above.
 4. First USB-C from a C-to-C cable needs R9/R10 stuffed or VBUS will not appear.
 

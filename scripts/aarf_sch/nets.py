@@ -38,6 +38,7 @@ GPIO = {
     "LED_STAT": 6,
     "PPG_RDY": 8,  # TI AFE4404 ADC_RDY
     "PPG_RST": 9,  # TI AFE4404 RESET (active low)
+    "SKIN_SENSE": 10,  # ADC1_CH9 — 10k NTC divider, not a strap
 }
 
 BOOT_GPIO = 0
@@ -72,6 +73,7 @@ SHEET_NETS = {
         "LED_STAT",
         "PPG_RDY",
         "PPG_RST",
+        "SKIN_SENSE",
         "USB_DP",
         "USB_DN",
         "EN",
@@ -89,14 +91,16 @@ SHEET_NETS = {
         "PPG_RDY",
         "PPG_RST",
         "PPG_TXP",
+        "PPG_TX2",
         "PPG_INP",
+        "SKIN_SENSE",
     ),
 }
 
 REQUIRED_PARTS = {
     "power": ("J1", "D1", "F1", "U2", "U3", "J2", "R9", "R10"),
     "mcu": ("U1",),
-    "sensors": ("U4", "U5", "U6", "D3", "D4"),
+    "sensors": ("U4", "U5", "U6", "D3", "D4", "D5", "RT1"),
 }
 
 # MCP73831: IREG = 1 V / RPROG. Schematic 2 kΩ = 500 mA max pad.

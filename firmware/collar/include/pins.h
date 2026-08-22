@@ -12,3 +12,4 @@
 #define PIN_LED_STAT 6
 #define PIN_PPG_RDY 8
 #define PIN_PPG_RST 9
+#define PIN_SKIN_SENSE 10

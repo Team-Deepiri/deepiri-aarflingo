@@ -462,6 +462,10 @@ LIB_SYMBOLS = r'''
           (name "CHG_STAT" (effects (font (size 1.27 1.27))))
           (number "14" (effects (font (size 1.27 1.27))))
         )
+        (pin input line (at -20.32 -12.7 0) (length 2.54)
+          (name "SKIN_SENSE" (effects (font (size 1.27 1.27))))
+          (number "15" (effects (font (size 1.27 1.27))))
+        )
       )
     )
     (symbol "aarf:IMU" (in_bom yes) (on_board yes)
@@ -604,6 +608,10 @@ LIB_SYMBOLS = r'''
         (pin input line (at 15.24 0 180) (length 2.54)
           (name "INP" (effects (font (size 1.27 1.27))))
           (number "8" (effects (font (size 1.27 1.27))))
+        )
+        (pin output line (at 15.24 -2.54 180) (length 2.54)
+          (name "TX2" (effects (font (size 1.27 1.27))))
+          (number "9" (effects (font (size 1.27 1.27))))
         )
       )
     )
@@ -808,7 +816,7 @@ def emit_mcu() -> str:
     gpio_txt = "  ".join(f"{n}=GPIO{g}" for n, g in GPIO.items())
     b += text(gpio_txt, 20, 18)
     b += text("GPIO0 = boot only (10k to 3V3). No live bus on 0/3/45/46.", 20, 22)
-    b += symbol("aarf:MCU", "U1", "ESP32-S3-MINI-1", 110, 80, [str(i) for i in range(1, 15)], path)
+    b += symbol("aarf:MCU", "U1", "ESP32-S3-MINI-1", 110, 80, [str(i) for i in range(1, 16)], path)
     b += symbol("Device:R", "R4", "10k EN", 70, 55, ["1", "2"], path)
     b += symbol("Device:R", "R5", "10k BOOT", 70, 80, ["1", "2"], path)
     b += symbol("Device:R", "R6", "330 LED", 160, 110, ["1", "2"], path)
@@ -835,6 +843,7 @@ def emit_mcu() -> str:
         ("LED_STAT", 155, 110),
         ("PPG_RDY", 155, 120),
         ("PPG_RST", 155, 125),
+        ("SKIN_SENSE", 85, 115),
     ):
         b += glabel(name, x, y)
     b += footer()
@@ -845,11 +854,15 @@ def emit_sensors() -> str:
     path = f"/{ROOT_UUID}/{SENSORS_SHEET_UUID}"
     b = header(SENSORS_FILE_UUID, f"{TITLE} — Sensors", "BMI270 + INMP441 + TI AFE4404 neck PPG.")
     b += text("I2C pull-ups 4.7k. AFE4404 optical AFE faces the ventral neck (carotid).", 20, 20)
+    b += text("D5 is 660 nm on AFE LED2. RT1 is neck-contact NTC, not core temp. Not SpO2.", 20, 24)
     b += symbol("aarf:IMU", "U4", "BMI270", 80, 70, ["1", "2", "3", "4", "5", "6"], path)
     b += symbol("aarf:MIC", "U5", "INMP441", 160, 70, ["1", "2", "3", "4", "5", "6"], path)
-    b += symbol("aarf:PPG", "U6", "AFE4404", 80, 140, ["1", "2", "3", "4", "5", "6", "7", "8"], path)
+    b += symbol("aarf:PPG", "U6", "AFE4404", 80, 140, ["1", "2", "3", "4", "5", "6", "7", "8", "9"], path)
     b += symbol("Device:LED", "D3", "IR neck", 130, 140, ["1", "2"], path)
     b += symbol("Device:LED", "D4", "PD neck", 155, 140, ["1", "2"], path)
+    b += symbol("Device:LED", "D5", "RED neck", 130, 155, ["1", "2"], path)
+    b += symbol("Device:R", "RT1", "10k NTC", 50, 160, ["1", "2"], path)
+    b += symbol("Device:R", "R11", "10k NTC", 50, 145, ["1", "2"], path)
     b += symbol("Device:C", "C8", "0.1uF PPG", 55, 140, ["1", "2"], path)
     b += symbol("Device:R", "R7", "4.7k", 110, 45, ["1", "2"], path)
     b += symbol("Device:R", "R8", "4.7k", 125, 45, ["1", "2"], path)
@@ -869,7 +882,9 @@ def emit_sensors() -> str:
         ("PPG_RDY", 100, 132.38),
         ("PPG_RST", 100, 134.92),
         ("PPG_TXP", 145, 140),
+        ("PPG_TX2", 145, 155),
         ("PPG_INP", 170, 140),
+        ("SKIN_SENSE", 55, 160),
         ("SDA", 60, 142.54),
         ("SCL", 60, 140),
     ):
@@ -928,6 +943,9 @@ PLACEMENT: dict[str, tuple[float, float, float]] = {
     "C8": (37.6, 21.0, 0),
     "D3": (32.2, 29.2, 0),
     "D4": (36.4, 29.2, 0),
+    "D5": (34.3, 26.8, 0),
+    "RT1": (27.8, 29.2, 0),
+    "R11": (27.8, 26.8, 0),
 }
 
 
@@ -982,7 +1000,7 @@ def _footprint(ref: str, lx: float, ly: float, rot: float) -> str:
     x, y = PCB_OX + lx, PCB_OY + ly
     kind = ref[0]
     if kind in {"R", "C", "D"} and ref not in {"D1"}:
-        if "0805" in (line.pkg if line else "") or ref in {"C1", "C2", "C5", "D3", "D4"}:
+        if "0805" in (line.pkg if line else "") or ref in {"C1", "C2", "C5", "D3", "D4", "D5"}:
             pads = _pad2(0.9, 0.8, 1.2)
             body = _courtyard(2.2, 1.6) + "\n" + pads
         else:
