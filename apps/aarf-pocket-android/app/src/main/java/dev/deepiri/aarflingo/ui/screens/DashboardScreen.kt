@@ -48,14 +48,15 @@ fun DashboardScreen(vm: AppViewModel, modifier: Modifier = Modifier) {
             Spacer(Modifier.height(4.dp))
             SignalBar("Audio arousal", 0.62f, AarflingoColors.Warn)
             Spacer(Modifier.height(4.dp))
-            SignalBar("ECG stress", 0.22f, AarflingoColors.Danger)
+            SignalBar("Autonomic arousal", vm.collarVitals?.arousal ?: 0.22f, AarflingoColors.Danger)
             Spacer(Modifier.height(4.dp))
             SignalBar("IMU activity", vm.collarVitals?.imuRms?.coerceIn(0f, 1f) ?: 0.74f, AarflingoColors.Accent)
             vm.collarVitals?.let { v ->
                 Spacer(Modifier.height(8.dp))
                 MetricRow("Collar HR", "${v.hrBpm} bpm")
+                MetricRow("Collar RR", "${v.rrBpm} /min")
+                MetricRow("Body", if (v.still) "still" else "moving")
                 MetricRow("Collar VBAT", "%.2f V".format(v.vbatV))
-                MetricRow("Collar bark", if (v.bark) "yes" else "no")
             }
         }
 

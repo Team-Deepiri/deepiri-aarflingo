@@ -28,7 +28,8 @@ void collar_loop_init(CollarLoop *L);
 /* One SAMPLE→TRANSMIT step. ir[0..n-1] is the last 1 s of AFE4404 IR. */
 int collar_loop_step(CollarLoop *L, const int32_t *ir, size_t n, int fs_hz,
                      float imu_rms, float imu_peak, float audio_rms, int bark,
-                     float vbat_v, int imu_ok, int mic_ok);
+                     float vbat_v, int imu_ok, int mic_ok, const float *xyz, size_t nimu,
+                     const int32_t *pcm, size_t npcm);
 
 #define COLLAR_VBAT_EMPTY_V 3.10f
 

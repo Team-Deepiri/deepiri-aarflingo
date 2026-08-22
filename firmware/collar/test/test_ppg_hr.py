@@ -91,7 +91,9 @@ int main(void) {
     if (!collar_frame_contains(buf, n, "hr_bpm")) return 3;
     if (!collar_frame_contains(buf, n, "rmssd_ms")) return 4;
     if (!collar_frame_contains(buf, n, "vbat_v")) return 5;
-    if (n > 200) return 6;
+    if (n > 244) return 6;
+    if (!collar_frame_contains(buf, n, "still")) return 8;
+    if (!collar_frame_contains(buf, n, "arousal")) return 9;
     printf("%d\n", n);
     return 0;
 }
@@ -136,7 +138,7 @@ int main(void) {
     }
     CollarLoop L;
     collar_loop_init(&L);
-    int n = collar_loop_step(&L, ir, N, FS, 0.1f, 0.2f, 0.01f, 0, 3.8f, 1, 1);
+    int n = collar_loop_step(&L, ir, N, FS, 0.1f, 0.2f, 0.01f, 0, 3.8f, 1, 1, NULL, 0, NULL, 0);
     if (n < 20) return 2;
     if (L.state != COLLAR_IDLE) return 3;
     if (!L.last.ppg_ok) return 4;
@@ -146,7 +148,7 @@ int main(void) {
 }
 """
     _compile_and_run(
-        [SRC / "ppg_hr.c", SRC / "frame.c", SRC / "collar_loop.c"],
+        [SRC / "ppg_hr.c", SRC / "frame.c", SRC / "collar_loop.c", SRC / "dog_state.c", SRC / "imu_feat.c", SRC / "audio_feat.c"],
         extra,
         "test_loop",
         tmp_path,
@@ -189,6 +191,31 @@ int main(void) {
     _compile_and_run([SRC / "bmi270.c"], extra, "test_bmi", tmp_path)
 
 
+def test_dog_state_still_shake_pant_and_arousal(tmp_path):
+    extra = r"""
+#include "dog_state.h"
+#include "imu_feat.h"
+int main(void) {
+    float rest[6] = {0.f, 0.f, 1.f, 0.f, 0.f, 1.f};
+    if (!dog_still(imu_dyn_g(rest, 2), imu_peak_g(rest, 2), 1)) return 2;
+    float shake[3] = {3.2f, 0.1f, 0.2f};
+    if (!dog_shake(imu_peak_g(shake, 1))) return 3;
+    if (dog_pant(0.04f, 0, 0.35f)) return 4;
+    if (!dog_pant(0.04f, 0, 0.55f)) return 5;
+    if (dog_pant(0.04f, 1, 0.55f)) return 6;
+    float a = dog_arousal(140, 15, 0, 1, 1, 0.3f);
+    if (a < 0.4f || a > 1.0f) return 7;
+    float calm = dog_arousal(55, 90, 1, 0, 0, 0.02f);
+    if (calm > 0.35f) return 8;
+    return 0;
+}
+"""
+    src = SRC / "dog_state.c"
+    if not src.is_file():
+        pytest.fail("dog_state.c missing — implement after this red test")
+    _compile_and_run([src, SRC / "imu_feat.c", SRC / "audio_feat.c"], extra, "test_dog", tmp_path)
+
+
 def test_audio_rms_and_bark(tmp_path):
     extra = r"""
 #include "audio_feat.h"
@@ -212,14 +239,14 @@ int main(void) {
     int32_t ir[8] = {0};
     CollarLoop L;
     collar_loop_init(&L);
-    int n = collar_loop_step(&L, ir, 8, 50, 0.1f, 0.2f, 0.01f, 0, 3.00f, 1, 1);
+    int n = collar_loop_step(&L, ir, 8, 50, 0.1f, 0.2f, 0.01f, 0, 3.00f, 1, 1, NULL, 0, NULL, 0);
     if (n < 10) return 2;
     if (L.last.fault == NULL || strcmp(L.last.fault, "vbat") != 0) return 3;
     return 0;
 }
 """
     _compile_and_run(
-        [SRC / "ppg_hr.c", SRC / "frame.c", SRC / "collar_loop.c"],
+        [SRC / "ppg_hr.c", SRC / "frame.c", SRC / "collar_loop.c", SRC / "dog_state.c", SRC / "imu_feat.c", SRC / "audio_feat.c"],
         extra,
         "test_vbat_fault",
         tmp_path,
@@ -323,14 +350,14 @@ int main(void) {
     int32_t ir[8] = {0};
     CollarLoop L;
     collar_loop_init(&L);
-    int n = collar_loop_step(&L, ir, 8, 50, 0.f, 0.f, 0.01f, 0, 3.80f, 0, 1);
+    int n = collar_loop_step(&L, ir, 8, 50, 0.f, 0.f, 0.01f, 0, 3.80f, 0, 1, NULL, 0, NULL, 0);
     if (n < 10) return 2;
     if (L.last.fault == NULL || strcmp(L.last.fault, "imu") != 0) return 3;
     return 0;
 }
 """
     _compile_and_run(
-        [SRC / "ppg_hr.c", SRC / "frame.c", SRC / "collar_loop.c"],
+        [SRC / "ppg_hr.c", SRC / "frame.c", SRC / "collar_loop.c", SRC / "dog_state.c", SRC / "imu_feat.c", SRC / "audio_feat.c"],
         extra,
         "test_imu_fault",
         tmp_path,
@@ -429,7 +456,9 @@ int main(void) {
     assert b"hr_bpm" in payload
     assert b"source" in payload
     assert b"sensors" in payload
-    assert len(payload) <= 200
+    assert len(payload) <= 244
+    assert b"still" in payload
+    assert b"arousal" in payload
 
 
 def test_cbor_decode_roundtrip_hr_and_fault(tmp_path):
@@ -576,6 +605,8 @@ def test_pocket_gatt_matches_firmware_uuids():
         assert "6E400001-B5A3-F393-E0A9-E50E24DCCA9E" in text.upper()
         assert "6E400003-B5A3-F393-E0A9-E50E24DCCA9E" in text.upper()
         assert "hr_bpm" in text
+        assert "arousal" in text
+        assert "still" in text
         assert "SHOCK" not in text
 
 

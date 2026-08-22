@@ -9,6 +9,7 @@ extern "C" {
 
 float audio_rms(const int32_t *s, size_t n);
 int audio_bark(float rms, float thresh);
+float audio_zcr(const int32_t *s, size_t n);
 
 #ifdef __cplusplus
 }

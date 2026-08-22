@@ -36,8 +36,11 @@ struct SettingsView: View {
                     .tint(AarflingoTheme.accent)
                     if appState.collar.connected, let v = appState.collar.vitals {
                         LabeledContent("Heart rate", value: "\(v.hrBpm) bpm")
+                        LabeledContent("Resp. rate", value: "\(v.rrBpm) /min")
+                        LabeledContent("Arousal", value: String(format: "%.0f%%", v.arousal * 100))
+                        LabeledContent("Body", value: v.still ? "still" : "moving")
+                        LabeledContent("Pant / bark", value: "\(v.pant ? "pant" : "—") / \(v.bark ? "bark" : "—")")
                         LabeledContent("Battery", value: String(format: "%.2f V", v.vbatV))
-                        LabeledContent("Bark", value: v.bark ? "yes" : "no")
                     } else if appState.collarListen {
                         Text(appState.collar.scanning ? "Scanning for aarf-collar…" : (appState.collar.lastError ?? "Waiting"))
                             .font(.caption)

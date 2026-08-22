@@ -93,6 +93,13 @@ Phase 2 already specified this. Collar firmware **extends** it; it does not repl
   "rmssd_ms": <int>,
   "ppg_ok": <bool>,
   "fault": <str or null>   // "imu" | "mic" | "vbat" | "ppg" | null
+  "still": <bool>,
+  "shake": <bool>,
+  "pant": <bool>,
+  "pitch": <float deg, uncalibrated neck tilt>,
+  "rr_bpm": <int, 0 unless still>,
+  "pi": <float, PPG perfusion AC/DC>,
+  "arousal": <float 0..1, autonomic proxy — not valence>
 }
 ```
 

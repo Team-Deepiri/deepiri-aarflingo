@@ -236,7 +236,7 @@ void loop() {
     int mic_ok = g_npcm > 0;
 
     int n = collar_loop_step(&g_loop, g_ir, g_nir, 50, imu_rms, imu_peak, ar, bark, vbat,
-                             g_imu_ok, mic_ok);
+                             g_imu_ok, mic_ok, g_xyz, g_nimu, g_pcm, g_npcm);
     g_nir = 0;
     g_nimu = 0;
     g_npcm = 0;

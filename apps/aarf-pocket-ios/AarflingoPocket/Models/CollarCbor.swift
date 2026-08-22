@@ -15,6 +15,10 @@ struct CollarVitals: Equatable {
     var imuRms: Double
     var bark: Bool
     var ppgOk: Bool
+    var still: Bool
+    var pant: Bool
+    var rrBpm: Int
+    var arousal: Double
     var fault: String?
     var source: String
 }
@@ -39,6 +43,10 @@ enum CollarCbor {
             imuRms: map["imu_rms"] as? Double ?? 0,
             bark: map["bark"] as? Bool ?? false,
             ppgOk: map["ppg_ok"] as? Bool ?? false,
+            still: map["still"] as? Bool ?? false,
+            pant: map["pant"] as? Bool ?? false,
+            rrBpm: map["rr_bpm"] as? Int ?? 0,
+            arousal: map["arousal"] as? Double ?? 0,
             fault: map["fault"] as? String,
             source: map["source"] as? String ?? "sensors"
         )

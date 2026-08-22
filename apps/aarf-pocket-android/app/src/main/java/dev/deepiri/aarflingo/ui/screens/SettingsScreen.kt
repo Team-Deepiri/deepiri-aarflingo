@@ -108,7 +108,12 @@ fun SettingsScreen(vm: AppViewModel, modifier: Modifier = Modifier) {
                 )
             }
             vm.collarVitals?.let { v ->
-                Text("HR ${v.hrBpm} bpm · ${"%.2f".format(v.vbatV)} V · bark ${if (v.bark) "yes" else "no"}")
+                Text(
+                    "HR ${v.hrBpm} · RR ${v.rrBpm} · ${"%.0f".format(v.arousal * 100)}% arousal · " +
+                        "${if (v.still) "still" else "moving"}" +
+                        "${if (v.pant) " · pant" else ""}" +
+                        "${if (v.bark) " · bark" else ""}",
+                )
             } ?: Text(
                 vm.collarStatus ?: if (vm.collarListen) "Waiting for aarf-collar" else "Off",
                 color = AarflingoColors.Muted,

@@ -1,5 +1,6 @@
 #include "collar_loop.h"
 
+#include "dog_state.h"
 #include "ppg_hr.h"
 
 #include <string.h>
@@ -15,7 +16,8 @@ void collar_loop_init(CollarLoop *L) {
 
 int collar_loop_step(CollarLoop *L, const int32_t *ir, size_t n, int fs_hz,
                      float imu_rms, float imu_peak, float audio_rms, int bark,
-                     float vbat_v, int imu_ok, int mic_ok) {
+                     float vbat_v, int imu_ok, int mic_ok, const float *xyz, size_t nimu,
+                     const int32_t *pcm, size_t npcm) {
     if (L == NULL) {
         return -1;
     }
@@ -41,6 +43,8 @@ int collar_loop_step(CollarLoop *L, const int32_t *ir, size_t n, int fs_hz,
     } else if (!hr.ok) {
         L->last.fault = "ppg";
     }
+
+    dog_state_fill(&L->last, xyz, nimu, pcm, npcm, ir, n, fs_hz);
 
     L->state = COLLAR_TRANSMIT;
     L->tx_len = collar_frame_encode(&L->last, L->tx, sizeof L->tx);

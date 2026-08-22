@@ -19,6 +19,13 @@ typedef struct {
     int rmssd_ms;
     int ppg_ok;
     const char *fault; /* NULL or static string */
+    int still;
+    int shake;
+    int pant;
+    float pitch;
+    int rr_bpm;
+    float pi;
+    float arousal;
 } CollarSample;
 
 /* Compact CBOR map (Phase-2 keys). Fits BLE MTU-3. */

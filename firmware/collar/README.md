@@ -10,6 +10,8 @@ python3 -m pytest -q firmware/collar/test
 
 Advertises **`aarf-collar`**. 1 Hz frames are **CBOR** on the notify characteristic (`6e400003-…`). GATT is notify-only — no writable actuation char.
 
+Dog-state (still / shake / pant / HR / RR / arousal proxy): [docs/DOG_STATE.md](../../docs/DOG_STATE.md).
+
 Flash (PlatformIO):
 
 ```bash

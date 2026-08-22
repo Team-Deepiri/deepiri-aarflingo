@@ -31,7 +31,9 @@ Serial 115200 should print `aarf-collar rev-A fw 0.1.0` and any I2C hits (`0x68`
 1. Charge via USB-C (100 mA default PROG).
 2. Phone: Settings → **Listen to collar**. Allow Bluetooth.
 3. Or laptop: `pip install bleak && python3 scripts/collar_listen.py`
-4. You should see 1 Hz JSON with `hr_bpm`, `vbat_v`, `bark`, `fault`.
+4. You should see 1 Hz JSON with `hr_bpm`, `rr_bpm`, `still`, `pant`, `arousal`, `vbat_v`, `fault`.
+
+Dog-state (ethogram + autonomic proxies, not blood work): [DOG_STATE.md](DOG_STATE.md).
 
 Optional Wi-Fi CLIP (bark → existing runtime): NVS `collar` keys `wifi_ssid`, `wifi_pass`, `runtime` (e.g. `http://192.168.1.10:8000`).
 
