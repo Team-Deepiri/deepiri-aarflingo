@@ -8,13 +8,6 @@ on:
       - "docs/**"
       - "notebooks/**"
       - "LICENSE"
-  push:
-    branches: [main]
-    paths-ignore:
-      - "**/*.md"
-      - "docs/**"
-      - "notebooks/**"
-      - "LICENSE"
   workflow_dispatch:
 
 permissions:
@@ -26,6 +19,7 @@ concurrency:
 
 jobs:
   test:
+    timeout-minutes: 20
     name: Python (core + services)
     runs-on: ubuntu-latest
     steps:
@@ -75,6 +69,7 @@ jobs:
           done
 
   js:
+    timeout-minutes: 20
     name: JS (gate + studio)
     runs-on: ubuntu-latest
     steps:
