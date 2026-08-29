@@ -1,6 +1,8 @@
-# Halo Rev-A mathematics
+# WebMuzzle Halo Rev-A mathematics
 
-Applied model of the **head-worn near-eye browsing visor** as a physical, optical, and decision system. Companion to the dog-worn puck model at [`../collar-reva/MATH.md`](../collar-reva/MATH.md) and to the Triad forecast model at [`../../docs/MATH.md`](../../docs/MATH.md). Every constant here is measurable on the bench or on a recorded IMU trace — none is fitted to "make the browser look good."
+> **Naming:** **WebMuzzle** — correct spelling `m-u-z-z-l-e` (not `*muzzle`). `Halo` is the head-worn visor hardware that implements WebMuzzle; `hardware/halo-reva/` is the board.
+
+Applied model of the **WebMuzzle head-worn near-eye browsing visor** as a physical, optical, and decision system. Companion to the dog-worn puck model at [`../collar-reva/MATH.md`](../collar-reva/MATH.md) and to the Triad forecast model at [`../../docs/MATH.md`](../../docs/MATH.md). Every constant here is measurable on the bench or on a recorded IMU trace — none is fitted to "make the browser look good."
 
 This document *is* the discovery record demanded by the `applied-math` skill: observation before formalism, invariants before equations, symmetries before fitting, dimensionless groups before simulation.
 

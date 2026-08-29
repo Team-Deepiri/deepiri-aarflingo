@@ -1,6 +1,6 @@
-# MuzzleField Applied Mathematics — Discovery Record
+# WebMuzzle Applied Mathematics — Discovery Record
 
-**Companion to** `hardware/halo-reva/MATH.md` (device model) and `docs/superpowers/specs/2026-08-29-muzzlefield-near-eye-browsing-design.md` (system design). This document *is* the formal `applied-math` discovery — invariants, symmetries, dimensionless groups, state variables, and proofs — for the millimetric head-worn browsing visor that is physically `14–18 mm` from the cornea yet optically `350–500 mm` away where a dog can focus.
+**Companion to** `hardware/halo-reva/MATH.md` (device model) and `docs/superpowers/specs/2026-08-29-webmuzzle-near-eye-browsing-design.md` (system design). This document *is* the formal `applied-math` discovery — invariants, symmetries, dimensionless groups, state variables, and proofs — for the millimetric head-worn browsing visor that is physically `14–18 mm` from the cornea yet optically `350–500 mm` away where a dog can focus.
 
 All symbols are defined in `hardware/halo-reva/MATH.md:Measurable quantities`. That document is the source of truth; this one derives theorems from it.
 

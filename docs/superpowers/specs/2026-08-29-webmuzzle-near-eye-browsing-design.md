@@ -1,7 +1,7 @@
-# MuzzleField — Native Near-Eye Browsing for Dogs via the Aarflingo Collar
+# WebMuzzle — Native Near-Eye Browsing for Dogs via the Aarflingo Collar
 
 **Status:** Draft design (requires review before implementation)
-**Branch:** `feat/muzzlefield-near-eye-browsing`
+**Branch:** `feat/webmuzzle-near-eye-browsing`
 **Author:** Muse Spark + Dr. Stark (locksmith-genius + brainstorming)
 **Date:** 2026-08-29
 **Docs that bind this:** `docs/FIRMWARE_COLLAR.md`, `hardware/collar-reva/DESIGN_SPEC.md`, `hardware/collar-reva/AFE_CALCULATIONS.md`, `core/feature_spec.py`, `ethogram/intents.yaml`, `docs/ETHICS.md`
@@ -13,7 +13,7 @@
 
 A dog cannot focus on a screen millimeters from its nose, cannot read text, and should not wear a heavy headset to "browse the internet" like a human. The naïve request — glue an LCD 5 mm from the muzzle and show Chrome — is optically, cognitively, and ethically impossible.
 
-**MuzzleField** reframes it:
+**WebMuzzle** reframes it:
 
 * **Hardware that *is* millimeters away but *appears* at the dog's natural focal distance (350–500 mm) via a collimating diffractive waveguide.** The display is physically on a lightweight visor/goggle 12–18 mm from the cornea; optics place its virtual image where a dog can actually resolve it.
 * **Browsing that is not a browser.** The dog does not type URLs. The existing TriadNet intent forecast (`approach`, `play`, `food`, `outside`, … in `ethogram/intents.yaml`) plus live IMU/mic/PPG selects a 2–4 tile world of internet-connected choices (owner video call, treat dispenser cam, door-cam, scent-log, play cue). The dog "browses" by dwelling, nose-bumping, or barking. The internet browses *the dog's intent*.
@@ -61,7 +61,7 @@ This is the only design that satisfies the ask literally ("screen millimeters aw
 | Pico-projector on collar projecting to wall/floor | Not "millimeters from face", ambient light washes out, dog must re-orient to wall — breaks embodied intent forecasting |
 | Phone/tablet on floor | Same: not head-referenced, not browsing by intent, dog paws screen |
 
-MuzzleField is novel because it is **dog-dioptric**, **BY-only**, **collar-relayed**, and **intent-driven** — four constraints no human AR product optimizes.
+WebMuzzle is novel because it is **dog-dioptric**, **BY-only**, **collar-relayed**, and **intent-driven** — four constraints no human AR product optimizes.
 
 ---
 
@@ -96,7 +96,7 @@ Make **"browse" a first-class intent** in the ethogram and a first-class periphe
 
 ---
 
-## 3. Novel Design — MuzzleField Halo Rev-A
+## 3. Novel Design — WebMuzzle Halo Rev-A
 
 ### 3.1 System topology
 
@@ -429,9 +429,9 @@ Each phase gates via `make verify` + added Halo test suites.
 
 This design reframes an impossible ask into a shippable, welfare-first system that is optically correct, firmware-native, and internet-connected through the existing runtime — not by gluing Chrome to a dog's nose, but by letting the dog's forecast intent browse a scent-plus-sight world presented millimeters away yet focused where dogs actually see.
 
-**Ask:** Approve MuzzleField Halo Rev-A as a sibling to `collar-reva`, approve `ethogram/intents.yaml` extension for `browse` with low coupling weight, and authorize H0 bench procurement (BY panel + waveguide samples, ~$400) before any animal work.
+**Ask:** Approve WebMuzzle Halo Rev-A as a sibling to `collar-reva`, approve `ethogram/intents.yaml` extension for `browse` with low coupling weight, and authorize H0 bench procurement (BY panel + waveguide samples, ~$400) before any animal work.
 
-*Underutilization thesis (locksmith):* The collar's spare BLE airtime, the waveguide's wasted RGB capacity, and the voice loop's unused EMA learner were all sitting idle. MuzzleField uses them fully — no new radio, no new cloud, no new model — and that is why this lock opens with keys already in the room.
+*Underutilization thesis (locksmith):* The collar's spare BLE airtime, the waveguide's wasted RGB capacity, and the voice loop's unused EMA learner were all sitting idle. WebMuzzle uses them fully — no new radio, no new cloud, no new model — and that is why this lock opens with keys already in the room.
 
 ---
 
