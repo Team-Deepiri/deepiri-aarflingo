@@ -1,7 +1,12 @@
 # Aarflingo Roadmap
 
-Living plan for **deepiri-aarflingo**. Updated after v0.3 vision work — dog detection
-on still frames (YOLO weights shipped) + 120-breed classification + live camera switching.
+Living plan for **deepiri-aarflingo** — shipped through the full on-device + math-wiring
+milestone (PR #23), tracked to completion (v1.0) and the research paper.
+
+> **Status snapshot (this update):** PR #23 merged — on-device inference for both pocket apps,
+> all nine ADVANCED_MATH modules wired into the runtime/forecast/mobile path, gaze zone editor,
+> studio health header with WS latency, dog YOLO tooling. Branch `feat/full-roadmap` extends the
+> plan through home-data fine-tuning, live vitals fusion, collar/edge hardware, and publication.
 
 ---
 
@@ -62,6 +67,27 @@ Docs: [VOICE.md](VOICE.md) · [WEBCAM.md](WEBCAM.md) · [DATASETS.md](DATASETS.m
 
 ---
 
+## Shipped (PR #23 — on-device inference + full ADVANCED_MATH wiring)
+
+Merged `01ae996`. Every one of the nine math modules in [`ADVANCED_MATH.md`](ADVANCED_MATH.md)
+is now wired into the model/pipeline, not just documented.
+
+| Area | What shipped |
+|------|-------------|
+| **§7 synchrony live** | `services/runtime/app/synchrony_state.py` — cross-modal phase-locking (`phase_locking_value`), motion↔bark `cross_correlation`, `LatentStateKalman` arousal/valence fusion; `process_frame` calls `update_sync` each frame |
+| **§9 temporal backbone** | `train_temporal_epochs` (MoCo-style contrastive pre-train + CE + arousal/valence regression heads), `export_onnx_temporal` (5-output ONNX), `predict_from_temporal`, `build_temporal` CLI, `--temporal` export flag |
+| **Dataset at 73 dims** | All §4/§7/§8 features per intent; flat `triad.pt` retrained at 73 dims; `triad_temporal.pt` trained; studio `triad.onnx` re-exported `[1, 1095]` |
+| **Mobile offline inference** | iOS CoreML + Android ONNX Runtime — `FEATURE_DIM`/`featureDim` 43→73, dim-synced feature names in studio `labels.ts` |
+| **Mobile reliability** | iOS `ObservableObject` conformance, off-main Android model init, thread-safe iOS frame diff, ORT `Optional`/`dogPresent` compile fixes |
+| **Studio live tools** | WS latency in header, cover-crop-correct zone editor, `label-this` in History, camera device switch |
+| **Runtime polish** | Hot-reload gaze zones + malformed-config fallback; forecast cache of incompatible checkpoints |
+
+**Verification:** all CI green at merge — JS, Python (core+services), android, ios, Analyze.
+Studio build clean; all service test suites pass (core 17, runtime 17, perception 25, forecast 2,
+feedback 2, voice 28, audio 8).
+
+---
+
 ## Now → v0.4 (next 2–4 weeks)
 
 Priority: **close the remaining gaps so every signal is live, not synthetic.**
@@ -73,9 +99,9 @@ inference time. The encoders exist and are trained — they just aren't loaded i
 runtime's `process_frame` path.
 
 - [x] Load `vocal.pt` in runtime; feed mic audio chunks from `MicListener` → MFCC → encoder → feature dims (heuristic fallback when no checkpoint; continuous `audio_arousal`/`audio_valence`/`audio_bark_prob` fused into `process_frame` via `STATE.latest_audio_modality`)
-- [ ] Load `vitals.pt` when BLE/serial IMU connected (stub with simulated 6-DoF first)
-- [ ] Merge encoder outputs into `core/modality_spec` features before TriadNet call
-- [ ] Studio modality bars animate from live mic and IMU signals
+- [ ] Load `vitals.pt` when BLE/serial IMU connected (stub with simulated 6-DoF first) — encoder + PhysioZoo/Mendeley-shaped train pipeline exist in `lib/aarf-physio`; the runtime has no vitals feed yet
+- [x] Merge encoder outputs into `core/modality_spec` features before TriadNet call — full 73-dim feature spec now wired end-to-end (see PR #23 shipped section)
+- [x] Studio modality bars animate from live mic — voice/Audio bars move with the mic; IMU/ECG bars remain static until the vitals feed lands
 
 **Done when:** studio shows non-zero Audio + IMU bars while dog is in frame.
 
@@ -120,16 +146,16 @@ shows measurable weight drift from baseline.
 - [x] iOS: CoreML bundle export via `artifact-bridge` → on-device TriadNet inference (no server needed)
 - [x] Android: same via ONNX Runtime Android
 - [ ] Both apps: display voice phrase spoken + bark response in Live tab
-- [ ] Settings: configure runtime URL + voice enable toggle
+- [x] Settings: configure runtime URL — both apps ship a Settings view (Android `SettingsScreen.kt`, iOS `SettingsView.swift`); voice-enable toggle still TBD
 
 **Done when:** iOS app runs basic intent prediction offline; Android runs at 5fps on-device.
 
 ### 6. Dev ergonomics
 
-- [ ] `make dev` starts runtime + Vite + prints LAN URL (replaces `./setup.sh --run --web`)
-- [ ] `setup.sh` prints WSL bridge hint when DISPLAY is missing
+- [x] `make dev` starts runtime + Vite + prints LAN URL (replaces `./setup.sh --run --web`) — `scripts/dev.sh`
+- [x] `setup.sh` auto-detects headless/WSL (no DISPLAY) and switches to `--web` mode with a hint
 - [ ] CI: add `/voice/outcomes` endpoint smoke test
-- [ ] CI: add Android build to `mobile.yml`
+- [x] CI: Android build added to `mobile.yml` (assembleDebug + APK artifact; iOS job on macOS runner)
 
 ---
 
@@ -147,6 +173,80 @@ See [PHASE2_COLLAR.md](PHASE2_COLLAR.md).
 
 ---
 
+## Completion (v0.4 → v1.0) — closing the last live-signal + home-data gaps
+
+The math is wired and every model trains; what remains is **real signals at inference time**
+and **your dog's home data** replacing the last synthetic/lab shapes.
+
+### 1. Live vitals / IMU feed (unblocks ECG + IMU bars)
+
+- [ ] `vitals.pt` load path in runtime; `update_vitals_modality(features)` mirroring `update_audio_modality`; simulated 6-DoF IMU feed stub first, real BLE/serial next
+- [ ] `modality_from_vitals` (ECG HRV + IMU activity → stress/activity) fused into `process_frame` before TriadNet
+- [ ] Studio ECG stress + IMU activity bars animate from live vitals
+- [ ] PhysioZoo dog ECG download (`fetch_public_datasets.sh --physiozoo`) → real HRV labels for `lib/aarf-physio` train; manifest records dataset version + held-out acc
+
+**Done when:** studio shows live Audio + ECG + IMU bars while the dog is in frame, and `vitals.pt` val acc improves on real held-out HRV clips.
+
+### 2. Home-data fine-tuning (vision + breed on your dog)
+
+- [ ] Capture clips from your dog in your room via the live box (`services/ingest` export frames) → label bboxes (studio editor or Roboflow)
+- [ ] Fine-tune YOLOv8n on labelled frames; export updated `dog_yolo.onnx`; re-verify 5+ fps on WSL bridge
+- [ ] Add your dog's stills to a personal breed/trait set; `aarflingo-perception train-breed` retrain; confirm breed label + conf on the box
+- [ ] Optional: YOLO-pose keypoints → gaze proxy upgrade
+
+**Done when:** stable `dog_present=true` bbox + correct breed label at 5+ fps in your actual room/lighting; `/feedback` harvest ≥10 rows per live session.
+
+### 3. Mobile voice + settings polish
+
+- [ ] Both apps: show spoken phrase + bark response in Live tab (`/voice/outcomes` read)
+- [ ] Voice-enable toggle + runtime URL in Settings (URL already shipped on both platforms)
+- [ ] Offline mode: fall back to on-device TriadNet when runtime unreachable (auto-detect)
+
+**Done when:** pocket app shows the conversation loop (phrase → response) and runs predictions offline.
+
+### 4. Hardening / release gate
+
+- [ ] CI: `/voice/outcomes` + `/live/status` smoke tests
+- [ ] `make verify` includes mobile build + ONNX shape assertions (73-dim input)
+- [ ] Ethics pass: document consent/IRB posture for home clips in [ETHICS.md](ETHICS.md); bias flags for breed under-representation
+- [ ] Manifest integrity: checksums + dataset versions on all model artifacts (`aarflingo-verify-artifacts`)
+
+**Done when:** `make verify` green end-to-end with real home clips in the dataset and a documented ethics/data sheet.
+
+---
+
+## Research paper (v1.0 target) — "AARFLingo: multimodal canine intent forecasting"
+
+Goal: a reproducible, ethically-scoped methods paper with an open (or gated) dataset + checkpoints.
+
+### 1. Contribution framing (what we publish)
+
+- **Multimodal triad forecasting** — joint intent × emotion × behavior prediction from vision + audio + physiology, on edge hardware
+- **§7 cross-modal synchrony features** — phase-locking between tail-wag motion and vocal arousal; a novel, cheap, explainable fusion signal
+- **§9 temporal backbone** — BiLSTM + attention + MoCo contrastive pre-train + continuous arousal/valence heads; strong when audio/IMU streams are available
+- **Active-learning loop** — live feedback → retrain → metric drift as a deployment story (not just a static benchmark)
+
+### 2. Dataset & evaluation protocol (the credible part)
+
+- [ ] **Home dataset** — N≥3 dogs (start with yours), ~hours of annotated sessions via studio feedback + labeler service; IRB/consent posture documented
+- [ ] **Public augmentation** — Stanford Dogs (vision), Barkopedia (audio), PhysioZoo (ECG/HRV), Mendeley (IMU) as pre-train corpora; splits by **dog** (never random-frame) to test generalization
+- [ ] **Metrics** — per-intent macro-F1, confusion-corrected accuracy (coupling matrix), arousal/valence RMSE + rank correlation, calibration (ECE), latency/FPS on Jetson + phone
+- [ ] **Baselines** — chance/majority, flat MLP TriadNet, per-modality single encoders, RGB-only, audio-only, vitals-only; ablation of §7 synchrony + §9 temporal components
+- [ ] **Reproducibility** — pinned seeds, manifest checksums, Docker/Jetson builds, CLI-reproducible `make train && make verify` on a fresh clone
+
+**Done when:** a `docs/paper/` dir with `METHODS.md`, `RESULTS.md`, `DATASHEET.md`, and a `reproduce.md` that a reviewer can run; all tables generated by scripts, not hand-edited.
+
+### 3. Writing & release timeline
+
+- [ ] **v1.0-M3:** dataset + eval harness frozen; baseline/ablation table generated
+- [ ] **v1.0-M4:** full methods + results draft; figures from notebook exports
+- [ ] **v1.0-M5:** internal review (ethogram experts + ML reviewer), ethics/data-sheet polish
+- [ ] **v1.0-M6:** release artifacts (model checkpoints, ONNX, code tag `v1.0`) + submit to a venue (e.g. ACII/ICMI animal-AI track, or NeurIPS Datasets & Benchmarks for the dataset paper, or a vet-behavioural journal)
+
+**Done when:** paper submitted with DOI + artifacts tagged, and the repo has a `v1.0` release.
+
+---
+
 ## Later
 
 | Theme | Notes |
@@ -160,7 +260,7 @@ See [PHASE2_COLLAR.md](PHASE2_COLLAR.md).
 
 ---
 
-## Work order for v0.4
+## Work order
 
 ```mermaid
 flowchart LR
@@ -169,14 +269,20 @@ flowchart LR
   C --> D[Studio active learning UI + camera switch]
   D --> E[iOS/Android CoreML / ONNX offline]
   E --> F[Collar BLE + TensorRT edge]
+  F --> G[Live vitals/IMU feed]
+  G --> H[Home dataset + eval protocol]
+  H --> I[Research paper + v1.0 release]
 ```
 
 1. **Wire live vocal encoder** — ✅ DONE: `MicListener` emits continuous audio modality (arousal/valence/bark_prob) every chunk → `update_audio_modality` → fused into `process_frame` features (heuristic fallback when `vocal.pt` absent)
 2. **Barkopedia fine-tune** — ✅ DONE: all 298 real clips train the encoder; real held-out 0.345 (3.1× chance); checkpoint selection + metrics now real-driven
-3. **YOLO + breed fine-tune** — your dog, your room, stable bbox + breed label on the box
-4. **Active learning UI + camera switch** — ✅ DONE: "label this" CTA in History, camera device dropdown via `/cameras` + `/live/camera`; remaining polish = gaze zone editor + header WS/bridge health
-5. **On-device CoreML / ONNX** — cut the WiFi dependency for iOS/Android
-6. **Collar** — full hardware path
+3. **YOLO + breed fine-tune** — your dog, your room, stable bbox + breed label on the box (home capture pending — Completion §2)
+4. **Active learning UI + camera switch** — ✅ DONE: "label this" CTA in History, camera device dropdown via `/cameras` + `/live/camera`, gaze zone editor, header WS/bridge health
+5. **On-device CoreML / ONNX** — ✅ DONE: both pocket apps run TriadNet offline at 73-dim (PR #23)
+6. **Collar** — full hardware path (Phase 2 above)
+7. **Live vitals/IMU feed** — load `vitals.pt` in runtime + simulated/real feed (Completion §1)
+8. **Home dataset + eval protocol** — N≥3 dogs, per-dog splits, baseline/ablation tables (Paper §2)
+9. **Research paper + v1.0 release** — methods/results/data-sheet, tagged artifacts, submission (Paper §3)
 
 ---
 
@@ -218,6 +324,9 @@ make verify
 - Datasets: [DATASETS.md](DATASETS.md)
 - Architecture: [ARCHITECTURE.md](ARCHITECTURE.md)
 - Training math: [MATH.md](MATH.md)
+- Advanced emotion math: [ADVANCED_MATH.md](ADVANCED_MATH.md)
 - Webcam / WSL: [WEBCAM.md](WEBCAM.md)
 - Contributing / CI: [CONTRIBUTING.md](CONTRIBUTING.md)
 - Deploy / edge: [DEPLOY.md](DEPLOY.md)
+- Ethics / data sheet: [ETHICS.md](ETHICS.md)
+- Collar / Phase 2: [PHASE2_COLLAR.md](PHASE2_COLLAR.md)
