@@ -4,15 +4,15 @@ Who: firmware for the **physical puck on the dog** (`hardware/collar-reva/`). Wh
 
 This document is the firmware contract. Pin numbers come from `scripts/aarf_sch/nets.py` via `hardware/collar-reva/pins.h`. Do not fork a second map.
 
-KiCad: `./kicad-launcher --run collar`. Electrical math: [hardware/collar-reva/AFE_CALCULATIONS.md](../hardware/collar-reva/AFE_CALCULATIONS.md). Sampling math: [hardware/collar-reva/MATH.md](../hardware/collar-reva/MATH.md). Product freeze: [PHASE2_COLLAR.md](PHASE2_COLLAR.md).
+KiCad: `./kicad-launcher --run collar`. Electrical math: [hardware/collar-reva/AFE_CALCULATIONS.md](../hardware/collar-reva/AFE_CALCULATIONS.md). Sampling math: [hardware/collar-reva/MATH.md](../hardware/collar-reva/MATH.md). Product freeze: [PHASE2_COLLAR.md](PHASE2_COLLAR.md). Flash + pair: [COLLAR_PRODUCT.md](COLLAR_PRODUCT.md).
 
 ## Target
 
 | Item | Value |
 |------|--------|
 | Module | ESP32-S3-MINI-1 |
-| Framework (Rev-A) | ESP-IDF or Arduino+NimBLE — pick one in the first firmware PR; do not mix |
-| Sensors | BMI270 (I2C), INMP441 (I2S) |
+| Framework (Rev-A) | Arduino + NimBLE + host-tested C. Advertises `aarf-collar`, notifies CBOR at 1 Hz. |
+| Sensors | BMI270 (I2C), INMP441 (I2S), TI AFE4404 neck PPG (I2C) |
 | Radio | BLE notify 1 Hz; Wi-Fi only for triggered clip upload |
 | Actuation | **None** |
 
@@ -31,6 +31,8 @@ Include `hardware/collar-reva/pins.h`. Live buses:
 | `PIN_I2S_WS` | 15 | I2S WS |
 | `PIN_I2S_SD` | 16 | I2S DIN |
 | `PIN_IMU_INT` | 17 | BMI270 INT1 |
+| `PIN_PPG_RDY` | 8 | AFE4404 ADC_RDY |
+| `PIN_PPG_RST` | 9 | AFE4404 RESET |
 
 USB-JTAG is GPIO19/20 (not in `pins.h` live list). GPIO0 is boot. Never drive GPIO 0/3/45/46 as a bus.
 
@@ -42,7 +44,7 @@ I2C pull-ups are **on the PCB** (4.7 kΩ). Do not also enable fat internal pulls
 2. Flash via USB-JTAG. Serial 115200.
 3. I2C scan — BMI270 at 0x68 (typical, SA0 low). Treat NAK as `imu_fault`.
 4. IMU 100 Hz burst → RMS/peak on serial.
-5. I2S clap → audio RMS on serial.
+5. I2S clap → audio RMS on serial (`driver/i2s` RX on GPIO 7/15/16).
 6. ADC1 VBAT vs DMM at three voltages; store a two-point cal in NVS.
 7. BLE advertise; phone sees 1 Hz notify.
 8. Only then: Wi-Fi clip path.
@@ -87,7 +89,21 @@ Phase 2 already specified this. Collar firmware **extends** it; it does not repl
   "audio_rms": <float>,
   "bark": <bool>,
   "vbat_v": <float>,
-  "fault": <str or null>   // "imu" | "mic" | "vbat" | null
+  "hr_bpm": <int, 0 if ppg_ok is false>,
+  "rmssd_ms": <int>,
+  "ppg_ok": <bool>,
+  "fault": <str or null>   // "imu" | "mic" | "vbat" | "ppg" | null
+  "still": <bool>,
+  "shake": <bool>,
+  "pant": <bool>,
+  "pitch": <float deg, uncalibrated neck tilt>,
+  "rr_bpm": <int, 0 unless still>,
+  "pi": <float, PPG perfusion AC/DC>,
+  "arousal": <float 0..1, autonomic proxy — not valence>,
+  "gyro": <float dps RMS>,
+  "puck_c": <float, BMI270 die °C — package, not skin>,
+  "skin_c": <float, neck NTC °C — contact, not core>,
+  "red": <float, red-LED perfusion AC/DC — not SpO2>
 }
 ```
 
@@ -95,7 +111,9 @@ If on-puck TriadNet is absent (Rev-A default), omit intent/emotion/behavior or s
 
 **MTU:** call `NimBLEDevice::setMTU(247)` (or IDF equivalent) after init. Serialized CBOR must fit in `(negotiated_MTU − 3)` or fragment. Default 23-byte MTU **will truncate**.
 
-**Clip upload (Wi-Fi, on trigger):** HTTP POST of a short WAV/Opus clip to the runtime ingest URL already used by studio. Same host config as aarf-pocket. Not a new binary framing.
+**Clip upload (Wi-Fi, on bark):** `POST {runtime}/infer/audio` with the existing studio JSON (`audio_arousal`, `audio_valence`, `audio_bark_prob`). NVS keys `wifi_ssid`, `wifi_pass`, `runtime`. WAV PCM16 is built in `wav.c` for a later multipart if runtime grows a file ingest; do not invent a fourth endpoint.
+
+**1 Hz vitals (laptop):** `python3 scripts/collar_listen.py --runtime http://HOST:8000` POSTs the decoded CBOR map to `POST {runtime}/infer/collar`. That fills the existing ECG/IMU slots (`ecg_hr_norm`, `ecg_stress`, `imu_activity`, …). Same HTTP family as `/infer/audio`.
 
 Baseline sync: pull `record-baseline.sh` output over BLE or Wi-Fi as already described in PHASE2 — add a command byte to this CBOR map later (`"cmd": "baseline"`), do not stand up a parallel ASCII protocol.
 
@@ -105,6 +123,7 @@ Baseline sync: pull `record-baseline.sh` output over BLE or Wi-Fi as already des
 |-----------|------|-----|
 | IMU NAK | `fault=imu`, keep advertising | slow blink |
 | I2S timeout | `fault=mic` | slow blink |
+| PPG NAK / no peaks | `fault=ppg` | slow blink |
 | \(V_{BAT}<3.1\ \mathrm{V}\) (after cal) | `fault=vbat` | solid dim |
 | Healthy 1 Hz | `fault=null` | 10 ms tick |
 
@@ -124,4 +143,4 @@ IMU features in **g**, not LSB. Convert with the BMI270 full-scale setting actua
 
 ## Out of scope (Rev-A)
 
-OTA, deep sleep, on-puck YOLO, gate MOSFET, ECG analog front-end, 32 kHz RTC crystal.
+OTA, deep sleep, on-puck YOLO, gate MOSFET, wet-electrode ECG, 32 kHz RTC crystal. Neck **PPG** (AFE4404) is in Rev-A.

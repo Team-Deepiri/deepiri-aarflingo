@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from app.engine import STATE, _load_service_package, broadcast, list_cameras, live_status, process_jpeg, reset_sync, switch_camera, update_audio_modality, webcam_loop
+from app.engine import STATE, _load_service_package, broadcast, list_cameras, live_status, process_jpeg, reset_sync, switch_camera, update_audio_modality, update_collar_modality, webcam_loop
 from app.dog_profile import PERSONALITIES, TRAIT_KEYS, DogProfile, load_profile, save_profile
 from app.gaze_zones import _zones_path, read_zones, reload_zones, write_zones
 from app.platform import (
@@ -295,6 +295,12 @@ async def infer_frame(file: UploadFile = File(...)) -> dict:
 def infer_audio(body: AudioBody) -> dict:
     mod = update_audio_modality(body.audio_arousal, body.audio_valence, body.audio_bark_prob)
     return {"status": "ok", "audio_modality": mod}
+
+
+@app.post("/infer/collar")
+def infer_collar(body: dict) -> dict:
+    mod = update_collar_modality(body)
+    return {"status": "ok", "collar_modality": mod}
 
 
 @app.post("/live/retrain")

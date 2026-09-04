@@ -92,7 +92,7 @@ s = \big(\mathrm{RMS}(a),\ \mathrm{peak}(a),\ \mathrm{band\ energy},\ \mathrm{au
 
 over the last 1 s window. That matches the existing physio/vocal encoders on the phone/runtime. The collar does **not** run full TriadNet on Rev-A; it ships \(s\) (and optional 1 Hz triad if an on-puck ONNX path lands later).
 
-Markov test: two windows with the same RMS but one “start of a jump” vs “end of a jump” differ in **peak and kurtosis**. So RMS alone is insufficient — keep peak. That is why the IMU path copies the JetPuck-style feature set, not a single accelerometer magnitude.
+Markov test: two windows with the same RMS but one “start of a jump” vs “end of a jump” differ in **peak**. So RMS alone is insufficient — firmware ships RMS and peak (`imu_feat.c`), not a single accelerometer magnitude.
 
 Slow variable: \(V_{BAT}\) (minutes). Fast: IMU (10 ms). Slaving: treat \(V_{BAT}\) constant inside a 1 s window.
 
