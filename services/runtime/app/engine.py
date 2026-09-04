@@ -130,6 +130,7 @@ class LiveState:
     subscribers: list[asyncio.Queue] = field(default_factory=list)
     store: FeedbackStore | None = None
     latest_audio_modality: dict[str, float] = field(default_factory=dict)
+    latest_collar_modality: dict[str, float] = field(default_factory=dict)
     voice: object | None = None
     conversation: object | None = None   # ConversationEngine when VOICE_ENABLED
     mic_listener: object | None = None   # MicListener when VOICE_ENABLED
@@ -170,6 +171,15 @@ def update_audio_modality(
         "audio_burstiness": float(audio_burstiness),
     }
     STATE.latest_audio_modality = mod
+    return mod
+
+
+def update_collar_modality(frame: dict[str, Any]) -> dict[str, float]:
+    from core.collar_features import collar_to_modality, write_collar_latest
+
+    mod = collar_to_modality(frame)
+    STATE.latest_collar_modality = mod
+    write_collar_latest(ROOT, frame)
     return mod
 
 
@@ -364,6 +374,8 @@ def process_frame(frame_bgr: np.ndarray, audio_modality: dict[str, float] | None
         features.update(audio_modality)
     elif STATE.latest_audio_modality:
         features.update(STATE.latest_audio_modality)
+    if STATE.latest_collar_modality:
+        features.update(STATE.latest_collar_modality)
     update_sync(features)
     features.update(sync_features())
     vec = vectorize(features)

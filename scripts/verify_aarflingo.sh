@@ -24,8 +24,10 @@ cleanup() {
 }
 trap cleanup EXIT
 
-step "unit tests (core + services + aarf-gate)"
+step "unit tests (core + services + aarf-gate + collar sch)"
 python3 core/metrics/test_anticipate.py
+python3 -m pytest -q scripts/aarf_sch
+python3 -m pytest -q firmware/collar/test
 PYTHONPATH="$ROOT" poetry run pytest -q core/tests
 for svc in ingest perception audio voice forecast feedback runtime; do
   PYTHONPATH="$ROOT:$ROOT/services/$svc" poetry run pytest -q "services/$svc/tests"

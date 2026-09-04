@@ -22,6 +22,15 @@ Then in studio → **Live camera** → **WSL bridge** → **Start**. See [docs/W
 
 See [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md), [docs/ELECTRON.md](docs/ELECTRON.md), and [docs/ROADMAP.md](docs/ROADMAP.md).
 
+v1.0 bar (dog-held-out ≥95% on ≥3 dogs — not synthetic acc):
+
+```bash
+make v1-gate                      # report + docs/paper/RESULTS.md
+python3 scripts/v1_gate.py --require-bar   # fails until the bar is real
+```
+
+Methods preprint (does **not** claim the bar): [docs/paper/PAPER.md](docs/paper/PAPER.md) · [PDF](docs/paper/aarflingo.pdf) (`make paper`).
+
 ## Architecture
 
 | Path | Role |
@@ -49,6 +58,24 @@ See [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md), [docs/ELECTRON.md](docs/ELECTR
 - `POST /feedback` — rate / correct a prediction
 - `POST /live/retrain` — export feedback → fine-tune checkpoint
 - `WS /ws/live` — streaming predictions
+
+## Hardware (dog-worn collar)
+
+KiCad for the physical puck on the dog lives in this repo — `./setup.sh` is unchanged (software only).
+
+```bash
+./kicad-launcher --run collar     # open hardware/collar-reva
+./kicad-launcher --sch verify     # GPIO + ethics denylist
+```
+
+Product (flash + pair): [docs/COLLAR_PRODUCT.md](docs/COLLAR_PRODUCT.md).
+
+```bash
+./scripts/flash_collar.sh
+python3 scripts/collar_listen.py --runtime http://127.0.0.1:8000
+```
+
+See [hardware/README.md](hardware/README.md), [docs/FIRMWARE_COLLAR.md](docs/FIRMWARE_COLLAR.md), and [docs/PHASE2_COLLAR.md](docs/PHASE2_COLLAR.md).
 
 ## Hardware deploy
 

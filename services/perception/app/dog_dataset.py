@@ -27,19 +27,82 @@ DEFAULT_CLASSES = ["dog"]
 
 # ── capture ────────────────────────────────────────────────────────────────
 
+def _nameserver_ip(resolv_text: str) -> str | None:
+    """First nameserver from resolv.conf text (WSL NAT-mode host IP)."""
+    for line in resolv_text.splitlines():
+        line = line.strip()
+        if line.startswith("nameserver"):
+            parts = line.split()
+            if len(parts) >= 2:
+                return parts[1]
+    return None
+
+
+def bridge_stream_candidates(port: int = 8766) -> list[str]:
+    """Webcam-bridge base URLs to try, in order (WSL mirrored loopback → NAT host)."""
+    urls = [f"http://127.0.0.1:{port}"]
+    try:
+        ns = _nameserver_ip(Path("/etc/resolv.conf").read_text(encoding="utf-8"))
+    except OSError:
+        ns = None
+    if ns and f"http://{ns}:{port}" not in urls:
+        urls.append(f"http://{ns}:{port}")
+    return urls
+
+
+def _bridge_healthy(base_url: str, timeout: float = 1.5) -> bool:
+    import urllib.request
+
+    try:
+        with urllib.request.urlopen(f"{base_url}/health", timeout=timeout) as r:
+            return r.status == 200 and b"ok" in r.read(512).lower()
+    except Exception:
+        return False
+
+
+def resolve_capture_source(camera: int = 0, source: str | None = None) -> str | int:
+    """Resolve a capture source: explicit `source` wins; else the local camera
+    when it opens; else the Windows MJPEG bridge when its health endpoint
+    answers (WSL has no /dev/video*). Raises with guidance when nothing works."""
+    if source:
+        return source
+    import cv2
+
+    probe = cv2.VideoCapture(camera)
+    ok = probe.isOpened()
+    probe.release()
+    if ok:
+        return camera
+    for base in bridge_stream_candidates():
+        if _bridge_healthy(base):
+            return f"{base}/video/stream"
+    raise RuntimeError(
+        f"cannot open camera {camera} and no webcam bridge answered "
+        f"(tried {', '.join(bridge_stream_candidates())}). Start "
+        "scripts/webcam/start_webcam_bridge.ps1 on Windows, or pass --source URL."
+    )
+
+
 def capture_frames(
     out_dir: Path = DEFAULT_CAPTURES,
     camera: int = 0,
     frames: int = 200,
     interval: float = 0.2,
+    source: str | None = None,
 ) -> dict:
-    """Grab `frames` webcam frames into `out_dir` (jpg). Motion-skipped."""
+    """Grab `frames` webcam frames into `out_dir` (jpg). Motion-skipped.
+
+    `source` may be a camera index string or an MJPEG URL (e.g. the WSL
+    bridge at http://<host>:8766/video/stream). When omitted we try the
+    local camera first, then auto-detect the bridge.
+    """
     import cv2
 
     out_dir.mkdir(parents=True, exist_ok=True)
-    cap = cv2.VideoCapture(camera)
+    src = resolve_capture_source(camera=camera, source=source)
+    cap = cv2.VideoCapture(src)
     if not cap.isOpened():
-        raise RuntimeError(f"cannot open camera {camera}")
+        raise RuntimeError(f"cannot open capture source {src!r}")
     written = 0
     prev_gray: object | None = None
     for i in range(frames):
@@ -62,7 +125,102 @@ def capture_frames(
 
             time.sleep(interval)
     cap.release()
-    return {"out": str(out_dir), "captured": written, "camera": camera}
+    return {"out": str(out_dir), "captured": written, "camera": camera, "source": str(src)}
+
+
+# ── model-assisted labeling ───────────────────────────────────────────────
+
+def yolo_rows_from_result(result: object, conf: float = 0.25) -> list[dict]:
+    """Convert one ultralytics Results object into JSONL rect rows.
+
+    Rows are center-normalized ({file, cls, x, y, w, h}) matching
+    `load_labels`/`prep_dog_yolo` semantics. Pure helper so tests can pass a
+    stub result without loading YOLO.
+    """
+    rows: list[dict] = []
+    boxes = getattr(result, "boxes", None)
+    if boxes is None:
+        return rows
+
+    def _plain(v: object) -> list:
+        return v.tolist() if hasattr(v, "tolist") else list(v)  # type: ignore[attr-defined]
+
+    names = getattr(result, "names", {}) or {}
+    clss = _plain(boxes.cls)
+    confs = _plain(boxes.conf)
+    xywhn = [list(b) for b in _plain(boxes.xywhn)]
+    for cls_id, cf, (x, y, w, h) in zip(clss, confs, xywhn):
+        if float(cf) < conf:
+            continue
+        name = names.get(int(cls_id), str(int(cls_id))) if isinstance(names, dict) else str(int(cls_id))
+        rows.append(
+            {
+                "file": Path(getattr(result, "path", "frame.jpg")).name,
+                "cls": name,
+                "x": float(x),
+                "y": float(y),
+                "w": float(w),
+                "h": float(h),
+            }
+        )
+    return rows
+
+
+def auto_label(
+    captures_dir: Path = DEFAULT_CAPTURES,
+    labels_path: Path = DEFAULT_LABELS,
+    conf: float = 0.25,
+    weights: str = "yolov8n.pt",
+    overwrite: bool = False,
+) -> dict:
+    """Pre-fill labels.jsonl with COCO-YOLO dog boxes for human review.
+
+    Model-assisted labeling: every detection above `conf` becomes a row.
+    Review/correct the JSONL in any text editor, then run prep-dog-yolo.
+    Files that already have rows are kept as-is unless `overwrite`.
+    """
+    try:
+        from ultralytics import YOLO
+    except ImportError as exc:  # pragma: no cover - env-dependent
+        raise RuntimeError("ultralytics is required for auto-labeling (pip install ultralytics)") from exc
+
+    images = sorted(p for p in captures_dir.iterdir() if p.suffix.lower() in (".jpg", ".jpeg", ".png"))
+    if not images:
+        raise RuntimeError(f"no images in {captures_dir}")
+
+    existing: dict[str, list[dict]] = {}
+    if labels_path.exists() and not overwrite:
+        for r in load_labels(labels_path):
+            existing.setdefault(Path(r["file"]).name, []).append(r)
+
+    model = YOLO(weights)
+    labeled = files_kept = boxes_total = 0
+    rows_out: list[dict] = []
+    results = model.predict(source=str(captures_dir), stream=True, conf=conf, verbose=False)
+    for result in results:
+        name = Path(result.path).name
+        prior = existing.get(name)
+        if prior:
+            files_kept += 1
+            rows_out.extend(prior)
+            continue
+        rows = yolo_rows_from_result(result, conf=conf)
+        boxes_total += len(rows)
+        labeled += 1
+        rows_out.extend(rows)
+
+    labels_path.parent.mkdir(parents=True, exist_ok=True)
+    with labels_path.open("w", encoding="utf-8") as fh:
+        for r in rows_out:
+            fh.write(json.dumps(r) + "\n")
+    return {
+        "labels": str(labels_path),
+        "images": len(images),
+        "files_labeled": labeled,
+        "files_kept_existing": files_kept,
+        "boxes": boxes_total,
+        "conf": conf,
+    }
 
 
 # ── labeling / prep ───────────────────────────────────────────────────────
@@ -115,7 +273,9 @@ def prep_dog_yolo(
     splits = {"train": images[:n_train], "val": images[n_train:]}
 
     jsonl_rows = load_labels(labels_path)
-    by_file = {Path(r["file"]).name: r for r in jsonl_rows}
+    rows_by_file: dict[str, list[dict]] = {}
+    for r in jsonl_rows:
+        rows_by_file.setdefault(Path(r["file"]).name, []).append(r)
 
     converted = 0
     for split, files in splits.items():
@@ -124,21 +284,23 @@ def prep_dog_yolo(
             shutil.copy2(src, dst_img)
             label_txt = src.with_suffix(".txt")
             out_txt = out_dir / split / "labels" / src.with_suffix(".txt").name
-            row = by_file.get(src.name)
+            rows = rows_by_file.get(src.name)
             if label_txt.exists():
                 shutil.copy2(label_txt, out_txt)
                 continue
-            if row:
-                cls = row.get("cls", classes[0])
-                idx = class_index.get(cls, 0)
-                x = float(row.get("x", 0))
-                y = float(row.get("y", 0))
-                w = float(row.get("w", 0.5))
-                h = float(row.get("h", 0.5))
-                # YOLO wants cx, cy, w, h; JSONL accepts either x,y (center) or x,y (top-left).
-                # We document x,y as CENTER to match YOLO semantics.
-                out_txt.write_text(f"{idx} {x:.6f} {y:.6f} {w:.6f} {h:.6f}\n", encoding="utf-8")
-                converted += 1
+            if rows:
+                lines = []
+                for row in rows:
+                    cls = row.get("cls", classes[0])
+                    idx = class_index.get(cls, 0)
+                    x = float(row.get("x", 0))
+                    y = float(row.get("y", 0))
+                    w = float(row.get("w", 0.5))
+                    h = float(row.get("h", 0.5))
+                    # YOLO wants cx, cy, w, h; JSONL x,y is CENTER (normalized 0–1).
+                    lines.append(f"{idx} {x:.6f} {y:.6f} {w:.6f} {h:.6f}")
+                out_txt.write_text("\n".join(lines) + "\n", encoding="utf-8")
+                converted += len(rows)
             else:
                 out_txt.write_text("", encoding="utf-8")
 

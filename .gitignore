@@ -38,6 +38,8 @@ artifacts/manifests/*
 artifacts/feedback/*.db
 artifacts/models/
 artifacts/voice/
+artifacts/eval/*
+!artifacts/eval/.gitkeep
 
 # Bundled mobile model manifests (produced by scripts/mobile/bundle-mobile-models.sh)
 apps/aarf-pocket-android/app/src/main/assets/models/triad_manifest.json
@@ -57,6 +59,25 @@ data/clips/
 .env
 .env.*
 !**/.env.example
+
+# PlatformIO
+firmware/**/.pio/
+
+# KiCad
+**/fp-info-cache
+**/*.kicad_prl
+**/*-backups/
+**/*.lck
+**/_autosave-*
+**/~*
+
+# LaTeX build junk (keep .tex / .bib / .md)
+docs/paper/*.aux
+docs/paper/*.log
+docs/paper/*.out
+docs/paper/*.bbl
+docs/paper/*.blg
+docs/paper/*.synctex.gz
 
 # OS
 .DS_Store
