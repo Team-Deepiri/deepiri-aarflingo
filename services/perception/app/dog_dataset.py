@@ -179,14 +179,14 @@ def auto_label(
     Review/correct the JSONL in any text editor, then run prep-dog-yolo.
     Files that already have rows are kept as-is unless `overwrite`.
     """
+    images = sorted(p for p in captures_dir.iterdir() if p.suffix.lower() in (".jpg", ".jpeg", ".png"))
+    if not images:
+        raise RuntimeError(f"no images in {captures_dir}")
+
     try:
         from ultralytics import YOLO
     except ImportError as exc:  # pragma: no cover - env-dependent
         raise RuntimeError("ultralytics is required for auto-labeling (pip install ultralytics)") from exc
-
-    images = sorted(p for p in captures_dir.iterdir() if p.suffix.lower() in (".jpg", ".jpeg", ".png"))
-    if not images:
-        raise RuntimeError(f"no images in {captures_dir}")
 
     existing: dict[str, list[dict]] = {}
     if labels_path.exists() and not overwrite:
