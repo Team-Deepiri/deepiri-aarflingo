@@ -5,6 +5,7 @@ import io
 from pathlib import Path
 
 import numpy as np
+import pytest
 from fastapi.testclient import TestClient
 from PIL import Image
 
@@ -62,6 +63,18 @@ def test_feedback_roundtrip() -> None:
     )
     assert fb.status_code == 200
     assert fb.json()["feedback_id"]
+
+
+def test_infer_collar_endpoint_maps_to_physio() -> None:
+    res = client.post(
+        "/infer/collar",
+        json={"hr_bpm": 90, "rmssd_ms": 45, "imu_rms": 0.4, "still": False, "arousal": 0.6},
+    )
+    assert res.status_code == 200
+    body = res.json()
+    assert body["status"] == "ok"
+    assert body["collar_modality"]["ecg_hr_norm"] == pytest.approx(0.5)
+    assert "audio_arousal" not in body["collar_modality"]
 
 
 def test_infer_audio_endpoint() -> None:

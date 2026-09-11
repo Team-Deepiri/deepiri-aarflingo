@@ -1,22 +1,21 @@
 name: Mobile
 
 on:
-  push:
+  pull_request:
     branches: [main, dev]
     paths:
       - "apps/aarf-pocket-android/**"
       - "apps/aarf-pocket-ios/**"
       - "scripts/mobile/**"
       - ".github/workflows/mobile.yml"
-  pull_request:
-    paths:
-      - "apps/aarf-pocket-android/**"
-      - "apps/aarf-pocket-ios/**"
-      - "scripts/mobile/**"
-      - ".github/workflows/mobile.yml"
+  workflow_dispatch:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   android:
+    timeout-minutes: 30
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -49,10 +48,11 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: aarflingo-pocket-android-debug
+          name: aarflingo-pocket-android-debug-${{ github.run_id }}
           path: apps/aarf-pocket-android/app/build/outputs/apk/debug/app-debug.apk
 
   ios:
+    timeout-minutes: 60
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4

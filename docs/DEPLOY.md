@@ -9,12 +9,13 @@ docker compose -f infra/docker/docker-compose.yml up aarf-runtime
 
 Mounts `artifacts/` for models and feedback DB. Exposes port **8765**.
 
-## Jetson / collar edge loop
+## Jetson home hub (not the collar)
 
 Build on L4T host:
 
 ```bash
 docker build -f infra/docker/jetson.Dockerfile -t aarflingo-edge .
+docker run --rm aarflingo-edge python3 -m app.cli status
 docker run --device /dev/video0 -v $(pwd)/artifacts/bundles:/opt/aarflingo/artifacts/bundles:ro aarflingo-edge
 ```
 

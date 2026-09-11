@@ -68,6 +68,47 @@ def build_splits(
     return train, val, test, labels
 
 
+def merge_extra_stills(
+    extra_dir: Path,
+    labels: list[str],
+    train: list[tuple[Path, int]],
+    val: list[tuple[Path, int]],
+    val_frac: float = 0.15,
+    seed: int = 42,
+) -> tuple[list[tuple[Path, int]], list[tuple[Path, int]], list[str], dict]:
+    """Merge personal stills (extra_dir/<Breed>/*.jpg) into the train/val splits.
+
+    Folder names use the Stanford Dogs convention (`<synset>-<Breed>` or plain
+    `<Breed>`); human names match existing classes case-insensitively and
+    unknown names become new classes appended to `labels`. Returns
+    (train, val, labels, stats).
+    """
+    rng = random.Random(seed)
+    lowered = {lbl.lower(): i for i, lbl in enumerate(labels)}
+    added = 0
+    per_class: dict[str, int] = {}
+    for d in sorted(p for p in Path(extra_dir).iterdir() if p.is_dir()):
+        raw = d.name.split("-", 1)[1] if "-" in d.name else d.name
+        human = raw.replace("_", " ").strip()
+        key = human.lower()
+        if key in lowered:
+            idx = lowered[key]
+        else:
+            idx = len(labels)
+            labels.append(human)
+            lowered[key] = idx
+        imgs = sorted(p for p in d.iterdir() if p.suffix.lower() in (".jpg", ".jpeg", ".png"))
+        rng.shuffle(imgs)
+        n_val = int(len(imgs) * val_frac) if len(imgs) > 1 else 0
+        for p in imgs[n_val:]:
+            train.append((p, idx))
+        for p in imgs[:n_val]:
+            val.append((p, idx))
+        per_class[human] = len(imgs)
+        added += len(imgs)
+    return train, val, labels, {"extra_images": added, "per_class": per_class}
+
+
 def load_image(path: Path, size: int = 224) -> np.ndarray:
     import cv2
 
@@ -142,6 +183,7 @@ def train_breed(
     lr: float = 1e-3,
     freeze_backbone: int = 4,
     seed: int = 42,
+    extra_dir: Path | None = None,
 ) -> dict:
     import torch
     import torchvision.models as M
@@ -162,6 +204,13 @@ def train_breed(
     print(f"data:  {data_dir}", file=sys.stderr)
 
     train, val, test, labels = build_splits(data_dir, seed=seed)
+    if extra_dir is not None and Path(extra_dir).is_dir():
+        train, val, labels, extra_stats = merge_extra_stills(Path(extra_dir), labels, train, val, seed=seed)
+        print(
+            f"extra stills: {extra_stats['extra_images']} from {extra_dir} "
+            f"({', '.join(f'{k}={v}' for k, v in extra_stats['per_class'].items())})",
+            file=sys.stderr,
+        )
     n_classes = len(labels)
     print(f"classes: {n_classes}  train: {len(train)}  val: {len(val)}  test: {len(test)}", file=sys.stderr)
 

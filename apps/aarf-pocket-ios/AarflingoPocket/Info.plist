@@ -26,6 +26,10 @@
 	<string>Camera access for live dog intent preview.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Microphone for bark audio capture.</string>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Connect to the Aarflingo collar to read observational IMU, mic, and pulse summaries. The app never writes actuation commands.</string>
+	<key>NSBluetoothPeripheralUsageDescription</key>
+	<string>Connect to the Aarflingo collar to read observational sensor summaries.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

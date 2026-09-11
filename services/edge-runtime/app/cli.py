@@ -1,11 +1,31 @@
 """Edge CLI."""
 from __future__ import annotations
 
+import json
+
 import typer
 
-from app.loop import run_edge
+from app.loop import repo_root, run_edge
 
-app = typer.Typer(help="AARFLingo edge / Jetson runtime")
+app = typer.Typer(help="AARFLingo Jetson home-hub runtime (not the collar)")
+
+
+@app.command()
+def status() -> None:
+    """Print hub readiness. No camera required."""
+    root = repo_root()
+    onnx = root / "artifacts" / "bundles" / "default" / "studio" / "triad.onnx"
+    print(
+        json.dumps(
+            {
+                "status": "edge_ready",
+                "role": "jetson-hub",
+                "wearable": False,
+                "root": str(root),
+                "onnx": onnx.is_file(),
+            }
+        )
+    )
 
 
 @app.command()

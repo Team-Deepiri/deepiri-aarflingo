@@ -30,6 +30,31 @@ struct SettingsView: View {
                 }
 
                 Section {
+                    Toggle(isOn: $appState.collarListen) {
+                        Label("Listen to collar", systemImage: "dot.radiowaves.left.and.right")
+                    }
+                    .tint(AarflingoTheme.accent)
+                    if appState.collar.connected, let v = appState.collar.vitals {
+                        LabeledContent("Heart rate", value: "\(v.hrBpm) bpm")
+                        LabeledContent("Resp. rate", value: "\(v.rrBpm) /min")
+                        LabeledContent("Arousal", value: String(format: "%.0f%%", v.arousal * 100))
+                        LabeledContent("Body", value: v.still ? "still" : "moving")
+                        LabeledContent("Pant / bark", value: "\(v.pant ? "pant" : "—") / \(v.bark ? "bark" : "—")")
+                        LabeledContent("Skin / puck", value: String(format: "%.1f / %.1f °C", v.skinC, v.puckC))
+                        LabeledContent("Battery", value: String(format: "%.2f V", v.vbatV))
+                    } else if appState.collarListen {
+                        Text(appState.collar.scanning ? "Scanning for aarf-collar…" : (appState.collar.lastError ?? "Waiting"))
+                            .font(.caption)
+                            .foregroundStyle(AarflingoTheme.muted)
+                    }
+                    Text("Observational BLE notify only. Does not write actuation chars.")
+                        .font(.caption)
+                        .foregroundStyle(AarflingoTheme.muted)
+                } header: {
+                    Text("Collar")
+                }
+
+                Section {
                     Toggle(isOn: $appState.hapticsEnabled) {
                         Label("Haptic feedback", systemImage: "iphone.radiowaves.left.and.right")
                     }

@@ -1,5 +1,11 @@
 # Labeling Guide
 
+## Bounding-box labeling (home captures)
+
+For detector/breed fine-tuning on your own dog, use the model-assisted flow in
+[HOME_CAPTURE.md](HOME_CAPTURE.md): `make home-capture` pre-fills
+`data/dog/captures/labels.jsonl` with YOLO dog boxes; you review and fix.
+
 ## Triad labeling
 
 Each clip receives **one** intent, **one** emotion, and **one** dominant behavior.

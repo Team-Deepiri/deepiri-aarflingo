@@ -21,8 +21,17 @@ struct DashboardView: View {
                             .font(.headline)
                         SignalBar(label: "Vision", value: 0.88, color: AarflingoTheme.info)
                         SignalBar(label: "Audio arousal", value: 0.62, color: AarflingoTheme.warn)
-                        SignalBar(label: "ECG stress", value: 0.22, color: AarflingoTheme.danger)
-                        SignalBar(label: "IMU activity", value: 0.74, color: AarflingoTheme.accent)
+                        SignalBar(label: "Autonomic arousal", value: appState.collar.vitals?.arousal ?? 0.22, color: AarflingoTheme.danger)
+                        SignalBar(label: "IMU activity", value: appState.collar.vitals.map { min($0.imuRms, 1.0) } ?? 0.74, color: AarflingoTheme.accent)
+                        if let v = appState.collar.vitals {
+                            MetricRow(label: "Collar HR", value: "\(v.hrBpm) bpm")
+                            MetricRow(label: "Collar RR", value: "\(v.rrBpm) /min")
+                            MetricRow(label: "Body", value: v.still ? "still" : "moving")
+                            MetricRow(label: "Skin / puck", value: String(format: "%.1f / %.1f °C", v.skinC, v.puckC))
+                            MetricRow(label: "Gyro RMS", value: String(format: "%.0f °/s", v.gyroRms))
+                            MetricRow(label: "Red PI", value: String(format: "%.2f", v.red))
+                            MetricRow(label: "Collar VBAT", value: String(format: "%.2f V", v.vbatV))
+                        }
                     }
                     .aarflingoCard()
 

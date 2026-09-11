@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 import SwiftUI
 
@@ -18,6 +19,13 @@ final class AppState: ObservableObject {
     @Published var selectedIntentFilter: String? = nil
     @Published var localMode = false
     @Published var engineAvailable = false
+    @Published var collarListen = false {
+        didSet {
+            if collarListen { collar.start() } else { collar.stop() }
+        }
+    }
+    @Published var collar = CollarBleClient()
+    private var bag = Set<AnyCancellable>()
 
     var uniqueIntents: [String] {
         Array(Set(history.map(\.intent))).sorted()
@@ -40,6 +48,9 @@ final class AppState: ObservableObject {
     init() {
         runtimeURL = UserDefaults.standard.string(forKey: "runtimeURL") ?? "http://127.0.0.1:8765"
         autoConnect = UserDefaults.standard.bool(forKey: "autoConnect")
+        collar.objectWillChange
+            .sink { [weak self] _ in self?.objectWillChange.send() }
+            .store(in: &bag)
     }
 
     func refreshMock() {

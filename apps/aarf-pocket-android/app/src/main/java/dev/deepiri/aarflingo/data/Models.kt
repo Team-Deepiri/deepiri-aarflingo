@@ -95,6 +95,11 @@ class AppViewModel : ViewModel() {
     var selectedIntentFilter by mutableStateOf<String?>(null)
     var showOnboarding by mutableStateOf(false)
     var lastError by mutableStateOf<String?>(null)
+    var collarListen by mutableStateOf(false)
+    var collarConnected by mutableStateOf(false)
+    var collarVitals by mutableStateOf<CollarVitals?>(null)
+    var collarStatus by mutableStateOf<String?>(null)
+    private var collarBle: CollarBleClient? = null
 
     var history by mutableStateOf(
         listOf(
@@ -262,9 +267,31 @@ class AppViewModel : ViewModel() {
         history = emptyList()
     }
 
+    fun setCollarListen(context: Context, on: Boolean) {
+        collarListen = on
+        if (!on) {
+            collarBle?.stop()
+            collarBle = null
+            collarConnected = false
+            collarStatus = null
+            return
+        }
+        val client = CollarBleClient(
+            context.applicationContext,
+            onVitals = { collarVitals = it },
+            onStatus = { ok, msg ->
+                collarConnected = ok
+                collarStatus = msg
+            },
+        )
+        collarBle = client
+        client.start()
+    }
+
     override fun onCleared() {
         super.onCleared()
         _client.disconnect()
+        collarBle?.stop()
         _onDevice?.close()
     }
 }
